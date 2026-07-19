@@ -4,16 +4,21 @@ type Handler = (msg: ServerMessage) => void;
 
 /**
  * WebSocket 网关客户端 —— 对接 Skynet ws_gate
- * 浏览器预览 / 原生 App / 微信小游戏均可用同一套协议
+ * 浏览器 / 微信小游戏 / App 均走 Creator 提供的 WebSocket 封装
  */
 export class NetClient {
   private ws: WebSocket | null = null;
   private url: string;
   private handler: Handler | null = null;
-  private reconnectTimer: number | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   connected = false;
 
   constructor(url = 'ws://127.0.0.1:9948') {
+    this.url = url;
+  }
+
+  /** 真机/小游戏请改为 wss://你的域名:端口 ，并在微信后台配 socket 合法域名 */
+  setUrl(url: string) {
     this.url = url;
   }
 
@@ -32,7 +37,7 @@ export class NetClient {
     };
     ws.onclose = () => {
       this.connected = false;
-      this.reconnectTimer = setTimeout(() => this.connect(), 2500) as unknown as number;
+      this.reconnectTimer = setTimeout(() => this.connect(), 2500);
     };
     ws.onerror = () => {
       /* onclose will fire */
