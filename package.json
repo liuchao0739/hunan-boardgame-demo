@@ -1,0 +1,37 @@
+{
+  "name": "hunan-boardgame-demo",
+  "version": "1.0.0",
+  "description": "湖南棋牌 Demo：长沙麻将 + 邵阳跑胡子（服务端权威 / WebSocket / 人机对战）",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server/index.ts",
+    "start": "tsx src/server/index.ts",
+    "test": "tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mahjong",
+    "changsha",
+    "paohuzi",
+    "websocket",
+    "boardgame",
+    "portfolio"
+  ],
+  "author": "liuchao0739",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>湖南棋牌 Demo · 长沙麻将 / 邵阳跑胡子</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">湘</span>
+      <div>
+        <h1>湖南棋牌 Demo</h1>
+        <p>长沙麻将 · 邵阳跑胡子 · 服务端权威</p>
+      </div>
+    </div>
+    <div class="conn" id="connStatus">连接中…</div>
+  </header>
+
+  <main>
+    <section class="lobby" id="lobby">
+      <div class="panel">
+        <h2>进入牌桌</h2>
+        <label>昵称 <input id="nick" maxlength="12" placeholder="你的昵称" /></label>
+        <div class="game-pick">
+          <button type="button" class="pick active" data-game="changsha_mj">长沙麻将 · 4 人</button>
+          <button type="button" class="pick" data-game="shaoyang_phz">邵阳跑胡子 · 3 人</button>
+        </div>
+        <div class="row">
+          <button id="btnCreate" class="primary">创建房间</button>
+          <input id="roomInput" placeholder="房间号" maxlength="8" />
+          <button id="btnJoin">加入</button>
+        </div>
+        <p class="hint">单人演示：创建房间 → 补齐机器人 → 准备开始</p>
+      </div>
+    </section>
+
+    <section class="table hidden" id="table">
+      <div class="table-meta">
+        <span id="metaRoom">房间 —</span>
+        <span id="metaGame">—</span>
+        <span id="metaWall">牌墙 —</span>
+        <span id="metaPhase">—</span>
+      </div>
+      <p class="banner" id="banner">—</p>
+
+      <div class="arena" id="arena"></div>
+
+      <div class="hand-panel">
+        <div class="hand-title">我的手牌 <span id="mySeat"></span></div>
+        <div class="hand" id="hand"></div>
+        <div class="ops" id="ops"></div>
+      </div>
+
+      <div class="toolbar">
+        <button id="btnBots">补齐机器人</button>
+        <button id="btnReady" class="primary">准备 / 下一局</button>
+        <button id="btnLeave">返回大厅</button>
+      </div>
+
+      <div class="settle hidden" id="settle"></div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/liuchao0739/hunan-boardgame-demo" target="_blank" rel="noopener">GitHub</a>
+    · 面试演示用 · 非赌博产品 · 规则为湖南常见简化房规
+  </footer>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
