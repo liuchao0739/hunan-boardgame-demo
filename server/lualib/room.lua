@@ -1,6 +1,7 @@
 --[[ 房间逻辑：座位 / 机器人 / 广播快照 ]]
 local ChangshaMJ = require "game.changsha_mj"
 local ShaoyangPHZ = require "game.shaoyang_phz"
+local DouDiZhu = require "game.doudizhu"
 
 local Room = {}
 Room.__index = Room
@@ -22,6 +23,9 @@ function Room.new(game_type, id)
   self.started = false
   if self.game_type == "shaoyang_phz" then
     self.game = ShaoyangPHZ.new()
+    self.n = 3
+  elseif self.game_type == "doudizhu" then
+    self.game = DouDiZhu.new()
     self.n = 3
   else
     self.game = ChangshaMJ.new()
@@ -91,18 +95,24 @@ function Room:build_public(viewer)
       hand = hand,
     }
   end
+  local lastDiscard = g.last_discard
+  if not lastDiscard and g.last_play and g.last_play.cards and #g.last_play.cards > 0 then
+    lastDiscard = { seat = g.last_play.seat, tile = g.last_play.cards[#g.last_play.cards] }
+  end
   return {
     roomId = self.id,
     gameType = self.game_type,
     phase = g.phase,
     seats = seats,
-    wallCount = #g.wall,
+    wallCount = g.wall and #g.wall or (g.bottom and #g.bottom or 0),
     currentSeat = g.current_seat,
-    lastDiscard = g.last_discard,
+    lastDiscard = lastDiscard,
+    lastPlayCards = g.last_play and g.last_play.cards or nil,
     availableOps = g:get_ops(viewer),
     message = g.message,
     round = g.round,
     settle = g.settle,
+    landlord = g.landlord,
   }
 end
 
@@ -123,6 +133,45 @@ function Room:bot_act(seat, ops)
       end
     end
   end
+
+  -- 斗地主叫分
+  if self.game_type == "doudizhu" and self.game.phase == "bidding" then
+    local bids = {}
+    for _, op in ipairs(ops) do
+      if op.action:sub(1, 4) == "bid_" then bids[#bids + 1] = op end
+    end
+    if #bids > 0 then
+      -- 30% 不叫，否则叫能叫的最高或随机
+      if math.random() < 0.35 then
+        return "bid_0", {}
+      end
+      local best = bids[#bids]
+      return best.action, { tile = best.tile }
+    end
+  end
+
+  -- 斗地主出牌：能出则出最小单张，否则不出
+  if self.game_type == "doudizhu" and self.game.phase == "playing" then
+    local hand = self.game.players[seat].hand
+    if prefer({ "pass" }) and self.game.last_play and self.game.last_play.seat ~= seat then
+      -- 尝试出更大单张
+      local prev = self.game.last_play.pattern
+      if prev and prev.kind == "single" then
+        for _, c in ipairs(hand) do
+          local pat = DouDiZhu.parse_pattern({ c })
+          if DouDiZhu.beats(pat, prev) then
+            return "play", { tiles = { c } }
+          end
+        end
+      end
+      return "pass", {}
+    end
+    if prefer({ "play" }) or prefer({ "discard" }) then
+      local c = hand[1]
+      return "play", { tiles = { c } }
+    end
+  end
+
   local win = prefer({ "zimo", "hu" })
   if win then return win.action, { tile = win.tile, tiles = win.tiles } end
   local gang = prefer({ "ming_gang", "an_gang", "bu_gang", "ti", "pao" })

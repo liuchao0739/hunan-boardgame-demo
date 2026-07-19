@@ -22,3 +22,7 @@ client/temp/
 client/build/
 client/profiles/
 client/native/
+client/.creator/
+client/temp/
+client/library/
+client/local/

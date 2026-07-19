@@ -1,9 +1,23 @@
 const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
 const PHZ = ['壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖', '拾'];
+const POKER_RANK = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+const POKER_SUIT = ['♠', '♥', '♣', '♦'];
 
-export type Suit = 'wan' | 'tiao' | 'tong' | 'big' | 'small';
+export type Suit = 'wan' | 'tiao' | 'tong' | 'big' | 'small' | 'poker_red' | 'poker_black' | 'joker';
 
 export function tileFace(gameType: string, t: number): { rank: string; suit: string; color: Suit } {
+  if (gameType === 'doudizhu') {
+    if (t === 52) return { rank: '小', suit: '王', color: 'joker' };
+    if (t === 53) return { rank: '大', suit: '王', color: 'joker' };
+    const suit = Math.floor(t / 13);
+    const rank = t % 13;
+    const red = suit === 1 || suit === 3;
+    return {
+      rank: POKER_RANK[rank],
+      suit: POKER_SUIT[suit],
+      color: red ? 'poker_red' : 'poker_black',
+    };
+  }
   if (gameType === 'changsha_mj') {
     const s = Math.floor(t / 9);
     const r = t % 9;
@@ -26,10 +40,13 @@ export const SUIT_COLOR: Record<Suit, string> = {
   tong: '#1E4D9C',
   big: '#C41E3A',
   small: '#1E4D9C',
+  poker_red: '#C41E3A',
+  poker_black: '#1A1A1A',
+  joker: '#C41E3A',
 };
 
 export const OP_SHORT: Record<string, string> = {
-  pass: '过',
+  pass: '不出',
   chi: '吃',
   peng: '碰',
   ming_gang: '杠',
@@ -40,4 +57,9 @@ export const OP_SHORT: Record<string, string> = {
   hu: '胡',
   zimo: '胡',
   discard: '出牌',
+  play: '出牌',
+  bid_0: '不叫',
+  bid_1: '1分',
+  bid_2: '2分',
+  bid_3: '3分',
 };

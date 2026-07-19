@@ -1,7 +1,7 @@
 /**
  * 与 Skynet 服约定的 JSON 协议（与 server 一致）
  */
-export type GameType = 'changsha_mj' | 'shaoyang_phz';
+export type GameType = 'changsha_mj' | 'shaoyang_phz' | 'doudizhu';
 
 export type ClientMessage =
   | { type: 'create_room'; gameType: GameType; nick?: string }
