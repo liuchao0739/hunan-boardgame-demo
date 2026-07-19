@@ -1,12 +1,11 @@
 {
   "name": "hunan-boardgame-demo",
-  "version": "2.0.0",
-  "description": "湘桌棋牌：Skynet+Lua 后端 + Cocos Creator 3.8.8 前端（长沙麻将/邵阳跑胡子）",
+  "version": "2.1.0",
+  "description": "湘桌棋牌：Skynet+Lua + Cocos Creator 3.8.8（长沙麻将/邵阳跑胡子/斗地主）",
   "private": true,
   "type": "module",
   "scripts": {
     "server": "cd server && ./run.sh",
-    "web": "npx --yes serve public -l 3789",
     "test": "tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "start": "npm run server"
@@ -18,6 +17,7 @@
     "mahjong",
     "changsha",
     "paohuzi",
+    "doudizhu",
     "websocket"
   ],
   "author": "liuchao0739",
