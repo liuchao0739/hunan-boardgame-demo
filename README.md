@@ -8,6 +8,20 @@
 
 ---
 
+## 效果预览
+
+| 大厅 | 长沙麻将 |
+|:---:|:---:|
+| ![大厅](docs/screenshots/01-lobby.png) | ![长沙麻将](docs/screenshots/02-changsha-mj.png) |
+
+| 邵阳跑胡子 | 斗地主 |
+|:---:|:---:|
+| ![邵阳跑胡子](docs/screenshots/03-shaoyang-phz.png) | ![斗地主](docs/screenshots/04-doudizhu.png) |
+
+> Cocos Creator 3.8.8 预览截图 · 服务端 Skynet Lua 权威判定 · 含人机对战
+
+---
+
 ## 架构
 
 ```
@@ -65,6 +79,7 @@ cd server
 
 - 权威逻辑在 **Lua/Skynet**；`src/` 下旧 TS 引擎仅作对照单测（`npm test`）。
 - 观感为程序化 UI Demo；商业级需牌面/音效等美术资源。
+- 截图目录：`docs/screenshots/`
 
 ## License
 
