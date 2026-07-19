@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "ES2015",
+    "target": "ES2015",
+    "strict": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "outDir": "./temp/",
+    "baseUrl": ".",
+    "paths": {
+      "db://assets/*": ["./assets/*"]
+    },
+    "types": ["./temp/declarations/cc"]
+  },
+  "exclude": ["node_modules", "library", "local", "temp", "build", "settings"]
+}

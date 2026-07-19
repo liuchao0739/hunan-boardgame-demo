@@ -1,29 +1,20 @@
 /** @typedef {import('../../src/shared/protocol.ts').PublicRoomState} PublicRoomState */
 
-const MJ_NAMES = (() => {
-  const suits = ["万", "条", "筒"];
-  const map = {};
-  for (let t = 0; t < 27; t++) {
-    map[t] = `${(t % 9) + 1}${suits[Math.floor(t / 9)]}`;
-  }
-  return map;
-})();
-
-const PHZ_CN = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾"];
-function phzName(t) {
-  return `${t >= 10 ? "大" : "小"}${PHZ_CN[t % 10]}`;
-}
-
-function tileLabel(gameType, t) {
-  return gameType === "changsha_mj" ? MJ_NAMES[t] : phzName(t);
-}
-
-function tileClass(gameType, t) {
-  if (gameType === "changsha_mj") {
-    return ["wan", "tiao", "tong"][Math.floor(t / 9)];
-  }
-  return t >= 10 ? "big" : "small";
-}
+const CN = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
+const PHZ = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾"];
+const OP_SHORT = {
+  pass: "过",
+  chi: "吃",
+  peng: "碰",
+  ming_gang: "杠",
+  an_gang: "杠",
+  bu_gang: "杠",
+  ti: "提",
+  pao: "跑",
+  hu: "胡",
+  zimo: "胡",
+  discard: "出牌",
+};
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -32,39 +23,76 @@ function el(tag, cls, text) {
   return n;
 }
 
+function makeTile(gameType, t, size = "") {
+  const node = el("div", `tile ${size}`.trim());
+  const rank = el("div", "rank");
+  const suit = el("div", "suit");
+
+  if (gameType === "changsha_mj") {
+    const s = Math.floor(t / 9);
+    const r = t % 9;
+    node.classList.add(["wan", "tiao", "tong"][s]);
+    rank.textContent = CN[r];
+    suit.textContent = ["万", "条", "筒"][s];
+  } else {
+    node.classList.add(t >= 10 ? "big" : "small");
+    rank.textContent = PHZ[t % 10];
+    suit.textContent = t >= 10 ? "大" : "小";
+  }
+  node.appendChild(rank);
+  node.appendChild(suit);
+  return node;
+}
+
+function makeBack(size = "mini") {
+  return el("div", `tile back ${size}`);
+}
+
 const state = {
   ws: null,
   gameType: "changsha_mj",
   roomId: null,
   seat: null,
   selectedTile: null,
+  selectedIndex: -1,
   /** @type {PublicRoomState | null} */
   room: null,
 };
 
 const $ = (id) => document.getElementById(id);
 
-function connect() {
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${proto}://${location.host}/ws`);
-  state.ws = ws;
-  const status = $("connStatus");
-  status.textContent = "连接中…";
-  status.className = "conn";
+function setConn(text, ok) {
+  const a = $("connStatus");
+  const b = $("connStatus2");
+  if (a) {
+    a.textContent = text;
+    a.className = `conn lob-conn ${ok === true ? "ok" : ok === false ? "bad" : ""}`;
+  }
+  if (b) {
+    b.textContent = ok ? "●" : "○";
+    b.className = `conn mini ${ok === true ? "ok" : ok === false ? "bad" : ""}`;
+  }
+}
 
-  ws.onopen = () => {
-    status.textContent = "已连接";
-    status.className = "conn ok";
-  };
+function connect() {
+  // 对接 Skynet 服（默认 9948），与 Cocos 客户端同一协议
+  const ws = new WebSocket("ws://127.0.0.1:9948");
+  state.ws = ws;
+  setConn("连接 Skynet…", null);
+
+  ws.onopen = () => setConn("已连接 · Skynet", true);
   ws.onclose = () => {
-    status.textContent = "已断开，3s 重连…";
-    status.className = "conn bad";
-    setTimeout(connect, 3000);
+    setConn("重连中…", false);
+    setTimeout(connect, 2500);
   };
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === "error") {
-      alert(msg.message);
+      toast(msg.message);
+      return;
+    }
+    if (msg.type === "hello") {
+      setConn("已连接 · Skynet", true);
       return;
     }
     if (msg.type === "room_created" || msg.type === "joined") {
@@ -83,8 +111,16 @@ function connect() {
 }
 
 function send(obj) {
-  if (state.ws?.readyState === WebSocket.OPEN) {
-    state.ws.send(JSON.stringify(obj));
+  if (state.ws?.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify(obj));
+}
+
+function toast(msg) {
+  const b = $("banner");
+  if (b) {
+    b.textContent = msg;
+    b.style.display = "";
+  } else {
+    alert(msg);
   }
 }
 
@@ -92,7 +128,6 @@ function showTable() {
   $("lobby").classList.add("hidden");
   $("table").classList.remove("hidden");
 }
-
 function showLobby() {
   $("lobby").classList.remove("hidden");
   $("table").classList.add("hidden");
@@ -105,84 +140,118 @@ function render() {
   const r = state.room;
   if (!r) return;
 
-  $("metaRoom").textContent = `房间 ${r.roomId}`;
-  $("metaGame").textContent =
-    r.gameType === "changsha_mj" ? "长沙麻将" : "邵阳跑胡子";
-  $("metaWall").textContent = `牌墙 ${r.wallCount}`;
-  $("metaPhase").textContent = `阶段 ${r.phase} · 第 ${r.round} 局`;
-  $("banner").textContent = r.message || "—";
-  $("mySeat").textContent = `（座位 ${state.seat}）`;
+  $("metaRoom").textContent = r.roomId;
+  $("metaGame").textContent = r.gameType === "changsha_mj" ? "长沙麻将" : "邵阳跑胡子";
+  $("metaWall").textContent = `剩 ${r.wallCount}`;
+  $("metaRound").textContent = `第 ${r.round} 局`;
+  $("banner").textContent = humanPhase(r);
+  $("wallChip").textContent = `牌墙 ${r.wallCount}`;
 
-  renderArena(r);
+  renderSeats(r);
+  renderCenter(r);
   renderHand(r);
   renderOps(r);
-
-  const settle = $("settle");
-  if (r.settle) {
-    settle.classList.remove("hidden");
-    settle.textContent = r.settle.detail;
-  } else {
-    settle.classList.add("hidden");
-  }
+  renderSettle(r);
 }
 
-function renderArena(r) {
-  const arena = $("arena");
-  arena.innerHTML = "";
-  const n = r.seats.length;
-  // 布局：上对家，左右邻家，中间出牌
-  const order =
-    n === 4
-      ? [
-          { seat: (state.seat + 2) % 4, pos: "top", style: "grid-column:2;grid-row:1" },
-          { seat: (state.seat + 3) % 4, pos: "left", style: "grid-column:1;grid-row:2" },
-          { seat: (state.seat + 1) % 4, pos: "right", style: "grid-column:3;grid-row:2" },
-          { seat: state.seat, pos: "bottom", style: "grid-column:2;grid-row:3" },
-        ]
-      : [
-          { seat: (state.seat + 1) % 3, pos: "left", style: "grid-column:1;grid-row:1" },
-          { seat: (state.seat + 2) % 3, pos: "right", style: "grid-column:3;grid-row:1" },
-          { seat: state.seat, pos: "bottom", style: "grid-column:2;grid-row:3" },
-        ];
+function humanPhase(r) {
+  const map = {
+    waiting: "等待准备开局",
+    wait_discard: "请出牌",
+    wait_claim: "有人可吃碰杠胡…",
+    playing: "对局中",
+    finished: "本局结束",
+    settle: "结算中",
+  };
+  if (r.phase === "wait_discard" && r.currentSeat === state.seat) return "轮到你出牌 · 点选后点出牌，或双击";
+  if (r.phase === "wait_discard") return `等待座位 ${r.currentSeat} 出牌`;
+  if (r.phase === "wait_claim" && r.availableOps.length) return "你可以吃 / 碰 / 杠 / 胡";
+  return r.message || map[r.phase] || r.phase;
+}
 
-  for (const o of order) {
-    const s = r.seats[o.seat];
-    const card = el("div", `seat-card${r.currentSeat === o.seat ? " active" : ""}`);
-    card.style.cssText = o.style;
-    card.appendChild(el("div", "name", `${s.nick}${s.isBot ? " · bot" : ""}`));
-    card.appendChild(
-      el("div", "sub", `座${o.seat} · 手牌${s.handCount} · 分${s.score}${s.ready ? " · 已准备" : ""}`),
-    );
-    const melds = el("div", "melds");
+function seatLayout(n) {
+  if (n === 4) {
+    return {
+      top: (state.seat + 2) % 4,
+      left: (state.seat + 3) % 4,
+      right: (state.seat + 1) % 4,
+      bottom: state.seat,
+    };
+  }
+  return {
+    top: null,
+    left: (state.seat + 1) % 3,
+    right: (state.seat + 2) % 3,
+    bottom: state.seat,
+  };
+}
+
+function renderPlayerChip(s, isTurn) {
+  const wrap = el("div", "");
+  const chip = el("div", `player-chip${isTurn ? " turn" : ""}`);
+  const av = el("div", `avatar${s.isBot ? " bot" : ""}`, (s.nick || "?").slice(0, 1));
+  const info = el("div", "pinfo");
+  info.appendChild(el("div", "nm", `${s.nick}${s.isBot ? "" : ""}`));
+  info.appendChild(el("div", "sc", `${s.score}分 · ${s.handCount}张`));
+  chip.appendChild(av);
+  chip.appendChild(info);
+  wrap.appendChild(chip);
+
+  if (s.melds?.length) {
+    const melds = el("div", "melds-row");
     for (const m of s.melds) {
-      for (const t of m.tiles) melds.appendChild(makeTile(r.gameType, t, true));
-      melds.appendChild(document.createTextNode(" "));
+      const g = el("div", "meld-group");
+      for (const t of m.tiles) g.appendChild(makeTile(state.gameType, t, "mini"));
+      melds.appendChild(g);
     }
-    card.appendChild(melds);
-    const disc = el("div", "discards");
-    for (const t of s.discards.slice(-12)) {
-      disc.appendChild(makeTile(r.gameType, t, true));
-    }
-    card.appendChild(disc);
-    arena.appendChild(card);
+    wrap.appendChild(melds);
   }
 
-  const center = el("div", "center-pile");
-  center.style.cssText = "grid-column:2;grid-row:2";
-  if (r.lastDiscard) {
-    center.appendChild(el("div", "sub", `最新出牌 · 座位 ${r.lastDiscard.seat}`));
-    const t = makeTile(r.gameType, r.lastDiscard.tile, false);
-    t.classList.add("last-tile");
-    center.appendChild(t);
-  } else {
-    center.appendChild(el("div", "sub", "牌桌中央"));
-  }
-  arena.appendChild(center);
+  const disc = el("div", "discards");
+  const shown = s.discards.slice(-16);
+  for (const t of shown) disc.appendChild(makeTile(state.gameType, t, "mini"));
+  wrap.appendChild(disc);
+  return wrap;
 }
 
-function makeTile(gameType, t, mini) {
-  const node = el("div", `tile ${tileClass(gameType, t)}${mini ? " mini" : ""}`, tileLabel(gameType, t));
-  return node;
+function renderSeats(r) {
+  const L = seatLayout(r.seats.length);
+  const map = [
+    ["seatTop", L.top],
+    ["seatLeft", L.left],
+    ["seatRight", L.right],
+  ];
+  for (const [id, seat] of map) {
+    const box = $(id);
+    box.innerHTML = "";
+    if (seat == null) {
+      box.style.display = "none";
+      continue;
+    }
+    box.style.display = "";
+    box.appendChild(renderPlayerChip(r.seats[seat], r.currentSeat === seat));
+  }
+
+  // 自己的副露
+  const melds = $("myMelds");
+  melds.innerHTML = "";
+  const me = r.seats[state.seat];
+  for (const m of me.melds || []) {
+    const g = el("div", "meld-group");
+    for (const t of m.tiles) g.appendChild(makeTile(r.gameType, t, "mini"));
+    melds.appendChild(g);
+  }
+}
+
+function renderCenter(r) {
+  const stage = $("centerStage");
+  // keep wall chip, replace last discard
+  [...stage.querySelectorAll(".last-discard")].forEach((n) => n.remove());
+  if (r.lastDiscard) {
+    const t = makeTile(r.gameType, r.lastDiscard.tile, "lg");
+    t.classList.add("last-discard");
+    stage.appendChild(t);
+  }
 }
 
 function renderHand(r) {
@@ -191,52 +260,71 @@ function renderHand(r) {
   const me = r.seats[state.seat];
   if (!me?.hand) return;
   const canDiscard = r.availableOps.some((o) => o.action === "discard");
-  for (const t of me.hand) {
-    const tile = makeTile(r.gameType, t, false);
+
+  me.hand.forEach((t, idx) => {
+    const tile = makeTile(r.gameType, t, "lg");
     if (canDiscard) {
       tile.classList.add("selectable");
-      if (state.selectedTile === t) tile.classList.add("selected");
+      if (state.selectedIndex === idx) tile.classList.add("selected");
       tile.onclick = () => {
+        if (state.selectedIndex === idx) {
+          // 再点一次出牌
+          send({ type: "action", action: "discard", tile: t });
+          state.selectedIndex = -1;
+          state.selectedTile = null;
+          return;
+        }
+        state.selectedIndex = idx;
         state.selectedTile = t;
         renderHand(r);
+        renderOps(r);
       };
       tile.ondblclick = () => {
         send({ type: "action", action: "discard", tile: t });
+        state.selectedIndex = -1;
         state.selectedTile = null;
       };
     }
     hand.appendChild(tile);
-  }
+  });
 }
 
 function renderOps(r) {
   const ops = $("ops");
   ops.innerHTML = "";
   for (const op of r.availableOps) {
-    const btn = el("button", "", op.label);
-    if (op.action === "hu" || op.action === "zimo") btn.classList.add("op-win");
+    const short = OP_SHORT[op.action] || op.label;
+    const btn = el("button", `op-btn ${op.action}`, short);
+    btn.title = op.label;
     btn.onclick = () => {
       if (op.action === "discard") {
         if (state.selectedTile == null) {
-          alert("请先点选手牌，再点出牌（或双击手牌）");
+          toast("先点选一张手牌");
           return;
         }
         send({ type: "action", action: "discard", tile: state.selectedTile });
         state.selectedTile = null;
+        state.selectedIndex = -1;
         return;
       }
-      send({
-        type: "action",
-        action: op.action,
-        tile: op.tile,
-        tiles: op.tiles,
-      });
+      send({ type: "action", action: op.action, tile: op.tile, tiles: op.tiles });
     };
     ops.appendChild(btn);
   }
 }
 
-// lobby bindings
+function renderSettle(r) {
+  const mask = $("settleMask");
+  const card = $("settle");
+  if (r.settle) {
+    mask.classList.remove("hidden");
+    card.textContent = r.settle.detail;
+  } else {
+    mask.classList.add("hidden");
+  }
+}
+
+// lobby
 let picked = "changsha_mj";
 document.querySelectorAll(".pick").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -246,20 +334,18 @@ document.querySelectorAll(".pick").forEach((btn) => {
   });
 });
 
-$("btnCreate").onclick = () => {
-  send({
-    type: "create_room",
-    gameType: picked,
-    nick: $("nick").value.trim() || "玩家",
-  });
-};
+$("btnCreate").onclick = () =>
+  send({ type: "create_room", gameType: picked, nick: $("nick").value.trim() || "玩家" });
 $("btnJoin").onclick = () => {
   const roomId = $("roomInput").value.trim();
-  if (!roomId) return alert("请输入房间号");
+  if (!roomId) return toast("请输入房间号");
   send({ type: "join_room", roomId, nick: $("nick").value.trim() || "玩家" });
 };
 $("btnBots").onclick = () => send({ type: "fill_bots" });
 $("btnReady").onclick = () => send({ type: "ready" });
 $("btnLeave").onclick = () => showLobby();
+$("settleMask").onclick = (e) => {
+  if (e.target === $("settleMask")) $("settleMask").classList.add("hidden");
+};
 
 connect();

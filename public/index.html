@@ -2,75 +2,99 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>湖南棋牌 Demo · 长沙麻将 / 邵阳跑胡子</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>湘桌 · 长沙麻将 / 邵阳跑胡子</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <header class="top">
-    <div class="brand">
-      <span class="brand-mark">湘</span>
-      <div>
-        <h1>湖南棋牌 Demo</h1>
-        <p>长沙麻将 · 邵阳跑胡子 · 服务端权威</p>
+  <div class="wood-frame"></div>
+
+  <!-- 大厅 -->
+  <section class="lobby" id="lobby">
+    <div class="lobby-hero">
+      <div class="lobby-title">
+        <span class="seal">湘</span>
+        <h1>湘桌棋牌</h1>
+        <p>长沙麻将 · 邵阳跑胡子</p>
+      </div>
+      <div class="lobby-card">
+        <label class="field">昵称
+          <input id="nick" maxlength="12" placeholder="起个好听的名字" value="玩家" />
+        </label>
+        <div class="game-pick">
+          <button type="button" class="pick active" data-game="changsha_mj">
+            <span class="pick-icon">🀄️</span>
+            <span class="pick-name">长沙麻将</span>
+            <span class="pick-sub">4 人 · 抓鸟 · 可吃</span>
+          </button>
+          <button type="button" class="pick" data-game="shaoyang_phz">
+            <span class="pick-icon">🎴</span>
+            <span class="pick-name">邵阳跑胡子</span>
+            <span class="pick-sub">3 人 · 字牌 · 胡息</span>
+          </button>
+        </div>
+        <button id="btnCreate" class="btn-gold btn-block">创建房间 · 开始体验</button>
+        <div class="join-row">
+          <input id="roomInput" placeholder="输入房间号" maxlength="8" />
+          <button id="btnJoin" class="btn-ghost">加入</button>
+        </div>
+        <p class="hint">演示：创建 → 补齐机器人 → 准备开局。双击手牌可出牌。</p>
       </div>
     </div>
-    <div class="conn" id="connStatus">连接中…</div>
-  </header>
+    <div class="conn lob-conn" id="connStatus">连接中…</div>
+  </section>
 
-  <main>
-    <section class="lobby" id="lobby">
-      <div class="panel">
-        <h2>进入牌桌</h2>
-        <label>昵称 <input id="nick" maxlength="12" placeholder="你的昵称" /></label>
-        <div class="game-pick">
-          <button type="button" class="pick active" data-game="changsha_mj">长沙麻将 · 4 人</button>
-          <button type="button" class="pick" data-game="shaoyang_phz">邵阳跑胡子 · 3 人</button>
-        </div>
-        <div class="row">
-          <button id="btnCreate" class="primary">创建房间</button>
-          <input id="roomInput" placeholder="房间号" maxlength="8" />
-          <button id="btnJoin">加入</button>
-        </div>
-        <p class="hint">单人演示：创建房间 → 补齐机器人 → 准备开始</p>
-      </div>
-    </section>
-
-    <section class="table hidden" id="table">
-      <div class="table-meta">
+  <!-- 牌桌 -->
+  <section class="table-screen hidden" id="table">
+    <header class="hud">
+      <button id="btnLeave" class="hud-btn" title="返回">←</button>
+      <div class="hud-mid">
+        <span id="metaGame">长沙麻将</span>
+        <span class="dot">·</span>
         <span id="metaRoom">房间 —</span>
-        <span id="metaGame">—</span>
-        <span id="metaWall">牌墙 —</span>
-        <span id="metaPhase">—</span>
+        <span class="dot">·</span>
+        <span id="metaWall">剩 —</span>
       </div>
-      <p class="banner" id="banner">—</p>
-
-      <div class="arena" id="arena"></div>
-
-      <div class="hand-panel">
-        <div class="hand-title">我的手牌 <span id="mySeat"></span></div>
-        <div class="hand" id="hand"></div>
-        <div class="ops" id="ops"></div>
+      <div class="hud-right">
+        <span id="metaRound">第 1 局</span>
+        <span class="conn mini" id="connStatus2">●</span>
       </div>
+    </header>
 
-      <div class="toolbar">
-        <button id="btnBots">补齐机器人</button>
-        <button id="btnReady" class="primary">准备 / 下一局</button>
-        <button id="btnLeave">返回大厅</button>
+    <div class="felt" id="felt">
+      <div class="felt-shine"></div>
+      <div class="toast" id="banner">等待开局</div>
+
+      <!-- 四边座位由 JS 填充 -->
+      <div class="seat seat-top" id="seatTop"></div>
+      <div class="seat seat-left" id="seatLeft"></div>
+      <div class="seat seat-right" id="seatRight"></div>
+      <div class="seat seat-bottom" id="seatBottom"></div>
+
+      <div class="center-stage" id="centerStage">
+        <div class="wall-chip" id="wallChip">牌墙</div>
       </div>
+    </div>
 
-      <div class="settle hidden" id="settle"></div>
-    </section>
-  </main>
+    <div class="ops-bar" id="ops"></div>
 
-  <footer>
-    <a href="https://github.com/liuchao0739/hunan-boardgame-demo" target="_blank" rel="noopener">GitHub</a>
-    · 面试演示用 · 非赌博产品 · 规则为湖南常见简化房规
-  </footer>
+    <div class="hand-dock">
+      <div class="hand-melds" id="myMelds"></div>
+      <div class="hand" id="hand"></div>
+      <div class="hand-actions">
+        <button id="btnBots" class="btn-ghost sm">补机器人</button>
+        <button id="btnReady" class="btn-gold sm">准备 / 下一局</button>
+      </div>
+    </div>
+
+    <div class="settle-mask hidden" id="settleMask">
+      <div class="settle-card" id="settle"></div>
+    </div>
+  </section>
+
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

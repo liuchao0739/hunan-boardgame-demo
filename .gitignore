@@ -5,3 +5,20 @@ dist/
 .env
 .idea/
 .vscode/
+
+# Skynet build artifacts（可本地 make 重建）
+server/skynet/skynet
+server/skynet/cservice/*.so
+server/skynet/luaclib/*.so
+server/skynet/3rd/jemalloc/lib/
+server/skynet/3rd/lua/*.o
+server/skynet/3rd/lua/*.a
+server/skynet/*.pid
+
+# Cocos 本地缓存
+client/library/
+client/local/
+client/temp/
+client/build/
+client/profiles/
+client/native/

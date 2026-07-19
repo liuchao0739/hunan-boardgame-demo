@@ -1,0 +1,9 @@
+{
+  "name": "xiangzhuo-client",
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "creator": {
+    "version": "3.8.8"
+  },
+  "version": "3.8.8",
+  "description": "湘桌棋牌 · Cocos Creator 3.8.8 客户端（长沙麻将 / 邵阳跑胡子）"
+}

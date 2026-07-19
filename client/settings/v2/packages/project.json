@@ -1,0 +1,13 @@
+{
+  "general": {
+    "designResolution": {
+      "width": 1280,
+      "height": 720,
+      "fitWidth": true,
+      "fitHeight": true
+    }
+  },
+  "script": {
+    "preserveSymlinks": true
+  }
+}

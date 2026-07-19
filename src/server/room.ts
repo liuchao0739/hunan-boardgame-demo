@@ -76,7 +76,7 @@ export class Room {
 
   /** 若轮到机器人，自动行动 */
   kickBots() {
-    const maxSteps = 8;
+    const maxSteps = 24;
     for (let i = 0; i < maxSteps; i++) {
       if (this.game.phase === "finished") return;
       let acted = false;
@@ -93,7 +93,7 @@ export class Room {
   }
 
   botAct(seat: number, ops: OpOption[]) {
-    // 优先级：胡 > 杠/提/跑 > 碰 > 吃 > 出牌/过
+    // 优先级：胡 > 杠/提/跑 > 碰 > 吃 > 出牌/过（响应阶段必须立刻表态，避免卡桌）
     const prefer = (names: string[]) => ops.find((o) => names.includes(o.action));
     const win = prefer(["zimo", "hu"]);
     if (win) {
@@ -106,13 +106,17 @@ export class Room {
       return;
     }
     const peng = prefer(["peng"]);
-    if (peng && Math.random() > 0.3) {
+    if (peng && Math.random() > 0.45) {
       this.applyAction(seat, peng.action, { tile: peng.tile });
       return;
     }
     const chi = prefer(["chi"]);
-    if (chi && Math.random() > 0.5) {
+    if (chi && Math.random() > 0.55) {
       this.applyAction(seat, chi.action, { tiles: chi.tiles });
+      return;
+    }
+    if (ops.some((o) => o.action === "pass")) {
+      this.applyAction(seat, "pass", {});
       return;
     }
     if (ops.some((o) => o.action === "discard")) {
@@ -122,10 +126,6 @@ export class Room {
           : (this.game as ShaoyangPaohuzi).players[seat].hand;
       const tile = hand[Math.floor(Math.random() * hand.length)];
       this.applyAction(seat, "discard", { tile });
-      return;
-    }
-    if (ops.some((o) => o.action === "pass")) {
-      this.applyAction(seat, "pass", {});
     }
   }
 

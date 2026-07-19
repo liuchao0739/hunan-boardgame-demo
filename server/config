@@ -1,0 +1,20 @@
+-- 湖南棋牌 Skynet 配置
+-- 启动：cd server && ./skynet/skynet config
+
+root = "./skynet/"
+thread = 8
+harbor = 0
+logger = nil
+logpath = "."
+start = "main"
+bootstrap = "snlua bootstrap"
+
+lualoader = root .. "lualib/loader.lua"
+cpath = root .. "cservice/?.so"
+lua_cpath = root .. "luaclib/?.so"
+luaservice = "./service/?.lua;" .. root .. "service/?.lua;" .. root .. "examples/?.lua"
+lua_path = "./lualib/?.lua;" .. "./lualib/?/init.lua;" .. root .. "lualib/?.lua;" .. root .. "lualib/?/init.lua"
+snax = root .. "examples/?.lua"
+
+-- 业务端口
+ws_port = 9948
