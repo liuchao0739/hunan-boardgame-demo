@@ -2,12 +2,21 @@
 
 ## PocketMahjongClient（口袋麻将）
 
-- Source: https://github.com/winktzhong/PocketMahjongClient  
-  (also https://github.com/openpokergame/PocketMahjongClient)
-- Copyright (c) Bit Technologies Inc.
-- License: MIT（见其源码文件头）
-- Used in this repo:
-  - `client/assets/resources/ui/Card2d/*` — 2D mahjong tile sprites
-  - `client/assets/resources/audio/{click_pai,discard_tile,btn_click}.mp3` — SFX
+- https://github.com/winktzhong/PocketMahjongClient
+- Copyright (c) Bit Technologies Inc. · MIT
+- Used: `client/assets/resources/ui/Card2d/*`, `ui/lobby/*`, `audio/*`
 
-The MIT notice must be retained when redistributing these assets.
+## 安铺打牌（speedphp/anpu）
+
+- https://github.com/speedphp/anpu
+- Apache License 2.0
+- Used as backup poker art: `client/assets/resources/ui/poker_anpu/*`
+- Primary poker faces in `ui/Poker/` are **generated for this repo** (encoding 0–53).
+
+## 幼麟棋牌（babykylin_scmj）
+
+- https://github.com/babykylin/babykylin_scmj
+- 开源教学版；商用请自行确认授权
+- Used as UI reference snippets: `ui/babykylin_hall/`, `ui/ops/`
+
+Retain upstream notices when redistributing corresponding assets.

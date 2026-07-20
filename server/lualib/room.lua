@@ -1,7 +1,5 @@
 --[[ 房间逻辑：座位 / 机器人 / 广播快照 ]]
-local ChangshaMJ = require "game.changsha_mj"
-local ShaoyangPHZ = require "game.shaoyang_phz"
-local DouDiZhu = require "game.doudizhu"
+local Catalog = require "game_catalog"
 
 local Room = {}
 Room.__index = Room
@@ -19,18 +17,11 @@ end
 function Room.new(game_type, id)
   local self = setmetatable({}, Room)
   self.id = id or rand_id()
-  self.game_type = game_type or "changsha_mj"
+  local meta = Catalog.get(game_type)
+  self.game_type = meta.id
   self.started = false
-  if self.game_type == "shaoyang_phz" then
-    self.game = ShaoyangPHZ.new()
-    self.n = 3
-  elseif self.game_type == "doudizhu" then
-    self.game = DouDiZhu.new()
-    self.n = 3
-  else
-    self.game = ChangshaMJ.new()
-    self.n = 4
-  end
+  self.game = meta.factory()
+  self.n = meta.seats
   self.seats = {}
   for i = 0, self.n - 1 do self.seats[i] = nil end
   return self
@@ -141,7 +132,6 @@ function Room:bot_act(seat, ops)
       if op.action:sub(1, 4) == "bid_" then bids[#bids + 1] = op end
     end
     if #bids > 0 then
-      -- 30% 不叫，否则叫能叫的最高或随机
       if math.random() < 0.35 then
         return "bid_0", {}
       end
@@ -150,16 +140,16 @@ function Room:bot_act(seat, ops)
     end
   end
 
-  -- 斗地主出牌：能出则出最小单张，否则不出
-  if self.game_type == "doudizhu" and self.game.phase == "playing" then
+  -- 斗地主 / 跑得快出牌
+  if (self.game_type == "doudizhu" or self.game_type == "paodekuai") and self.game.phase == "playing" then
+    local Engine = Catalog.get(self.game_type).module
     local hand = self.game.players[seat].hand
     if prefer({ "pass" }) and self.game.last_play and self.game.last_play.seat ~= seat then
-      -- 尝试出更大单张
       local prev = self.game.last_play.pattern
       if prev and prev.kind == "single" then
         for _, c in ipairs(hand) do
-          local pat = DouDiZhu.parse_pattern({ c })
-          if DouDiZhu.beats(pat, prev) then
+          local pat = Engine.parse_pattern({ c })
+          if Engine.beats(pat, prev) then
             return "play", { tiles = { c } }
           end
         end
@@ -167,6 +157,13 @@ function Room:bot_act(seat, ops)
       return "pass", {}
     end
     if prefer({ "play" }) or prefer({ "discard" }) then
+      -- 跑得快首出必须带红桃3
+      if self.game_type == "paodekuai" and self.game.first_play then
+        local h3 = 13
+        for _, c in ipairs(hand) do
+          if c == h3 then return "play", { tiles = { c } } end
+        end
+      end
       local c = hand[1]
       return "play", { tiles = { c } }
     end

@@ -1,6 +1,7 @@
 local skynet = require "skynet"
 local websocket = require "http.websocket"
 local json = require "json"
+local Catalog = require "game_catalog"
 
 local room_mgr
 local MODE = ...
@@ -29,6 +30,7 @@ if MODE == "agent" then
       type = "hello",
       message = "湘桌 Skynet 服务已连接",
       stack = "skynet-lua / websocket",
+      games = Catalog.list(),
     })
   end
 
@@ -111,6 +113,22 @@ if MODE == "agent" then
       return
     end
 
+    if data.type == "chat" then
+      local text = tostring(data.text or ""):sub(1, 40)
+      if text == "" then return end
+      local nick = "座位" .. tostring(c.seat)
+      if c.roomId and c.seat ~= nil then
+        local room = skynet.call(room_mgr, "lua", "snapshot", c.roomId, c.seat)
+        if room and room.seats then
+          for _, s in ipairs(room.seats) do
+            if s.seat == c.seat then nick = s.nick or nick end
+          end
+        end
+      end
+      skynet.call(room_mgr, "lua", "chat", c.roomId, c.seat, nick, text)
+      return
+    end
+
     if data.type == "action" then
       local err = skynet.call(room_mgr, "lua", "action", c.roomId, c.seat, data.action, {
         tile = data.tile,
@@ -140,6 +158,14 @@ if MODE == "agent" then
       if c.roomId == room_id and c.seat == seat then
         local snap = skynet.call(room_mgr, "lua", "snapshot", room_id, seat)
         send_json(id, { type = "state", state = snap })
+      end
+    end
+  end
+
+  function CMD.push_chat(room_id, seat, nick, text)
+    for id, c in pairs(clients) do
+      if c.roomId == room_id then
+        send_json(id, { type = "chat", seat = seat, nick = nick, text = text })
       end
     end
   end

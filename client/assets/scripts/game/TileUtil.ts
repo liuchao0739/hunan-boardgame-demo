@@ -6,7 +6,7 @@ const POKER_SUIT = ['♠', '♥', '♣', '♦'];
 export type Suit = 'wan' | 'tiao' | 'tong' | 'big' | 'small' | 'poker_red' | 'poker_black' | 'joker';
 
 export function tileFace(gameType: string, t: number): { rank: string; suit: string; color: Suit } {
-  if (gameType === 'doudizhu') {
+  if (gameType === 'doudizhu' || gameType === 'paodekuai') {
     if (t === 52) return { rank: '小', suit: '王', color: 'joker' };
     if (t === 53) return { rank: '大', suit: '王', color: 'joker' };
     const suit = Math.floor(t / 13);
@@ -32,6 +32,15 @@ export function tileFace(gameType: string, t: number): { rank: string; suit: str
     suit: t >= 10 ? '大' : '小',
     color: t >= 10 ? 'big' : 'small',
   };
+}
+
+/**
+ * 扑克牌 sprite 路径（自生成 · 与服务端 0-53 编码一致）
+ * resources/ui/Poker/{id}/spriteFrame
+ */
+export function pokerSpriteKey(t: number): string | null {
+  if (t < 0 || t > 53) return null;
+  return String(t);
 }
 
 /**

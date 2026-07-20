@@ -64,6 +64,17 @@ function CMD.broadcast(room_id)
   end
 end
 
+function CMD.chat(room_id, seat, nick, text)
+  local room = get(room_id)
+  if not room then return end
+  for i = 0, room.n - 1 do
+    local s = room.seats[i]
+    if s and s.agent and not s.is_bot then
+      skynet.send(s.agent, "lua", "push_chat", room_id, seat, nick, text)
+    end
+  end
+end
+
 function CMD.unbind(room_id, seat)
   local room = get(room_id)
   if not room or not room.seats[seat] then return end

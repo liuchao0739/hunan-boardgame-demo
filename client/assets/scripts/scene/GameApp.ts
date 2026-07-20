@@ -21,7 +21,8 @@ import {
 } from 'cc';
 import { NetClient } from '../net/NetClient';
 import { GameType, PublicRoomState, SeatPublic, ServerMessage } from '../net/Protocol';
-import { OP_SHORT, SUIT_COLOR, mjSpriteKey, tileFace } from '../game/TileUtil';
+import { OP_SHORT, SUIT_COLOR, mjSpriteKey, pokerSpriteKey, tileFace } from '../game/TileUtil';
+import { GAME_CATALOG, gameMeta } from '../game/GameCatalog';
 
 const { ccclass, property } = _decorator;
 
@@ -55,8 +56,12 @@ export class GameApp extends Component {
   private pickMj!: Node;
   private pickPhz!: Node;
   private pickDdz!: Node;
-  /** 斗地主多选下标 */
+  private pickPdk!: Node;
+  private pickNodes: Node[] = [];
+  private joinInput = '';
+  /** 斗地主/跑得快多选下标 */
   private selectedSet = new Set<number>();
+  private quickChats = ['快点啊', '打得好', '不好意思', '再来一局'];
 
   onLoad() {
     this.root = this.node;
@@ -107,7 +112,10 @@ export class GameApp extends Component {
       this.seat = msg.seat;
       this.gameType = msg.gameType;
       this.showTable();
-      // 一键开局：进房后自动补机器人并准备
+      if (msg.type === 'room_created') {
+        this.toast(`房号 ${msg.roomId}（可分享给好友加入）`);
+        (globalThis as any).__room = msg.roomId;
+      }
       if (this.starting) {
         this.net.send({ type: 'fill_bots' });
         setTimeout(() => {
@@ -115,6 +123,10 @@ export class GameApp extends Component {
           this.starting = false;
         }, 180);
       }
+      return;
+    }
+    if (msg.type === 'chat') {
+      this.toast(`${msg.nick}: ${msg.text}`);
       return;
     }
     if (msg.type === 'state') {
@@ -173,55 +185,85 @@ export class GameApp extends Component {
     const lobby = new Node('Lobby');
 
     const seal = this.rectNode('Seal', 72, 72, new Color(180, 40, 40), 14);
-    seal.setPosition(0, 210, 0);
+    seal.setPosition(0, 250, 0);
     lobby.addChild(seal);
     const sealLab = this.makeLabel('SealT', 36, new Color(255, 220, 120));
     sealLab.getComponent(Label)!.string = '湘';
     seal.addChild(sealLab);
 
-    const title = this.makeLabel('Title', 52, new Color(255, 210, 90));
+    const title = this.makeLabel('Title', 48, new Color(255, 210, 90));
     title.getComponent(Label)!.string = '湘桌棋牌';
-    title.setPosition(0, 140, 0);
+    title.setPosition(0, 185, 0);
     lobby.addChild(title);
 
-    const sub = this.makeLabel('Sub', 18, new Color(180, 150, 110));
-    sub.getComponent(Label)!.string = '长沙麻将 · 邵阳跑胡子';
-    sub.setPosition(0, 90, 0);
+    const sub = this.makeLabel('Sub', 16, new Color(180, 150, 110));
+    sub.getComponent(Label)!.string = '麻将 · 跑胡子 · 斗地主 · 跑得快';
+    sub.setPosition(0, 140, 0);
     lobby.addChild(sub);
 
-    // 玩法选择
-    this.pickMj = this.makePickCard('长沙麻将', -200, 20, 180, () => {
-      this.gameType = 'changsha_mj';
-      this.refreshPickStyle();
-      this.toast('已选长沙麻将');
-    });
-    this.pickPhz = this.makePickCard('邵阳跑胡子', 0, 20, 180, () => {
-      this.gameType = 'shaoyang_phz';
-      this.refreshPickStyle();
-      this.toast('已选邵阳跑胡子');
-    });
-    this.pickDdz = this.makePickCard('斗地主', 200, 20, 180, () => {
-      this.gameType = 'doudizhu';
-      this.refreshPickStyle();
-      this.toast('已选斗地主');
-    });
-    lobby.addChild(this.pickMj);
-    lobby.addChild(this.pickPhz);
-    lobby.addChild(this.pickDdz);
+    // 2×2 玩法选择
+    const layout: { id: GameType; x: number; y: number }[] = [
+      { id: 'changsha_mj', x: -170, y: 55 },
+      { id: 'shaoyang_phz', x: 170, y: 55 },
+      { id: 'doudizhu', x: -170, y: -25 },
+      { id: 'paodekuai', x: 170, y: -25 },
+    ];
+    this.pickNodes = [];
+    for (const item of layout) {
+      const meta = gameMeta(item.id);
+      const card = this.makePickCard(`${meta.name}\n${meta.blurb}`, item.x, item.y, 300, () => {
+        this.gameType = item.id;
+        this.refreshPickStyle();
+        this.toast(`已选${meta.name}`);
+      });
+      lobby.addChild(card);
+      this.pickNodes.push(card);
+      if (item.id === 'changsha_mj') this.pickMj = card;
+      if (item.id === 'shaoyang_phz') this.pickPhz = card;
+      if (item.id === 'doudizhu') this.pickDdz = card;
+      if (item.id === 'paodekuai') this.pickPdk = card;
+    }
     this.refreshPickStyle();
 
-    // 一键开局
-    const start = this.makeBtn('一键开局', 0, -100, () => this.oneClickStart(), true, 220, 56, 22);
+    const start = this.makeBtn('一键开局', -120, -120, () => this.oneClickStart(), true, 200, 52, 20);
     start.name = 'StartBtn';
     lobby.addChild(start);
 
+    const join = this.makeBtn('加入房间', 120, -120, () => this.joinByPrompt(), false, 200, 52, 20);
+    lobby.addChild(join);
+
     const tip = this.makeLabel('Tip', 15, new Color(130, 110, 85));
     tip.name = 'StartTip';
-    tip.getComponent(Label)!.string = '当前：长沙麻将 ｜ 出牌：点手牌选中，再点一次打出';
-    tip.setPosition(0, -170, 0);
+    tip.getComponent(Label)!.string = '当前：长沙麻将（4人）';
+    tip.setPosition(0, -185, 0);
     lobby.addChild(tip);
 
+    const joinHint = this.makeLabel('JoinHint', 13, new Color(110, 95, 75));
+    joinHint.getComponent(Label)!.string = '加入：点「加入房间」后在控制台输入 6 位房号，或改 joinInput';
+    joinHint.setPosition(0, -215, 0);
+    lobby.addChild(joinHint);
+
     return lobby;
+  }
+
+  /** 简易加入：循环预设/提示；演示用可直接改 this.joinInput */
+  private joinByPrompt() {
+    const code = (this.joinInput || '').trim().toUpperCase();
+    if (!code || code.length < 4) {
+      this.toast('请先设置房号：在 Creator 控制台执行 window.__join="XXXXXX" 后再点加入');
+      // 允许从全局读取（预览调试）
+      const g = globalThis as any;
+      if (g.__join) {
+        this.joinInput = String(g.__join);
+      } else {
+        return;
+      }
+    }
+    const roomId = (this.joinInput || (globalThis as any).__join || '').toString().trim().toUpperCase();
+    if (!roomId) return;
+    this.starting = false;
+    this.toast(`加入房间 ${roomId}…`);
+    this.net.send({ type: 'join_room', roomId, nick: this.nick });
   }
 
   private oneClickStart() {
@@ -232,14 +274,18 @@ export class GameApp extends Component {
   }
 
   private makePickCard(text: string, x: number, y: number, w: number, cb: () => void) {
-    const h = 64;
+    const h = 72;
     const n = this.rectNode('Pick', w, h, new Color(40, 32, 24), 12);
     n.setPosition(x, y, 0);
     (n as any)._pickW = w;
     (n as any)._pickH = h;
-    const lab = this.makeLabel('T', 18, new Color(220, 200, 170));
+    const lab = this.makeLabel('T', 16, new Color(220, 200, 170));
     lab.name = 'PickLabel';
-    lab.getComponent(Label)!.string = text;
+    const L = lab.getComponent(Label)!;
+    L.string = text;
+    L.overflow = Overflow.RESIZE_HEIGHT;
+    L.horizontalAlign = HorizontalTextAlignment.CENTER;
+    lab.getComponent(UITransform)!.setContentSize(w - 16, h - 8);
     n.addChild(lab);
     n.on(Node.EventType.TOUCH_END, () => cb());
     return n;
@@ -264,17 +310,15 @@ export class GameApp extends Component {
       const lab = node.getChildByName('PickLabel')?.getComponent(Label);
       if (lab) lab.color = on ? new Color(255, 220, 120) : new Color(220, 200, 170);
     };
-    apply(this.pickMj, this.gameType === 'changsha_mj');
-    apply(this.pickPhz, this.gameType === 'shaoyang_phz');
-    apply(this.pickDdz, this.gameType === 'doudizhu');
+    for (const n of this.pickNodes) {
+      const lab = n.getChildByName('PickLabel')?.getComponent(Label)?.string || '';
+      const meta = gameMeta(this.gameType);
+      apply(n, lab.startsWith(meta.name));
+    }
     const tip = this.lobby?.getChildByName('StartTip')?.getComponent(Label);
     if (tip) {
-      const names: Record<string, string> = {
-        changsha_mj: '长沙麻将（4人）',
-        shaoyang_phz: '邵阳跑胡子（3人·叠列）',
-        doudizhu: '斗地主（3人·叫分）',
-      };
-      tip.string = `当前：${names[this.gameType] || this.gameType}`;
+      const m = gameMeta(this.gameType);
+      tip.string = `当前：${m.name}（${m.seats}人）· ${m.tip}`;
     }
   }
 
@@ -337,7 +381,16 @@ export class GameApp extends Component {
       this.seat = null;
       this.room = null;
       this.selectedIndex = -1;
+      this.selectedSet.clear();
     }, false, 110, 36, 16));
+
+    // 快捷聊天
+    this.quickChats.forEach((text, i) => {
+      const btn = this.makeBtn(text, -220 + i * 110, h / 2 - 36, () => {
+        this.net.send({ type: 'chat', text });
+      }, false, 100, 28, 12);
+      table.addChild(btn);
+    });
 
     return table;
   }
@@ -421,7 +474,10 @@ export class GameApp extends Component {
     const show = s.discards.slice(-8);
     const start = -((show.length - 1) * 18) / 2;
     show.forEach((t, i) => {
-      const tile = this.makeTileNode(t, false, 0.55);
+      const tile =
+        this.gameType === 'doudizhu' || this.gameType === 'paodekuai'
+          ? this.makePokerCard(t, false, 0.55)
+          : this.makeTileNode(t, false, 0.55);
       tile.setPosition(start + i * 18, 0, 0);
       disc.addChild(tile);
     });
@@ -436,31 +492,46 @@ export class GameApp extends Component {
     const canClaim = r.phase === 'wait_claim' && r.availableOps.some((o) => o.action !== 'pass');
     let tip = r.message || '';
     if (myTurn) {
+      const meta = gameMeta(r.gameType);
       tip =
-        r.gameType === 'doudizhu'
-          ? r.phase === 'bidding'
-            ? '叫分阶段 · 点下方按钮'
-            : '点选手牌抬起（可多选）→ 出牌'
-          : r.gameType === 'shaoyang_phz'
-            ? '同牌叠列 · 点列顶牌选中，再点打出'
-            : '点手牌选中，再点一次打出';
+        r.gameType === 'doudizhu' && r.phase === 'bidding'
+          ? '叫分阶段 · 点下方按钮'
+          : meta.tip;
     } else if (canClaim) tip = '可以吃 / 碰 / 跑 / 胡';
     else if (r.phase === 'bidding') tip = `座位 ${r.currentSeat} 叫分中`;
     else if (r.phase === 'wait_discard' || r.phase === 'playing') tip = `等待座位 ${r.currentSeat}`;
     this.centerInfo.string = `${r.roomId}  ·  剩牌 ${r.wallCount}\n${tip}`;
 
-    // 最新出牌
     const old = this.feltNode.getChildByName('LastTile');
     if (old) old.destroy();
-    if (r.lastDiscard) {
-      const last = this.makeTileNode(r.lastDiscard.tile, false, 1.35);
+    if (r.lastPlayCards && r.lastPlayCards.length > 0) {
+      const row = new Node('LastTile');
+      row.layer = Layers.Enum.UI_2D;
+      row.setPosition(0, -30, 0);
+      const cards = r.lastPlayCards;
+      const gap = 22;
+      const start = -((cards.length - 1) * gap) / 2;
+      cards.forEach((t, i) => {
+        const c =
+          r.gameType === 'doudizhu' || r.gameType === 'paodekuai'
+            ? this.makePokerCard(t, false, 0.7)
+            : this.makeTileNode(t, false, 0.9);
+        c.setPosition(start + i * gap, 0, 0);
+        row.addChild(c);
+      });
+      this.feltNode.addChild(row);
+      this.markUI(row);
+    } else if (r.lastDiscard) {
+      const last =
+        r.gameType === 'doudizhu' || r.gameType === 'paodekuai'
+          ? this.makePokerCard(r.lastDiscard.tile, false, 1.0)
+          : this.makeTileNode(r.lastDiscard.tile, false, 1.35);
       last.name = 'LastTile';
       last.setPosition(0, -30, 0);
       this.feltNode.addChild(last);
       this.markUI(last);
-      // 轻微弹出
       last.setScale(0.6, 0.6, 1);
-      tween(last).to(0.2, { scale: new Vec3(1.35, 1.35, 1) }, { easing: 'backOut' }).start();
+      tween(last).to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
     }
   }
 
@@ -471,7 +542,7 @@ export class GameApp extends Component {
     const canDiscard =
       (r.phase === 'wait_discard' || r.phase === 'playing') && r.currentSeat === this.seat;
 
-    if (r.gameType === 'doudizhu') {
+    if (r.gameType === 'doudizhu' || r.gameType === 'paodekuai') {
       this.renderDdzHand(hand, canDiscard && r.phase === 'playing', r);
     } else if (r.gameType === 'shaoyang_phz') {
       this.renderPhzHand(hand, canDiscard, r);
@@ -504,13 +575,40 @@ export class GameApp extends Component {
     });
   }
 
-  private makePokerCard(t: number, selected: boolean) {
-    const tw = 52;
-    const th = 72;
+  private makePokerCard(t: number, selected: boolean, scale = 1) {
+    const tw = 52 * scale;
+    const th = 72 * scale;
     const n = new Node('Poker');
     n.layer = Layers.Enum.UI_2D;
     const ui = n.addComponent(UITransform);
     ui.setContentSize(tw, th);
+
+    const key = pokerSpriteKey(t);
+    if (key) {
+      const spNode = new Node('Face');
+      spNode.layer = Layers.Enum.UI_2D;
+      spNode.addComponent(UITransform).setContentSize(tw, th);
+      const sp = spNode.addComponent(Sprite);
+      sp.sizeMode = Sprite.SizeMode.CUSTOM;
+      n.addChild(spNode);
+      resources.load(`ui/Poker/${key}/spriteFrame`, SpriteFrame, (err, frame) => {
+        if (err || !n.isValid) return;
+        sp.spriteFrame = frame;
+      });
+      if (selected) {
+        const ring = new Node('Sel');
+        ring.layer = Layers.Enum.UI_2D;
+        ring.addComponent(UITransform).setContentSize(tw + 4, th + 4);
+        const g = ring.addComponent(Graphics);
+        g.strokeColor = new Color(40, 180, 90);
+        g.lineWidth = 3;
+        g.roundRect(-(tw + 4) / 2, -(th + 4) / 2, tw + 4, th + 4, 6);
+        g.stroke();
+        n.addChild(ring);
+      }
+      return n;
+    }
+
     const g = n.addComponent(Graphics);
     g.fillColor = new Color(255, 252, 245);
     g.roundRect(-tw / 2, -th / 2, tw, th, 6);
@@ -519,15 +617,15 @@ export class GameApp extends Component {
     g.lineWidth = selected ? 3 : 1;
     g.roundRect(-tw / 2, -th / 2, tw, th, 6);
     g.stroke();
-    const face = tileFace('doudizhu', t);
+    const face = tileFace(this.gameType, t);
     const col = this.hexColor(SUIT_COLOR[face.color]);
-    const rank = this.makeLabel('R', 20, col);
+    const rank = this.makeLabel('R', 20 * scale, col);
     rank.getComponent(Label)!.string = face.rank;
-    rank.setPosition(-10, 18, 0);
+    rank.setPosition(-10 * scale, 18 * scale, 0);
     n.addChild(rank);
-    const suit = this.makeLabel('S', 18, col);
+    const suit = this.makeLabel('S', 18 * scale, col);
     suit.getComponent(Label)!.string = face.suit;
-    suit.setPosition(-10, -2, 0);
+    suit.setPosition(-10 * scale, -2 * scale, 0);
     n.addChild(suit);
     return n;
   }
@@ -614,8 +712,12 @@ export class GameApp extends Component {
   private renderOps(r: PublicRoomState) {
     this.opsNode.removeAllChildren();
     const ops = r.availableOps.filter((o) => o.action !== 'discard');
-    // 斗地主：自己组牌出牌
-    if (r.gameType === 'doudizhu' && r.phase === 'playing' && r.currentSeat === this.seat) {
+    // 斗地主 / 跑得快：自己组牌出牌
+    if (
+      (r.gameType === 'doudizhu' || r.gameType === 'paodekuai') &&
+      r.phase === 'playing' &&
+      r.currentSeat === this.seat
+    ) {
       const me = r.seats.find((s) => s.seat === this.seat);
       const hand = me?.hand || [];
       const tiles = [...this.selectedSet].map((i) => hand[i]).filter((x) => x !== undefined);
@@ -645,7 +747,7 @@ export class GameApp extends Component {
     const gap = 88;
     const startX = -((ops.length - 1) * gap) / 2;
     ops.forEach((op, i) => {
-      const short = OP_SHORT[op.action] || op.label;
+      const short = op.label || OP_SHORT[op.action] || op.action;
       const win = op.action === 'hu' || op.action === 'zimo';
       const pass = op.action === 'pass' || op.action === 'bid_0';
       const bid = op.action.startsWith('bid_');
