@@ -34,6 +34,17 @@ export function tileFace(gameType: string, t: number): { rank: string; suit: str
   };
 }
 
+/**
+ * 口袋麻将 Card2d 资源名（MIT · PocketMahjongClient）
+ * 路径：resources/ui/Card2d/{key}/spriteFrame
+ * 长沙麻将 tile：0-8 万、9-17 条、18-26 筒
+ */
+export function mjSpriteKey(t: number): string | null {
+  if (t < 0 || t > 26) return null;
+  const suits = ['wan', 'tiao', 'tong'] as const;
+  return `${suits[Math.floor(t / 9)]}${(t % 9) + 1}`;
+}
+
 export const SUIT_COLOR: Record<Suit, string> = {
   wan: '#C41E3A',
   tiao: '#1A7A3C',

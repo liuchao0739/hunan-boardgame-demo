@@ -15,10 +15,13 @@ import {
   tween,
   Vec3,
   UIOpacity,
+  Sprite,
+  SpriteFrame,
+  resources,
 } from 'cc';
 import { NetClient } from '../net/NetClient';
 import { GameType, PublicRoomState, SeatPublic, ServerMessage } from '../net/Protocol';
-import { OP_SHORT, SUIT_COLOR, tileFace } from '../game/TileUtil';
+import { OP_SHORT, SUIT_COLOR, mjSpriteKey, tileFace } from '../game/TileUtil';
 
 const { ccclass, property } = _decorator;
 
@@ -529,13 +532,13 @@ export class GameApp extends Component {
     return n;
   }
 
-  /** 长沙麻将：横排 */
+  /** 长沙麻将：横排（口袋麻将 Card2d 牌面） */
   private renderMjHand(hand: number[], canDiscard: boolean, r: PublicRoomState) {
-    const gap = 40;
+    const gap = 48;
     const startX = -((hand.length - 1) * gap) / 2;
     hand.forEach((t, idx) => {
       const selected = this.selectedIndex === idx;
-      const tile = this.makeTileNode(t, selected, 1.15);
+      const tile = this.makeTileNode(t, selected, 1.0);
       tile.setPosition(startX + idx * gap, selected ? 22 : 0, 0);
       if (canDiscard) {
         tile.on(Node.EventType.TOUCH_END, () => this.onHandTap(idx, t, r));
@@ -685,6 +688,12 @@ export class GameApp extends Component {
   }
 
   private makeTileNode(t: number, selected: boolean, scale = 1) {
+    // 长沙麻将优先用口袋麻将 2D 牌面
+    if (this.gameType === 'changsha_mj') {
+      const key = mjSpriteKey(t);
+      if (key) return this.makeMjSpriteTile(key, selected, scale);
+    }
+
     const tw = 36 * scale;
     const th = 50 * scale;
     const n = new Node('Tile');
@@ -710,6 +719,41 @@ export class GameApp extends Component {
     suit.getComponent(Label)!.string = face.suit;
     suit.setPosition(0, -12 * scale, 0);
     n.addChild(suit);
+    return n;
+  }
+
+  /** 口袋麻将 Card2d：resources/ui/Card2d/{wan1|tiao3|tong9}/spriteFrame */
+  private makeMjSpriteTile(key: string, selected: boolean, scale = 1) {
+    const tw = 44 * scale;
+    const th = 70 * scale;
+    const n = new Node('Tile');
+    n.layer = Layers.Enum.UI_2D;
+    const ui = n.addComponent(UITransform);
+    ui.setContentSize(tw, th);
+
+    const spNode = new Node('Face');
+    spNode.layer = Layers.Enum.UI_2D;
+    spNode.addComponent(UITransform).setContentSize(tw, th);
+    const sp = spNode.addComponent(Sprite);
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    n.addChild(spNode);
+
+    resources.load(`ui/Card2d/${key}/spriteFrame`, SpriteFrame, (err, frame) => {
+      if (err || !n.isValid) return;
+      sp.spriteFrame = frame;
+    });
+
+    if (selected) {
+      const ring = new Node('Sel');
+      ring.layer = Layers.Enum.UI_2D;
+      ring.addComponent(UITransform).setContentSize(tw + 6, th + 6);
+      const g = ring.addComponent(Graphics);
+      g.strokeColor = new Color(255, 200, 40);
+      g.lineWidth = 3;
+      g.roundRect(-(tw + 6) / 2, -(th + 6) / 2, tw + 6, th + 6, 6);
+      g.stroke();
+      n.addChild(ring);
+    }
     return n;
   }
 

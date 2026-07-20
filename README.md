@@ -78,7 +78,8 @@ cd server
 ## 说明
 
 - 权威逻辑在 **Lua/Skynet**；`src/` 下旧 TS 引擎仅作对照单测（`npm test`）。
-- 观感为程序化 UI Demo；商业级需牌面/音效等美术资源。
+- 长沙麻将 2D 牌面取自开源 [口袋麻将](https://github.com/winktzhong/PocketMahjongClient)（MIT），对照清单见 [`docs/POCKET_MAHJONG_REF.md`](docs/POCKET_MAHJONG_REF.md)。
+- 跑胡子 / 斗地主仍为程序化牌面；完整第三方声明见 `THIRD_PARTY_NOTICES.md`。
 - 截图目录：`docs/screenshots/`
 
 ## License
