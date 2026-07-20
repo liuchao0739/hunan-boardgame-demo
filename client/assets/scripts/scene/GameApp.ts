@@ -592,7 +592,11 @@ export class GameApp extends Component {
     wrap.addChild(name);
 
     const sub = this.makeLabel('sub', 13, new Color(160, 200, 170));
-    sub.getComponent(Label)!.string = `手牌 ${s.handCount} · 出${s.discards.length}`;
+    const meldHint =
+      s.melds && s.melds.length
+        ? ` · 副露${s.melds.length}(${s.melds.map((m) => m.kind).join(',')})`
+        : '';
+    sub.getComponent(Label)!.string = `手牌 ${s.handCount} · 出${s.discards.length}${meldHint}`;
     sub.setPosition(0, -12, 0);
     wrap.addChild(sub);
 
@@ -629,6 +633,11 @@ export class GameApp extends Component {
     else if (r.phase === 'wait_claim') tip = '其他玩家响应中…';
     else if (r.phase === 'bidding') tip = `座位 ${r.currentSeat} 叫分中`;
     else if (r.phase === 'wait_discard' || r.phase === 'playing') tip = `等待座位 ${r.currentSeat}`;
+    if (r.phase === 'finished' && r.settle) {
+      const w = r.settle.winnerSeat;
+      const nick = w != null ? r.seats.find((s) => s.seat === w)?.nick || `座位${w}` : '流局';
+      tip = `${nick} · ${r.settle.detail}`;
+    }
     this.centerInfo.string = `${r.roomId}  ·  剩牌 ${r.wallCount}\n${tip}`;
 
     const old = this.feltNode.getChildByName('LastTile');
@@ -760,14 +769,36 @@ export class GameApp extends Component {
     return n;
   }
 
-  /** 长沙麻将：横排（口袋麻将 Card2d 牌面） */
+  /** 长沙麻将：副露 + 横排手牌 */
   private renderMjHand(hand: number[], canDiscard: boolean, r: PublicRoomState) {
+    const me = r.seats.find((s) => s.seat === this.seat);
+    const melds = me?.melds || [];
+    let x = 0;
+    // 副露在左
+    melds.forEach((m) => {
+      const group = new Node('Meld');
+      group.layer = Layers.Enum.UI_2D;
+      group.setPosition(x - 280, 8, 0);
+      m.tiles.forEach((t, i) => {
+        const tile = this.makeTileNode(t, false, 0.85);
+        tile.setPosition(i * 36, 0, 0);
+        group.addChild(tile);
+      });
+      const tag = this.makeLabel('mk', 12, new Color(255, 220, 120));
+      tag.getComponent(Label)!.string = m.kind;
+      tag.setPosition((m.tiles.length - 1) * 18, -40, 0);
+      group.addChild(tag);
+      this.handNode.addChild(group);
+      this.markUI(group);
+      x += m.tiles.length * 36 + 16;
+    });
+
     const gap = 48;
-    const startX = -((hand.length - 1) * gap) / 2;
+    const startX = melds.length ? -80 : -((hand.length - 1) * gap) / 2;
     hand.forEach((t, idx) => {
       const selected = this.selectedIndex === idx;
       const tile = this.makeTileNode(t, selected, 1.0);
-      tile.setPosition(startX + idx * gap, selected ? 22 : 0, 0);
+      tile.setPosition(startX + idx * gap + (melds.length ? x * 0.15 : 0), selected ? 22 : 0, 0);
       if (canDiscard) {
         tile.on(Node.EventType.TOUCH_END, () => this.onHandTap(idx, t, r));
       }

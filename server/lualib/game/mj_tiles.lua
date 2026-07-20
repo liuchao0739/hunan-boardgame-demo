@@ -79,8 +79,12 @@ local function can_meld_all(c)
   return false
 end
 
-function M.can_hu(tiles)
-  if #tiles % 3 ~= 2 then return false end
+function M.can_hu(tiles, exposed_melds)
+  exposed_melds = exposed_melds or 0
+  -- 标准胡：4 面子 + 1 对；已副露 n 组时，手牌须恰好 (4-n)*3+2 张
+  local need_melds = 4 - exposed_melds
+  if need_melds < 0 then return false end
+  if #tiles ~= need_melds * 3 + 2 then return false end
   local c = M.counts_of(tiles)
   for i = 0, 26 do
     if c[i] >= 2 then
@@ -95,7 +99,9 @@ function M.can_hu(tiles)
   return false
 end
 
-function M.can_qi_dui(tiles)
+function M.can_qi_dui(tiles, exposed_melds)
+  -- 七对必须门清 14 张
+  if (exposed_melds or 0) > 0 then return false end
   if #tiles ~= 14 then return false end
   local c = M.counts_of(tiles)
   local pairs = 0
@@ -110,22 +116,25 @@ function M.can_qi_dui(tiles)
 end
 
 --- 红中作癞子：枚举癞子替牌（上限 4）
-function M.can_hu_joker(tiles, joker_id)
+function M.can_hu_joker(tiles, joker_id, exposed_melds)
   joker_id = joker_id or 27
-  if #tiles % 3 ~= 2 then return false end
+  exposed_melds = exposed_melds or 0
+  local need_melds = 4 - exposed_melds
+  if need_melds < 0 then return false end
+  if #tiles ~= need_melds * 3 + 2 then return false end
   local jokers = 0
   local fixed = {}
   for _, t in ipairs(tiles) do
     if t == joker_id then jokers = jokers + 1
     else fixed[#fixed + 1] = t end
   end
-  if jokers == 0 then return M.is_hu(tiles) end
+  if jokers == 0 then return M.is_hu(tiles, exposed_melds) end
 
   local function try_fill(need)
     if need == 0 then
       local all = {}
       for _, t in ipairs(fixed) do all[#all + 1] = t end
-      return M.can_hu(all) or M.can_qi_dui(all)
+      return M.can_hu(all, exposed_melds) or M.can_qi_dui(all, exposed_melds)
     end
     for t = 0, 26 do
       fixed[#fixed + 1] = t
@@ -140,13 +149,15 @@ function M.can_hu_joker(tiles, joker_id)
   return try_fill(jokers)
 end
 
-function M.is_hu(tiles)
-  return M.can_hu(tiles) or M.can_qi_dui(tiles)
+function M.is_hu(tiles, exposed_melds)
+  exposed_melds = exposed_melds or 0
+  return M.can_hu(tiles, exposed_melds) or M.can_qi_dui(tiles, exposed_melds)
 end
 
-function M.is_hu_mode(tiles, mode)
-  if mode == "hongzhong" then return M.can_hu_joker(tiles, 27) end
-  return M.is_hu(tiles)
+function M.is_hu_mode(tiles, mode, exposed_melds)
+  exposed_melds = exposed_melds or 0
+  if mode == "hongzhong" then return M.can_hu_joker(tiles, 27, exposed_melds) end
+  return M.is_hu(tiles, exposed_melds)
 end
 
 function M.is_bird(tile)

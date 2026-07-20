@@ -95,6 +95,19 @@ function M:find_chi(hand, tile)
   return out
 end
 
+
+function M:exposed_meld_count(seat)
+  local n = 0
+  for _, m in ipairs(self.players[seat].melds) do
+    -- 吃碰杠均算 1 面子（暗杠/补杠也占一组）
+    if m.kind == "chi" or m.kind == "peng" or m.kind == "ming_gang"
+      or m.kind == "an_gang" or m.kind == "bu_gang" then
+      n = n + 1
+    end
+  end
+  return n
+end
+
 function M:get_ops(seat)
   local ops = {}
   if self.players[seat] and self.players[seat].out then return ops end
@@ -112,7 +125,7 @@ function M:get_ops(seat)
         ops[#ops + 1] = { action = "bu_gang", label = "补杠 " .. T.tile_name(t), tile = t }
       end
     end
-    if T.is_hu_mode(self.players[seat].hand, self.mode) then
+    if T.is_hu_mode(self.players[seat].hand, self.mode, self:exposed_meld_count(seat)) then
       ops[#ops + 1] = { action = "zimo", label = "自摸" }
     end
     return ops
@@ -135,7 +148,7 @@ function M:get_ops(seat)
     local tmp = {}
     for _, x in ipairs(hand) do tmp[#tmp + 1] = x end
     tmp[#tmp + 1] = tile
-    if T.is_hu_mode(tmp, self.mode) then
+    if T.is_hu_mode(tmp, self.mode, self:exposed_meld_count(seat)) then
       ops[#ops + 1] = { action = "hu", label = "胡 " .. T.tile_name(tile), tile = tile }
     end
     if self.mode ~= "hongzhong" and seat == (self.last_discard.seat + 1) % 4 then
@@ -161,7 +174,7 @@ function M:collect_claimers(from, tile)
       local tmp = {}
       for _, x in ipairs(hand) do tmp[#tmp + 1] = x end
       tmp[#tmp + 1] = tile
-      local can_hu = T.is_hu_mode(tmp, self.mode)
+      local can_hu = T.is_hu_mode(tmp, self.mode, self:exposed_meld_count(s))
       local can_chi = self.mode ~= "hongzhong" and (s == (from + 1) % 4) and (#self:find_chi(hand, tile) > 0)
       if can_peng or can_gang or can_hu or can_chi then
         list[#list + 1] = s
@@ -396,7 +409,7 @@ function M:apply(seat, action, payload)
       return nil
     end
     if action == "zimo" then
-      if not T.is_hu_mode(self.players[seat].hand, self.mode) then return "未胡牌" end
+      if not T.is_hu_mode(self.players[seat].hand, self.mode, self:exposed_meld_count(seat)) then return "未胡牌" end
       self:do_win(seat, "自摸", true)
       return nil
     end
