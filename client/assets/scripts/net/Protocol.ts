@@ -1,7 +1,14 @@
 /**
- * 与 Skynet 服约定的 JSON 协议（与 server 一致）
+ * 与 Skynet 服约定的 JSON 协议
  */
-export type GameType = 'changsha_mj' | 'shaoyang_phz' | 'doudizhu' | 'paodekuai';
+export type GameType =
+  | 'changsha_mj'
+  | 'xueliu_mj'
+  | 'xuezhan_mj'
+  | 'hongzhong_mj'
+  | 'shaoyang_phz'
+  | 'doudizhu'
+  | 'paodekuai';
 
 export type ClientMessage =
   | { type: 'create_room'; gameType: GameType; nick?: string }
@@ -10,6 +17,12 @@ export type ClientMessage =
   | { type: 'action'; action: string; tiles?: number[]; tile?: number }
   | { type: 'fill_bots' }
   | { type: 'chat'; text: string }
+  | { type: 'history_list' }
+  | { type: 'history_get'; id: string }
+  | { type: 'club_create'; nick?: string; name?: string }
+  | { type: 'club_list' }
+  | { type: 'club_join'; id: string; nick?: string }
+  | { type: 'room_cards'; nick?: string }
   | { type: 'ping' };
 
 export interface OpOption {
@@ -29,12 +42,28 @@ export interface SeatPublic {
   discards: number[];
   score: number;
   hand?: number[];
+  out?: boolean;
+  huTimes?: number;
+}
+
+export interface RecorderSnap {
+  mode: string;
+  ranks: { rank: number; label: string; left: number; total: number }[];
 }
 
 export interface GameCatalogItem {
   id: GameType;
   name: string;
   seats: number;
+}
+
+export interface HistoryItem {
+  id: string;
+  roomId: string;
+  gameType: string;
+  time: number;
+  summary: string;
+  scores: number[];
 }
 
 export interface PublicRoomState {
@@ -50,6 +79,8 @@ export interface PublicRoomState {
   message: string;
   round: number;
   landlord?: number | null;
+  recorder?: RecorderSnap | null;
+  logLen?: number;
   settle?: {
     winnerSeat: number | null;
     reason: string;
@@ -59,10 +90,27 @@ export interface PublicRoomState {
 }
 
 export type ServerMessage =
-  | { type: 'hello'; message: string; stack?: string; games?: GameCatalogItem[] }
+  | {
+      type: 'hello';
+      message: string;
+      stack?: string;
+      games?: GameCatalogItem[];
+      features?: string[];
+    }
   | { type: 'error'; message: string }
-  | { type: 'room_created'; roomId: string; seat: number; gameType: GameType }
-  | { type: 'joined'; roomId: string; seat: number; gameType: GameType }
+  | {
+      type: 'room_created';
+      roomId: string;
+      seat: number;
+      gameType: GameType;
+      roomCards?: number;
+    }
+  | { type: 'joined'; roomId: string; seat: number; gameType: GameType; roomCards?: number }
   | { type: 'chat'; seat: number; nick: string; text: string }
+  | { type: 'history'; list: HistoryItem[] }
+  | { type: 'replay'; entry: any }
+  | { type: 'club'; club: any }
+  | { type: 'club_list'; list: any[] }
+  | { type: 'room_cards'; count: number }
   | { type: 'pong' }
   | { type: 'state'; state: PublicRoomState };

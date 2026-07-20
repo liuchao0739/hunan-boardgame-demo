@@ -18,7 +18,8 @@ export function tileFace(gameType: string, t: number): { rank: string; suit: str
       color: red ? 'poker_red' : 'poker_black',
     };
   }
-  if (gameType === 'changsha_mj') {
+  if (gameType === 'changsha_mj' || gameType === 'xueliu_mj' || gameType === 'xuezhan_mj' || gameType === 'hongzhong_mj') {
+    if (t === 27) return { rank: '中', suit: '红', color: 'wan' };
     const s = Math.floor(t / 9);
     const r = t % 9;
     return {
@@ -46,12 +47,19 @@ export function pokerSpriteKey(t: number): string | null {
 /**
  * 口袋麻将 Card2d 资源名（MIT · PocketMahjongClient）
  * 路径：resources/ui/Card2d/{key}/spriteFrame
- * 长沙麻将 tile：0-8 万、9-17 条、18-26 筒
+ * 长沙/血流/血战：0-26；红中：27 → hongzhong
  */
 export function mjSpriteKey(t: number): string | null {
+  if (t === 27) return 'hongzhong';
   if (t < 0 || t > 26) return null;
   const suits = ['wan', 'tiao', 'tong'] as const;
   return `${suits[Math.floor(t / 9)]}${(t % 9) + 1}`;
+}
+
+/** 跑胡子：resources/ui/Phz/{0-19}/spriteFrame */
+export function phzSpriteKey(t: number): string | null {
+  if (t < 0 || t > 19) return null;
+  return String(t);
 }
 
 export const SUIT_COLOR: Record<Suit, string> = {

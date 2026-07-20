@@ -1,12 +1,9 @@
-# 湘桌棋牌 · 长沙麻将 / 邵阳跑胡子 / 斗地主 / 跑得快
+# 湘桌棋牌
 
-> **技术栈（对齐商业招聘）**  
-> 后端：**Skynet + Lua** · 前端：**Cocos Creator 3.8.8** · 通信：**WebSocket JSON**  
-> 玩法：长沙麻将 · 邵阳跑胡子 · 斗地主 · 跑得快 · **服务端权威**
+> **Skynet + Lua** · **Cocos Creator 3.8.8** · WebSocket JSON · 服务端权威  
+> 7 玩法：长沙麻将 / 血流成河 / 血战到底 / 红中麻将 / 邵阳跑胡子 / 斗地主 / 跑得快
 
-仓库：[github.com/liuchao0739/hunan-boardgame-demo](https://github.com/liuchao0739/hunan-boardgame-demo)
-
----
+https://github.com/liuchao0739/hunan-boardgame-demo
 
 ## 效果预览
 
@@ -18,79 +15,37 @@
 |:---:|:---:|
 | ![邵阳跑胡子](docs/screenshots/03-shaoyang-phz.png) | ![斗地主](docs/screenshots/04-doudizhu.png) |
 
-> Cocos Creator 3.8.8 预览 · Skynet Lua 权威 · 人机对战 · 素材见 `client/assets/resources/`
+## 玩法
 
----
+| ID | 名称 | 人数 |
+|----|------|------|
+| `changsha_mj` | 长沙麻将 | 4 |
+| `xueliu_mj` | 血流成河 | 4 |
+| `xuezhan_mj` | 血战到底 | 4 |
+| `hongzhong_mj` | 红中麻将 | 4 |
+| `shaoyang_phz` | 邵阳跑胡子 | 3 |
+| `doudizhu` | 斗地主 | 3 |
+| `paodekuai` | 跑得快 | 3 |
 
-## 玩法一览
+## 平台
 
-| ID | 名称 | 人数 | 说明 |
-|----|------|------|------|
-| `changsha_mj` | 长沙麻将 | 4 | 吃碰杠胡、七对、抓鸟；**口袋麻将 Card2d 牌面** |
-| `shaoyang_phz` | 邵阳跑胡子 | 3 | 吃碰跑提、胡息；同牌叠列 |
-| `doudizhu` | 斗地主 | 3 | 叫分 + 出牌；**扑克贴图** |
-| `paodekuai` | 跑得快 | 3 | 16 张、♥3 先出；扑克贴图 |
+- 房卡开房、俱乐部、战绩回放数据、快捷短语、扑克记牌器  
+- 热更脚手架（原生，默认关）见 `HotUpdateScaffold.ts`  
+- 能力对照：[`docs/PLATFORM.md`](docs/PLATFORM.md)
 
-扩展玩法：在 `server/lualib/game_catalog.lua` + `client/.../GameCatalog.ts` 注册即可。
-
----
-
-## 架构
-
-```
-Cocos Creator 3.8.8 客户端（client/）
-        │  WebSocket JSON
-        ▼
-Skynet ws_gate（多 agent）
-        ▼
-room_mgr ── room.lua ── game_catalog.lua
-        ├── game/changsha_mj.lua
-        ├── game/shaoyang_phz.lua
-        ├── game/doudizhu.lua
-        └── game/paodekuai.lua
-```
-
-| 模块 | 路径 |
-|------|------|
-| 玩法注册表 | `server/lualib/game_catalog.lua` |
-| 麻将牌面 | `client/assets/resources/ui/Card2d/`（口袋麻将 MIT） |
-| 扑克牌面 | `client/assets/resources/ui/Poker/`（自生成 0–53） |
-| 大厅参考图 | `client/assets/resources/ui/lobby/`（口袋麻将） |
-| 幼麟 UI 参考 | `client/assets/resources/ui/babykylin_hall/` · `ops/` |
-| 安铺扑克备份 | `client/assets/resources/ui/poker_anpu/`（Apache-2.0） |
-
-平台能力对照与开源参考：[`docs/PLATFORM.md`](docs/PLATFORM.md) · 口袋麻将对照：[`docs/POCKET_MAHJONG_REF.md`](docs/POCKET_MAHJONG_REF.md)
-
----
-
-## 快速启动
-
-### 1. Skynet
+## 启动
 
 ```bash
-cd server && ./run.sh
-# → 湘桌 Skynet WS :9948
+cd server && ./run.sh   # WS :9948
 ```
 
-### 2. Cocos
+Cocos 打开 `client/` → 预览 → 选玩法 → 一键开局（耗 1 房卡，新号 20 张）。
 
-打开 `client/`（Creator 3.8.8）→ 预览 → 选玩法 → **一键开局**。  
-加入房间：控制台 `window.__join="房号"` 后点「加入房间」。
+加入：`window.__join="房号"` 后点「加入房间」。
 
----
+## 素材与第三方
 
-## 协议摘要
-
-客户端 → 服：`create_room` / `join_room` / `fill_bots` / `ready` / `action` / `chat`  
-服 → 客户端：`hello`(含 games 列表) / `room_created` / `joined` / `state` / `chat` / `error`
-
----
-
-## 说明
-
-- 权威逻辑在 **Lua/Skynet**；`src/` 旧 TS 引擎仅对照单测。
-- 牌型为可玩 Demo（斗地主/跑得快未覆盖全部商业变体）。
-- 第三方素材声明：`THIRD_PARTY_NOTICES.md`。
+见 `THIRD_PARTY_NOTICES.md` · `client/assets/resources/ui/`
 
 ## License
 

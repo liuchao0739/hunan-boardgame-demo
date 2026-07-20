@@ -1,45 +1,51 @@
-# 湘桌平台能力（对照开源商业项目）
+# 湘桌平台能力
 
-本仓库目标：**在 Skynet + Cocos 3.8 一条栈上**，尽量齐备地方棋牌玩法与素材，而不是把幼麟/贝密/口袋等旧工程直接拼成不可维护的大杂烩。
+目标：在 **Skynet + Cocos 3.8** 上尽量齐备地方棋牌玩法与平台功能。
 
-## 已落地
+## 玩法（7）
+
+| ID | 名称 | 说明 |
+|----|------|------|
+| `changsha_mj` | 长沙麻将 | 经典吃碰杠胡 |
+| `xueliu_mj` | 血流成河 | 胡了继续，牌墙空结束 |
+| `xuezhan_mj` | 血战到底 | 胡了出局 |
+| `hongzhong_mj` | 红中麻将 | 红中癞子，无吃 |
+| `shaoyang_phz` | 邵阳跑胡子 | 字牌叠列 + Phz 贴图 |
+| `doudizhu` | 斗地主 | 飞机/连对/四带二等 + 记牌器 |
+| `paodekuai` | 跑得快 | 同上牌型子集 + 记牌器 |
+
+注册表：`server/lualib/game_catalog.lua` ↔ `client/.../GameCatalog.ts`
+
+## 平台功能
 
 | 能力 | 状态 |
 |------|------|
-| 多玩法注册表 | ✅ `game_catalog.lua` / `GameCatalog.ts` |
-| 长沙麻将 | ✅ + Card2d 牌面 |
-| 邵阳跑胡子 | ✅ 叠列手牌 |
-| 斗地主 | ✅ 叫分 + 扑克贴图 |
-| 跑得快 | ✅ 16 张 / ♥3 先出 |
-| 一键开局 + 人机 | ✅ |
-| 房号加入 | ✅ `join_room` |
-| 快捷聊天 | ✅ `chat` |
-| 麻将 2D 素材 | ✅ 口袋麻将 MIT |
-| 扑克贴图 | ✅ 自生成 + 安铺备份 |
-| 大厅参考图 | ✅ 口袋 / 幼麟片段 |
+| 一键开局 / 人机 | ✅ |
+| 房号加入 | ✅ |
+| 房卡（开房扣 1，新号 20） | ✅ |
+| 俱乐部创建/列表/加入 | ✅ 内存版 |
+| 战绩列表 / 回放数据 | ✅ `history` · 点「战绩」 |
+| 快捷语音短语 | ✅ 牌桌顶栏 |
+| 记牌器 | ✅ 扑克局点「记牌器」 |
+| 热更脚手架 | ✅ `HotUpdateScaffold.ts`（默认关闭） |
 
-## 参考但未整仓并入
+## 素材
 
-| 项目 | 原因 | 可继续挖 |
-|------|------|----------|
-| 幼麟四川麻将 | Creator 2.0.6 + Node6 | 大厅/回放/房卡 UI 结构 |
-| 贝密 | Gitee 拉取受限 | 德州等玩法规则 |
-| 口袋麻将 | 已用 Card2d；主玩法日麻 3D | 热更 AssetsManager |
-| 威海麻将 | Bundle 组织示范 | 热更与 Bundle 分包 |
-| 安铺 | Apache-2.0 扑克 PNG | 牌面风格切换 |
+| 路径 | 来源 |
+|------|------|
+| `ui/Card2d/` | 口袋麻将 MIT + 自绘红中 |
+| `ui/Phz/` | 自绘字牌 0–19 |
+| `ui/Poker/` | 自生成 0–53 |
+| `ui/lobby/` | 口袋大厅参考 |
+| `ui/poker_anpu/` | 安铺 Apache-2.0 备份 |
 
-## 建议下一期（按优先级）
+## 参考未整仓并入
 
-1. 血流成河 / 红中麻将（复用 MJ 引擎加规则开关）
-2. 跑胡子牌面贴图（自绘或采购字牌）
-3. 战绩回放、语音短语、俱乐部房卡
-4. 原生热更（抄口袋 `HotUpdateMgr`）
-5. 更完整的斗地主/跑得快牌型与记牌器
+幼麟 / 贝密 / 威海：引擎过旧或授权需自核；结构见早期对照文档。
 
-## 本地加玩法清单
+## 加玩法
 
-1. `server/lualib/game/xxx.lua`（`new/start/get_ops/apply/public_melds`）
-2. `game_catalog.lua` 注册
-3. `Protocol.ts` 的 `GameType` + `GameCatalog.ts`
-4. `GameApp` 手牌/操作分支
-5. README 表格一行
+1. `server/lualib/game/xxx.lua`  
+2. `game_catalog.lua` + `GameCatalog.ts` + `Protocol.ts`  
+3. `GameApp` 手牌分支  
+4. 更新本表与 README  

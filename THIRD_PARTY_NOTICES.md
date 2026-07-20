@@ -2,21 +2,23 @@
 
 ## PocketMahjongClient（口袋麻将）
 
-- https://github.com/winktzhong/PocketMahjongClient
-- Copyright (c) Bit Technologies Inc. · MIT
-- Used: `client/assets/resources/ui/Card2d/*`, `ui/lobby/*`, `audio/*`
+- https://github.com/winktzhong/PocketMahjongClient · MIT
+- Used: `ui/Card2d/*`（除自绘 `hongzhong.png`）, `ui/lobby/*`, `audio/*`
+- Hot-update design参考: `HotUpdateScaffold.ts`
 
 ## 安铺打牌（speedphp/anpu）
 
-- https://github.com/speedphp/anpu
-- Apache License 2.0
-- Used as backup poker art: `client/assets/resources/ui/poker_anpu/*`
-- Primary poker faces in `ui/Poker/` are **generated for this repo** (encoding 0–53).
+- https://github.com/speedphp/anpu · Apache-2.0
+- Backup: `ui/poker_anpu/*`
+- Primary poker: `ui/Poker/`（本仓库生成）
 
 ## 幼麟棋牌（babykylin_scmj）
 
 - https://github.com/babykylin/babykylin_scmj
-- 开源教学版；商用请自行确认授权
-- Used as UI reference snippets: `ui/babykylin_hall/`, `ui/ops/`
+- Reference snippets: `ui/babykylin_hall/`, `ui/ops/`
 
-Retain upstream notices when redistributing corresponding assets.
+## 本仓库自绘
+
+- `ui/Phz/*` 跑胡子字牌
+- `ui/Card2d/hongzhong.png` 红中
+- `ui/Poker/*` 扑克 0–53

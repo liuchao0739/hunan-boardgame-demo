@@ -31,6 +31,7 @@ if MODE == "agent" then
       message = "湘桌 Skynet 服务已连接",
       stack = "skynet-lua / websocket",
       games = Catalog.list(),
+      features = { "replay", "club", "room_cards", "recorder", "hot_update" },
     })
   end
 
@@ -67,6 +68,7 @@ if MODE == "agent" then
         roomId = info.roomId,
         seat = info.seat,
         gameType = info.gameType,
+        roomCards = info.roomCards,
       })
       local state = skynet.call(room_mgr, "lua", "snapshot", c.roomId, c.seat)
       send_json(id, { type = "state", state = state })
@@ -92,6 +94,36 @@ if MODE == "agent" then
         gameType = info.gameType,
       })
       broadcast_room(c.roomId)
+      return
+    end
+
+    if data.type == "history_list" then
+      local list = skynet.call(room_mgr, "lua", "history_list")
+      send_json(id, { type = "history", list = list })
+      return
+    end
+    if data.type == "history_get" then
+      local entry = skynet.call(room_mgr, "lua", "history_get", data.id)
+      if not entry then send_json(id, { type = "error", message = "战绩不存在" }); return end
+      send_json(id, { type = "replay", entry = entry })
+      return
+    end
+    if data.type == "club_create" then
+      send_json(id, { type = "club", club = skynet.call(room_mgr, "lua", "club_create", data.nick or "玩家", data.name) })
+      return
+    end
+    if data.type == "club_list" then
+      send_json(id, { type = "club_list", list = skynet.call(room_mgr, "lua", "club_list") })
+      return
+    end
+    if data.type == "club_join" then
+      local club, err = skynet.call(room_mgr, "lua", "club_join", data.id, data.nick or "玩家")
+      if not club then send_json(id, { type = "error", message = err or "加入失败" }); return end
+      send_json(id, { type = "club", club = club })
+      return
+    end
+    if data.type == "room_cards" then
+      send_json(id, { type = "room_cards", count = skynet.call(room_mgr, "lua", "room_cards", data.nick or "玩家") })
       return
     end
 

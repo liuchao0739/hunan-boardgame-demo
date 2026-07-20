@@ -6,6 +6,9 @@
   编码与斗地主相同：0-51（本玩法不含 52/53）。
 ]]
 
+local Patterns = require "game.poker_patterns"
+local Recorder = require "game.recorder"
+
 local M = {}
 M.__index = M
 
@@ -62,100 +65,11 @@ end
 
 -- kind: single/pair/triple/triple1/triple2/straight/pair_seq/bomb
 function M.parse_pattern(cards)
-  local n = #cards
-  if n == 0 then return nil end
-  local sorted = {}
-  for _, x in ipairs(cards) do sorted[#sorted + 1] = x end
-  M.sort_cards(sorted)
-  local c = counts_by_rank(sorted)
-
-  for r = 0, 12 do
-    if c[r] == 4 and n == 4 then
-      return { kind = "bomb", rank = r, len = 4, power = 100 + r }
-    end
-  end
-
-  if n == 1 then
-    local r = M.card_rank(sorted[1])
-    return { kind = "single", rank = r, len = 1, power = r }
-  end
-  if n == 2 then
-    local r1, r2 = M.card_rank(sorted[1]), M.card_rank(sorted[2])
-    if r1 == r2 then return { kind = "pair", rank = r1, len = 2, power = r1 } end
-  end
-  if n == 3 then
-    for r = 0, 12 do
-      if c[r] == 3 then return { kind = "triple", rank = r, len = 3, power = r } end
-    end
-  end
-  if n == 4 then
-    for r = 0, 12 do
-      if c[r] == 3 then return { kind = "triple1", rank = r, len = 4, power = r } end
-    end
-  end
-  if n == 5 then
-    for r = 0, 12 do
-      if c[r] == 3 then return { kind = "triple2", rank = r, len = 5, power = r } end
-    end
-  end
-
-  -- 顺子 ≥5，不含 2
-  if n >= 5 then
-    local ranks = {}
-    local ok = true
-    for _, id in ipairs(sorted) do
-      local r = M.card_rank(id)
-      if r >= 12 then ok = false; break end
-      ranks[#ranks + 1] = r
-    end
-    if ok then
-      table.sort(ranks)
-      local straight = true
-      for i = 2, #ranks do
-        if ranks[i] ~= ranks[i - 1] + 1 or ranks[i] == ranks[i - 1] then
-          straight = false
-          break
-        end
-      end
-      if straight and #ranks == n then
-        return { kind = "straight", rank = ranks[1], len = n, power = ranks[1] + n * 0.01 }
-      end
-    end
-  end
-
-  -- 连对 ≥3 对，不含 2
-  if n >= 6 and n % 2 == 0 then
-    local pairs = {}
-    local ok = true
-    for r = 0, 11 do
-      if c[r] == 2 then pairs[#pairs + 1] = r
-      elseif c[r] ~= 0 then ok = false end
-    end
-    if c[12] ~= 0 then ok = false end
-    if ok and #pairs == n / 2 and #pairs >= 3 then
-      table.sort(pairs)
-      for i = 2, #pairs do
-        if pairs[i] ~= pairs[i - 1] + 1 then ok = false; break end
-      end
-      if ok then
-        return { kind = "pair_seq", rank = pairs[1], len = n, power = pairs[1] + #pairs * 0.01 }
-      end
-    end
-  end
-
-  return nil
+  return Patterns.parse_pattern(cards, { allow_joker = false })
 end
 
 function M.beats(next_pat, prev_pat)
-  if not next_pat then return false end
-  if not prev_pat then return true end
-  if next_pat.kind == "bomb" and prev_pat.kind ~= "bomb" then return true end
-  if next_pat.kind == "bomb" and prev_pat.kind == "bomb" then
-    return next_pat.rank > prev_pat.rank
-  end
-  if next_pat.kind ~= prev_pat.kind then return false end
-  if next_pat.len ~= prev_pat.len then return false end
-  return next_pat.power > prev_pat.power
+  return Patterns.beats(next_pat, prev_pat)
 end
 
 function M.new()
@@ -171,6 +85,7 @@ function M.new()
   self.pass_count = 0
   self.first_play = true
   self.heart3 = 13 -- ♥3
+  self.recorder = Recorder.new("paodekuai")
   for i = 0, 2 do
     self.players[i] = { hand = {}, melds = {}, discards = {}, score = 0 }
   end
@@ -183,6 +98,7 @@ function M:start()
   self.last_play = nil
   self.pass_count = 0
   self.first_play = true
+  if self.recorder then self.recorder:reset() end
   local deck = M.shuffle(M.build_deck())
   for i = 0, 2 do
     self.players[i].hand = {}
@@ -299,6 +215,7 @@ function M:apply(seat, action, payload)
     self.last_play = { seat = seat, cards = cards, pattern = pat }
     self.pass_count = 0
     self.first_play = false
+    if self.recorder then self.recorder:note_cards(cards) end
     if #self.players[seat].hand == 0 then
       self:do_win(seat)
       return nil

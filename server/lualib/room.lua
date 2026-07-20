@@ -1,5 +1,6 @@
---[[ 房间逻辑：座位 / 机器人 / 广播快照 ]]
+--[[ 房间逻辑：座位 / 机器人 / 广播快照 / 回放日志 ]]
 local Catalog = require "game_catalog"
+local History = require "history"
 
 local Room = {}
 Room.__index = Room
@@ -23,6 +24,7 @@ function Room.new(game_type, id)
   self.game = meta.factory()
   self.n = meta.seats
   self.seats = {}
+  self.action_log = {}
   for i = 0, self.n - 1 do self.seats[i] = nil end
   return self
 end
@@ -84,6 +86,8 @@ function Room:build_public(viewer)
       discards = p.discards,
       score = p.score,
       hand = hand,
+      out = p.out or false,
+      huTimes = p.huTimes or 0,
     }
   end
   local lastDiscard = g.last_discard
@@ -104,6 +108,8 @@ function Room:build_public(viewer)
     round = g.round,
     settle = g.settle,
     landlord = g.landlord,
+    recorder = g.recorder and g.recorder:public_snapshot() or nil,
+    logLen = #self.action_log,
   }
 end
 
@@ -216,15 +222,43 @@ function Room:try_start()
   if self.started then return end
   if not self:all_ready() then return end
   self.started = true
+  self.action_log = {}
   self.game:start()
+  self.action_log[#self.action_log + 1] = { t = "start", round = self.game.round }
   self:kick_bots()
+end
+
+function Room:save_history_if_needed()
+  if self.game.phase ~= "finished" or not self.game.settle then return end
+  if self._history_saved then return end
+  self._history_saved = true
+  local scores = {}
+  local names = {}
+  for i = 0, self.n - 1 do
+    scores[#scores + 1] = self.game.players[i].score
+    names[#names + 1] = self.seats[i] and self.seats[i].nick or ("座位" .. i)
+  end
+  History.push({
+    id = self.id .. "-" .. tostring(self.game.round) .. "-" .. tostring(#self.action_log),
+    roomId = self.id,
+    gameType = self.game_type,
+    time = os.time(),
+    summary = self.game.settle.detail or self.game.message,
+    scores = scores,
+    names = names,
+    log = self.action_log,
+    settle = self.game.settle,
+  })
 end
 
 function Room:next_round()
   if self.game.phase ~= "finished" then return end
   if not self:all_ready() then return end
   self.started = true
+  self._history_saved = false
+  self.action_log = {}
   self.game:start()
+  self.action_log[#self.action_log + 1] = { t = "start", round = self.game.round }
   self:kick_bots()
 end
 
@@ -245,7 +279,15 @@ end
 function Room:on_action(seat, action, payload)
   local err = self.game:apply(seat, action, payload)
   if err then return err end
+  self.action_log[#self.action_log + 1] = {
+    t = "action",
+    seat = seat,
+    action = action,
+    tile = payload and payload.tile,
+    tiles = payload and payload.tiles,
+  }
   if self.game.phase == "finished" then
+    self:save_history_if_needed()
     for i = 0, self.n - 1 do
       if self.seats[i] then
         if self.seats[i].is_bot then

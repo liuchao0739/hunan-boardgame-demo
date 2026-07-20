@@ -18,9 +18,10 @@ function M.new(cfg)
   self.pending = {}
   self.settle = nil
   self.message = "等待开始"
-  self.cfg = cfg or { bird_count = 2, base_score = 2 }
+  self.cfg = cfg or { bird_count = 2, base_score = 2, mode = "changsha" }
+  self.mode = self.cfg.mode or "changsha"
   for i = 0, 3 do
-    self.players[i] = { hand = {}, melds = {}, discards = {}, score = 0 }
+    self.players[i] = { hand = {}, melds = {}, discards = {}, score = 0, out = false, huTimes = 0 }
   end
   return self
 end
@@ -32,11 +33,17 @@ end
 function M:start()
   self.round = self.round + 1
   self.settle = nil
-  self.wall = T.shuffle(T.build_deck())
+  if self.mode == "hongzhong" then
+    self.wall = T.shuffle(T.build_deck_hongzhong())
+  else
+    self.wall = T.shuffle(T.build_deck())
+  end
   for i = 0, 3 do
     self.players[i].hand = {}
     self.players[i].melds = {}
     self.players[i].discards = {}
+    self.players[i].out = false
+    self.players[i].huTimes = 0
   end
   for s = 0, 3 do
     local n = (s == self.dealer) and 14 or 13
@@ -90,6 +97,7 @@ end
 
 function M:get_ops(seat)
   local ops = {}
+  if self.players[seat] and self.players[seat].out then return ops end
   if self.phase == "wait_discard" and seat == self.current_seat then
     ops[#ops + 1] = { action = "discard", label = "出牌" }
     local c = T.counts_of(self.players[seat].hand)
@@ -104,7 +112,7 @@ function M:get_ops(seat)
         ops[#ops + 1] = { action = "bu_gang", label = "补杠 " .. T.tile_name(t), tile = t }
       end
     end
-    if T.is_hu(self.players[seat].hand) then
+    if T.is_hu_mode(self.players[seat].hand, self.mode) then
       ops[#ops + 1] = { action = "zimo", label = "自摸" }
     end
     return ops
@@ -125,10 +133,10 @@ function M:get_ops(seat)
     local tmp = {}
     for _, x in ipairs(hand) do tmp[#tmp + 1] = x end
     tmp[#tmp + 1] = tile
-    if T.is_hu(tmp) then
+    if T.is_hu_mode(tmp, self.mode) then
       ops[#ops + 1] = { action = "hu", label = "胡 " .. T.tile_name(tile), tile = tile }
     end
-    if seat == (self.last_discard.seat + 1) % 4 then
+    if self.mode ~= "hongzhong" and seat == (self.last_discard.seat + 1) % 4 then
       for _, chi in ipairs(self:find_chi(hand, tile)) do
         ops[#ops + 1] = {
           action = "chi",
@@ -144,15 +152,15 @@ end
 function M:collect_claimers(from, tile)
   local list = {}
   for s = 0, 3 do
-    if s ~= from then
+    if s ~= from and not self.players[s].out then
       local hand = self.players[s].hand
       local can_peng = T.count_val(hand, tile) >= 2
       local can_gang = T.count_val(hand, tile) >= 3
       local tmp = {}
       for _, x in ipairs(hand) do tmp[#tmp + 1] = x end
       tmp[#tmp + 1] = tile
-      local can_hu = T.is_hu(tmp)
-      local can_chi = (s == (from + 1) % 4) and (#self:find_chi(hand, tile) > 0)
+      local can_hu = T.is_hu_mode(tmp, self.mode)
+      local can_chi = self.mode ~= "hongzhong" and (s == (from + 1) % 4) and (#self:find_chi(hand, tile) > 0)
       if can_peng or can_gang or can_hu or can_chi then
         list[#list + 1] = s
       end
@@ -169,6 +177,9 @@ function M:draw_one(seat)
 end
 
 function M:advance_draw(seat)
+  if self.players[seat] and self.players[seat].out then
+    seat = self:next_alive(seat)
+  end
   if #self.wall == 0 then
     self.settle = {
       winnerSeat = nil,
@@ -186,6 +197,23 @@ function M:advance_draw(seat)
   self.message = string.format("座位 %d 摸牌，请出牌（剩 %d）", seat, #self.wall)
 end
 
+function M:alive_seats()
+  local list = {}
+  for s = 0, 3 do
+    if not self.players[s].out then list[#list + 1] = s end
+  end
+  return list
+end
+
+function M:next_alive(from)
+  local s = from
+  for _ = 1, 4 do
+    s = (s + 1) % 4
+    if not self.players[s].out then return s end
+  end
+  return from
+end
+
 function M:do_win(seat, reason, zimo)
   local birds = {}
   local n = math.min(self.cfg.bird_count or 2, #self.wall)
@@ -197,7 +225,7 @@ function M:do_win(seat, reason, zimo)
   local scores = { 0, 0, 0, 0 }
   if zimo then
     for s = 0, 3 do
-      if s ~= seat then
+      if s ~= seat and not self.players[s].out then
         scores[s + 1] = scores[s + 1] - win_score
         scores[seat + 1] = scores[seat + 1] + win_score
       end
@@ -208,13 +236,50 @@ function M:do_win(seat, reason, zimo)
     scores[seat + 1] = scores[seat + 1] + win_score * 2
   end
   for s = 0, 3 do self.players[s].score = self.players[s].score + scores[s + 1] end
+  self.players[seat].huTimes = (self.players[seat].huTimes or 0) + 1
   local bird_names = {}
   for _, b in ipairs(birds) do bird_names[#bird_names + 1] = T.tile_name(b) end
+  local detail = string.format("%s；鸟牌 %s；中鸟 %d", reason, table.concat(bird_names, "、"), bird_hit)
+
+  if self.mode == "xueliu" then
+    -- 血流：胡了继续，牌墙空才结束
+    self.message = "血流·" .. detail
+    self.last_discard = nil
+    self.claim_seats = {}
+    self.pending = {}
+    if #self.wall == 0 then
+      self.settle = { winnerSeat = seat, reason = reason, scores = scores, detail = detail }
+      self.phase = "finished"
+      self.dealer = seat
+    else
+      self:advance_draw(self:next_alive(seat))
+    end
+    return
+  end
+
+  if self.mode == "xuezhan" then
+    -- 血战：胡了出局，剩一人或牌墙空结束
+    self.players[seat].out = true
+    self.message = "血战·" .. detail
+    self.last_discard = nil
+    self.claim_seats = {}
+    self.pending = {}
+    local alive = self:alive_seats()
+    if #alive <= 1 or #self.wall == 0 then
+      self.settle = { winnerSeat = seat, reason = reason, scores = scores, detail = detail }
+      self.phase = "finished"
+      self.dealer = seat
+    else
+      self:advance_draw(self:next_alive(seat))
+    end
+    return
+  end
+
   self.settle = {
     winnerSeat = seat,
     reason = reason,
     scores = scores,
-    detail = string.format("%s；鸟牌 %s；中鸟 %d", reason, table.concat(bird_names, "、"), bird_hit),
+    detail = detail,
   }
   self.dealer = seat
   self.phase = "finished"
@@ -329,7 +394,7 @@ function M:apply(seat, action, payload)
       return nil
     end
     if action == "zimo" then
-      if not T.is_hu(self.players[seat].hand) then return "未胡牌" end
+      if not T.is_hu_mode(self.players[seat].hand, self.mode) then return "未胡牌" end
       self:do_win(seat, "自摸", true)
       return nil
     end
