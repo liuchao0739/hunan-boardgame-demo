@@ -208,36 +208,81 @@ export class GameApp extends Component {
     this.markUI(this.root);
   }
 
-  private makeLobby(_w: number, _h: number) {
+  private makeLobby(w: number, h: number) {
     const lobby = new Node('Lobby');
+    lobby.layer = Layers.Enum.UI_2D;
 
-    const seal = this.rectNode('Seal', 64, 64, new Color(180, 40, 40), 12);
-    seal.setPosition(0, 280, 0);
+    // 全屏大厅背景（口袋麻将素材）
+    const bg = this.makeSpriteNode('ui/lobby/home_bg_v2/spriteFrame', w, h);
+    bg.name = 'LobbyBg';
+    lobby.addChild(bg);
+
+    // 左侧角色立绘
+    const hero = this.makeSpriteNode('ui/lobby/gamehall_maincharacter_fullbody/spriteFrame', 280, 500);
+    hero.setPosition(-420, -40, 0);
+    lobby.addChild(hero);
+
+    // 顶栏：头像 + 房卡 + 设置
+    const topBar = this.rectNode('TopBar', w, 64, new Color(0, 0, 0, 120), 0);
+    topBar.setPosition(0, h / 2 - 32, 0);
+    lobby.addChild(topBar);
+
+    const avatar = this.makeSpriteNode('ui/lobby/gamehall_avatar_slc/spriteFrame', 48, 48);
+    avatar.setPosition(-w / 2 + 50, h / 2 - 32, 0);
+    lobby.addChild(avatar);
+
+    const nickLab = this.makeLabel('Nick', 18, new Color(255, 240, 200));
+    nickLab.getComponent(Label)!.string = this.nick;
+    nickLab.setPosition(-w / 2 + 120, h / 2 - 24, 0);
+    lobby.addChild(nickLab);
+
+    const cardLab = this.makeLabel('Cards', 16, new Color(255, 220, 120));
+    cardLab.name = 'CardTip';
+    cardLab.getComponent(Label)!.string = `房卡 ${this.roomCards}`;
+    cardLab.setPosition(-w / 2 + 120, h / 2 - 44, 0);
+    lobby.addChild(cardLab);
+
+    const mail = this.makeSpriteNode('ui/lobby/gamehall_icn_email/spriteFrame', 40, 40);
+    mail.setPosition(w / 2 - 100, h / 2 - 32, 0);
+    lobby.addChild(mail);
+    const settings = this.makeSpriteNode('ui/lobby/gamehall_icn_settings/spriteFrame', 40, 40);
+    settings.setPosition(w / 2 - 48, h / 2 - 32, 0);
+    lobby.addChild(settings);
+
+    // 品牌标题
+    const seal = this.rectNode('Seal', 56, 56, new Color(180, 40, 40), 12);
+    seal.setPosition(80, 250, 0);
     lobby.addChild(seal);
-    const sealLab = this.makeLabel('SealT', 32, new Color(255, 220, 120));
+    const sealLab = this.makeLabel('SealT', 28, new Color(255, 220, 120));
     sealLab.getComponent(Label)!.string = '湘';
     seal.addChild(sealLab);
 
-    const title = this.makeLabel('Title', 42, new Color(255, 210, 90));
+    const title = this.makeLabel('Title', 40, new Color(255, 230, 140));
     title.getComponent(Label)!.string = '湘桌棋牌';
-    title.setPosition(0, 225, 0);
+    title.setPosition(200, 250, 0);
     lobby.addChild(title);
 
-    const sub = this.makeLabel('Sub', 14, new Color(180, 150, 110));
-    sub.name = 'CardTip';
-    sub.getComponent(Label)!.string = '麻将多玩法 · 跑胡子 · 斗地主 · 跑得快';
-    sub.setPosition(0, 188, 0);
+    const sub = this.makeLabel('Sub', 14, new Color(230, 210, 170));
+    sub.getComponent(Label)!.string = '地方棋牌合集 · 服务端权威';
+    sub.setPosition(200, 215, 0);
     lobby.addChild(sub);
 
-    // 玩法网格 4+3
+    // 玩法入口：大卡片网格（右区）
     this.pickNodes = [];
-    const cols = 4;
+    const iconFor = (id: string) => {
+      if (id.includes('mj') || id.includes('hongzhong') || id.includes('xue')) {
+        return 'ui/lobby/gamehall_img_mahjongRoom/spriteFrame';
+      }
+      if (id === 'shaoyang_phz') return 'ui/lobby/gamehall_img_friendlyMatch/spriteFrame';
+      return 'ui/lobby/gamehall_img_buttonbg/spriteFrame';
+    };
+    const cols = 3;
     GAME_CATALOG.forEach((meta, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const x = -270 + col * 180;
-      const y = 110 - row * 78;
-      const card = this.makePickCard(`${meta.name}\n${meta.blurb}`, x, y, 168, () => {
+      const x = 40 + col * 210;
+      const y = 80 - row * 115;
+      const card = this.makeLobbyGameCard(meta.name, meta.blurb, iconFor(meta.id), x, y, () => {
         this.gameType = meta.id;
         this.refreshPickStyle();
         this.toast(`已选${meta.name}`);
@@ -247,24 +292,90 @@ export class GameApp extends Component {
     });
     this.refreshPickStyle();
 
-    const start = this.makeBtn('一键开局', -200, -80, () => this.oneClickStart(), true, 170, 48, 18);
-    lobby.addChild(start);
-    lobby.addChild(this.makeBtn('加入房间', 0, -80, () => this.joinByPrompt(), false, 170, 48, 18));
-    lobby.addChild(this.makeBtn('战绩', 200, -80, () => this.net.send({ type: 'history_list' }), false, 120, 48, 16));
+    // 一键开局大按钮
+    const startBg = this.makeSpriteNode('ui/lobby/quickstartBtn/spriteFrame', 240, 86);
+    startBg.name = 'StartBtn';
+    startBg.setPosition(40, -210, 0);
+    startBg.on(Node.EventType.TOUCH_END, () => this.oneClickStart());
+    const startLab = this.makeLabel('ST', 22, new Color(80, 40, 10));
+    startLab.getComponent(Label)!.string = '一键开局';
+    startLab.setPosition(0, 4, 0);
+    startBg.addChild(startLab);
+    lobby.addChild(startBg);
 
-    lobby.addChild(this.makeBtn('建俱乐部', -200, -140, () => {
-      this.net.send({ type: 'club_create', nick: this.nick, name: this.nick + '俱乐部' });
-    }, false, 170, 40, 14));
-    lobby.addChild(this.makeBtn('俱乐部', 0, -140, () => this.net.send({ type: 'club_list' }), false, 170, 40, 14));
-    lobby.addChild(this.makeBtn('房卡', 200, -140, () => this.net.send({ type: 'room_cards', nick: this.nick }), false, 120, 40, 14));
+    lobby.addChild(this.makeBtn('加入房间', 220, -210, () => this.joinByPrompt(), false, 140, 48, 16));
+    lobby.addChild(this.makeBtn('战绩', 380, -210, () => this.net.send({ type: 'history_list' }), false, 100, 48, 15));
 
-    const tip = this.makeLabel('Tip', 14, new Color(130, 110, 85));
+    // 底栏次级功能
+    lobby.addChild(
+      this.makeBtn('建俱乐部', -40, -270, () => {
+        this.net.send({ type: 'club_create', nick: this.nick, name: this.nick + '俱乐部' });
+      }, false, 130, 36, 13),
+    );
+    lobby.addChild(this.makeBtn('俱乐部', 100, -270, () => this.net.send({ type: 'club_list' }), false, 110, 36, 13));
+    lobby.addChild(
+      this.makeBtn('房卡', 230, -270, () => this.net.send({ type: 'room_cards', nick: this.nick }), false, 90, 36, 13),
+    );
+
+    const tip = this.makeLabel('Tip', 14, new Color(255, 230, 180));
     tip.name = 'StartTip';
     tip.getComponent(Label)!.string = '当前：长沙麻将';
-    tip.setPosition(0, -195, 0);
+    tip.setPosition(40, -310, 0);
     lobby.addChild(tip);
 
     return lobby;
+  }
+
+  /** 大厅玩法大卡片：底板图 + 标题 */
+  private makeLobbyGameCard(title: string, blurb: string, iconPath: string, x: number, y: number, cb: () => void) {
+    const w = 196;
+    const h = 100;
+    const n = new Node('Pick');
+    n.layer = Layers.Enum.UI_2D;
+    n.setPosition(x, y, 0);
+    (n as any)._pickW = w;
+    (n as any)._pickH = h;
+    n.addComponent(UITransform).setContentSize(w, h);
+
+    const frame = this.rectNode('frame', w, h, new Color(20, 14, 10, 200), 14);
+    n.addChild(frame);
+
+    const icon = this.makeSpriteNode(iconPath, w - 16, 52);
+    icon.setPosition(0, 16, 0);
+    n.addChild(icon);
+
+    const lab = this.makeLabel('PickLabel', 16, new Color(255, 230, 160));
+    lab.getComponent(Label)!.string = title;
+    lab.setPosition(0, -22, 0);
+    n.addChild(lab);
+
+    const sub = this.makeLabel('PickSub', 11, new Color(200, 180, 140));
+    sub.getComponent(Label)!.string = blurb;
+    sub.setPosition(0, -40, 0);
+    n.addChild(sub);
+
+    n.on(Node.EventType.TOUCH_END, () => cb());
+    return n;
+  }
+
+  private makeSpriteNode(path: string, w: number, h: number) {
+    const n = new Node('Sp');
+    n.layer = Layers.Enum.UI_2D;
+    n.addComponent(UITransform).setContentSize(w, h);
+    const sp = n.addComponent(Sprite);
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    resources.load(path, SpriteFrame, (err, frame) => {
+      if (err || !n.isValid) {
+        // 加载失败时画占位色块，避免空白
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(40, 30, 20, 180);
+        g.roundRect(-w / 2, -h / 2, w, h, 8);
+        g.fill();
+        return;
+      }
+      sp.spriteFrame = frame;
+    });
+    return n;
   }
 
   private joinByPrompt() {
@@ -307,33 +418,33 @@ export class GameApp extends Component {
 
   /** 高亮当前选中的玩法卡片 */
   private refreshPickStyle() {
-    const apply = (node: Node, on: boolean) => {
-      if (!node) return;
-      const w = (node as any)._pickW || 260;
-      const h = (node as any)._pickH || 70;
-      const g = node.getComponent(Graphics);
-      if (!g) return;
-      g.clear();
-      g.fillColor = on ? new Color(70, 50, 20) : new Color(40, 32, 24);
-      g.roundRect(-w / 2, -h / 2, w, h, 12);
-      g.fill();
-      g.strokeColor = on ? new Color(240, 193, 75) : new Color(100, 80, 50);
-      g.lineWidth = on ? 3 : 2;
-      g.roundRect(-w / 2, -h / 2, w, h, 12);
-      g.stroke();
+    const meta = gameMeta(this.gameType);
+    for (const node of this.pickNodes) {
+      if (!node) continue;
+      const w = (node as any)._pickW || 196;
+      const h = (node as any)._pickH || 100;
+      const on = (node.getChildByName('PickLabel')?.getComponent(Label)?.string || '') === meta.name;
+      const frame = node.getChildByName('frame') || node;
+      const g = frame.getComponent(Graphics);
+      if (g) {
+        g.clear();
+        g.fillColor = on ? new Color(70, 48, 18, 230) : new Color(20, 14, 10, 200);
+        g.roundRect(-w / 2, -h / 2, w, h, 14);
+        g.fill();
+        g.strokeColor = on ? new Color(255, 210, 90) : new Color(120, 90, 50, 160);
+        g.lineWidth = on ? 3 : 1;
+        g.roundRect(-w / 2, -h / 2, w, h, 14);
+        g.stroke();
+      }
       const lab = node.getChildByName('PickLabel')?.getComponent(Label);
-      if (lab) lab.color = on ? new Color(255, 220, 120) : new Color(220, 200, 170);
-    };
-    for (const n of this.pickNodes) {
-      const lab = n.getChildByName('PickLabel')?.getComponent(Label)?.string || '';
-      const meta = gameMeta(this.gameType);
-      apply(n, lab.startsWith(meta.name));
+      if (lab) lab.color = on ? new Color(255, 235, 150) : new Color(255, 230, 160);
     }
     const tip = this.lobby?.getChildByName('StartTip')?.getComponent(Label);
     if (tip) {
-      const m = gameMeta(this.gameType);
-      tip.string = `当前：${m.name}（${m.seats}人）· 房卡 ${this.roomCards} · ${m.tip}`;
+      tip.string = `当前：${meta.name}（${meta.seats}人）· 房卡 ${this.roomCards} · ${meta.tip}`;
     }
+    const cardTip = this.lobby?.getChildByName('CardTip')?.getComponent(Label);
+    if (cardTip) cardTip.string = `房卡 ${this.roomCards}`;
   }
 
   private makeTable(w: number, h: number) {
@@ -514,7 +625,8 @@ export class GameApp extends Component {
         r.gameType === 'doudizhu' && r.phase === 'bidding'
           ? '叫分阶段 · 点下方按钮'
           : meta.tip;
-    } else if (canClaim) tip = '可以吃 / 碰 / 跑 / 胡';
+    } else if (canClaim) tip = '可以吃 / 碰 / 杠 / 胡 · 点下方按钮（或过）';
+    else if (r.phase === 'wait_claim') tip = '其他玩家响应中…';
     else if (r.phase === 'bidding') tip = `座位 ${r.currentSeat} 叫分中`;
     else if (r.phase === 'wait_discard' || r.phase === 'playing') tip = `等待座位 ${r.currentSeat}`;
     this.centerInfo.string = `${r.roomId}  ·  剩牌 ${r.wallCount}\n${tip}`;

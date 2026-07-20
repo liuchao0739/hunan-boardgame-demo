@@ -179,6 +179,16 @@ function Room:bot_act(seat, ops)
   if win then return win.action, { tile = win.tile, tiles = win.tiles } end
   local gang = prefer({ "ming_gang", "an_gang", "bu_gang", "ti", "pao" })
   if gang then return gang.action, { tile = gang.tile, tiles = gang.tiles } end
+  -- 抢牌阶段：多数情况直接过，保证牌局推进（避免卡死「等待响应」）
+  if self.game.phase == "wait_claim" then
+    local peng = prefer({ "peng" })
+    if peng and math.random() > 0.7 then return "peng", { tile = peng.tile } end
+    local chi = prefer({ "chi" })
+    if chi and math.random() > 0.8 then return "chi", { tiles = chi.tiles } end
+    for _, op in ipairs(ops) do
+      if op.action == "pass" then return "pass", {} end
+    end
+  end
   local peng = prefer({ "peng" })
   if peng and math.random() > 0.45 then return "peng", { tile = peng.tile } end
   local chi = prefer({ "chi" })
@@ -193,23 +203,30 @@ function Room:bot_act(seat, ops)
       return "discard", { tile = tile }
     end
   end
+  -- 兜底：有任何操作则执行第一个
+  if ops[1] then
+    return ops[1].action, { tile = ops[1].tile, tiles = ops[1].tiles }
+  end
   return nil
 end
 
 function Room:kick_bots()
-  for _ = 1, 24 do
+  for _ = 1, 64 do
     if self.game.phase == "finished" then return end
     local acted = false
     for i = 0, self.n - 1 do
       local s = self.seats[i]
       if s and s.is_bot then
-        local ops = self.game:get_ops(i)
-        if #ops > 0 then
-          local action, payload = self:bot_act(i, ops)
-          if action then
-            self.game:apply(i, action, payload)
-            acted = true
-            break
+        local skipped = self.game.phase == "wait_claim" and self.game.pending and self.game.pending[i]
+        if not skipped then
+          local ops = self.game:get_ops(i)
+          if #ops > 0 then
+            local action, payload = self:bot_act(i, ops)
+            if action then
+              self.game:apply(i, action, payload or {})
+              acted = true
+              break
+            end
           end
         end
       end

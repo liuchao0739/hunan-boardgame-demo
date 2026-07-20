@@ -80,6 +80,7 @@ function M:get_ops(seat)
     local ok = false
     for _, s in ipairs(self.claim_seats) do if s == seat then ok = true end end
     if not ok then return ops end
+    if self.pending[seat] then return ops end
     local tile = self.last_discard.tile
     local hand = self.players[seat].hand
     ops[#ops + 1] = { action = "pass", label = "过" }

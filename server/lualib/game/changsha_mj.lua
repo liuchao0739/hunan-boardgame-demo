@@ -121,6 +121,8 @@ function M:get_ops(seat)
     local in_claim = false
     for _, s in ipairs(self.claim_seats) do if s == seat then in_claim = true end end
     if not in_claim then return ops end
+    -- 已响应则不再给操作，避免机器人死循环卡在同一座位
+    if self.pending[seat] then return ops end
     local tile = self.last_discard.tile
     local hand = self.players[seat].hand
     ops[#ops + 1] = { action = "pass", label = "过" }
