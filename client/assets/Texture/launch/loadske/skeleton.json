@@ -1,0 +1,61 @@
+{
+"skeleton": {
+	"hash": "NwEL1CAJSNnK4J1tJ6Rri5vEY/Q",
+	"spine": "3.8.75",
+	"x": -34,
+	"y": -50,
+	"width": 68,
+	"height": 101,
+	"images": "./national flag/序列帧/序列帧/",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "01", "bone": "root", "attachment": "07" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"01": {
+				"01": { "width": 68, "height": 101 },
+				"02": { "y": 0.5, "width": 68, "height": 101 },
+				"03": { "y": 0.5, "width": 68, "height": 101 },
+				"04": { "y": 0.5, "width": 68, "height": 101 },
+				"05": { "y": 0.5, "width": 68, "height": 101 },
+				"06": { "y": 0.5, "width": 68, "height": 101 },
+				"07": { "y": 0.5, "width": 68, "height": 101 }
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {
+		"slots": {
+			"01": {
+				"attachment": [
+					{ "name": "01" },
+					{ "time": 0.1333, "name": "02" },
+					{ "time": 0.2667, "name": "03" },
+					{ "time": 0.4, "name": "04" },
+					{ "time": 0.5333, "name": "05" },
+					{ "time": 0.6667, "name": "07" },
+					{ "time": 1.1, "name": "01" }
+				]
+			}
+		},
+		"bones": {
+			"root": {
+				"rotate": [
+					{ "time": 0.6667 },
+					{ "time": 0.8667, "angle": 90 },
+					{ "time": 1.0667, "angle": 172.81 },
+					{ "time": 1.1 }
+				]
+			}
+		}
+	}
+}
+}

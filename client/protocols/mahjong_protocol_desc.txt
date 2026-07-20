@@ -1,0 +1,220 @@
+麻将protocol说明：
+---------------------------
+C : Client
+S : Server
+---------------------------
+
+麻将值对应表
+--------------------------------------------------------------------
+0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,               //万
+0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,               //饼
+0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,               //条
+0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,               //万
+0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,               //饼
+0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,               //条
+0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,               //万
+0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,               //饼
+0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,               //条
+0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,               //万
+0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,               //饼
+0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,               //条
+
+0x31, 0x32, 0x33, 0x34,                                             //风,东南西北
+0x31, 0x32, 0x33, 0x34,                                             //
+0x31, 0x32, 0x33, 0x34,                                             //
+0x31, 0x32, 0x33, 0x34,                                             //
+
+0x41, 0x42, 0x43,                                                   //字,中发白
+0x41, 0x42, 0x43,                                                   //字
+0x41, 0x42, 0x43,                                                   //字
+0x41, 0x42, 0x43,                                                   //字
+
+0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,                     //春夏秋冬梅兰菊竹
+
+--------------------------------------------------------------------
+
+UserOutCardRespond 发：吃、碰、杠（明杠），胡(荣，日麻胡别人的牌叫荣和)
+UserGrabCard 发：自摸、胡、杠（暗杠，补杠），立直(相当于可以中麻的听牌)
+UserOperatorHint 发：抢杠胡，抢杠胡(中麻叫法) --> 抢杠和(日麻叫法)
+UserOperatorRespond: 修改指向（协议里面有id）
+BroadGrabCard,UserGrabCard：修改指向（协议里面有id, 没有id就是自己）
+
+======
+
+错误返回：
+    CMD: [对应用户请求的协议号]
+    PBF: pbError
+
+======
+
+获取登录用的token:
+    C --> S
+    CMD: 10000
+    PBF: TokenReq
+服务器返回：
+    S --> C
+    CMD: 10000
+    PBF: TokenResp
+
+======
+
+使用token登录服务器:
+    C --> S
+    CMD: 10001
+    PBF: LoginReq
+服务器返回：
+    S --> C
+    CMD: 10001
+    PBF: LoginResp
+    S --> C [登录成功，返回用户信息]
+    CMD: 0x2329
+    PBF: PlayerInfo
+
+======
+
+获取房间ID:
+    C --> S
+    CMD: 0x2219
+    PBF: 空
+服务器返回：
+    S --> C
+    CMD: 0x2219
+    PBF: GameID
+
+======
+
+进入房间[即桌子]：
+    C --> S
+    CMD: 0x2220
+    PBF: GameID
+服务器返回：
+    S --> C [进入房间成功, 返回桌子信息]
+    CMD: 0x2307
+    PBF: MahjongTableEnterResponse
+    ----
+    S --> C [广播用户进入]
+    CMD: 0x2309
+    PBF: PlayerInfo
+    ----
+    S --> C [广播用户准备]
+    CMD: 0x2301
+    PBF: PlayerID
+    ----
+    S --> C [断线重连重绑定成功]
+    CMD: 0x2308
+    PBF: TableReconectInfo
+
+用户准备:
+    C --> S [用户准备请求]
+    CMD: 0x2203
+    PBF: 空
+
+======
+
+发牌：
+    S --> C [发牌，每个用户收到自己的牌]
+    CMD: 0x2317
+    PBF: SendCard
+
+======
+
+广播游戏开始:
+    S --> C [广播游戏开始]
+    CMD: 0x231C
+    PBF: HuaCardsInfo
+
+======
+
+服务器抓牌发给用户:
+    S --> C [用户抓牌协议]
+    CMD: 0x2318
+    PBF: UserGrabCard
+
+杠dora指示牌:
+    S --> C [杠dora指示牌]
+    CMD: 0x2340
+    PBF: GangDoraCard
+
+服务器广播用户抓牌:
+    S --> C [广播用户抓牌]
+    CMD: 0x231E
+    PBF: BroadGrabCard
+
+======
+
+用户出牌:
+    C --> S [用户出牌]
+    CMD: 0x2204    
+    PBF: UserOutCard
+
+服务器广播用户出牌:
+    S --> C
+    CMD: 0x2302
+    PBF: UserOutCardRespond
+
+======
+
+用户操作:
+    C --> S [用户操作]
+    CMD: 0x2205
+    PBF: UserOperatorRequest
+    S --> C [用户操作确认回复]
+    CMD: 0x2205
+    PBF: 空
+
+广播用户操作:
+    S --> C [广播用户的操作]
+    CMD: 0x231D
+    PBF: UserOperatorRespond
+
+服务器告诉客户端可以进行操作(例如抢杠和):
+    S --> C
+    CMD: 0x2304
+    PBF: UserOperatorHint
+
+操作无效:
+    S --> C [如果客户端非法操作，则返回这个消息]    
+    CMD: 0x2319
+    PBF: 空
+
+======
+
+更新用户数据:
+    S --> C [一局结束更新用户数据]
+    CMD: 0x2334
+    PBF: PlayerUpdateData
+
+广播一局结束:
+    S --> C [一局结束的结果]
+    CMD: 0x231F
+    PBF: GameRoundResult
+
+======
+
+广播一场结束: [好几局打完才到一局结束]
+    S --> C [一场结束]
+    CMD: 0x2320
+    PBF: MahjongTableInfo
+
+===== 
+
+广播掉线的用户: 
+    S --> C [用户掉线]
+    CMD: 0x230B
+    PBF: UserOffline
+
+用户托管:
+    C --> S [托管或者取消托管]    
+    CMD: 0x2206
+    PBF: UserTuoGuan
+
+广播用户托管:
+    S --> C [广播用户托管]    
+    CMD: 0x2303
+    PBF: BoardUserTuoGuan
+
+广播用户退出:
+    S --> C [广播用户退出]    
+    CMD: 0x230A
+    PBF: PlayerID
+

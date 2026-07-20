@@ -1,0 +1,208 @@
+syntax = "proto3";
+package vip;
+option go_package="apsara/protofile/autogen/client/vip";
+
+enum noticeType{
+  NONE = 0;
+  NOTICE_WEEK_PACKET_COUNTER = 15005;//通知周礼包变更
+  NOTICE_LEVEL_CHARGE = 15006;//通知充值进度变更
+  NOTICE_VIP_UP = 15007;//通知vip升级
+  NOTICE_VIP_DOWN = 15008;//通知vip降级
+}
+
+//像框级别 1初级 2高级 3特级
+enum BorderLevelType {
+  UNSPECIFIED = 0;
+  JUNIOR = 1;
+  ADVANCED = 2;
+  PREMIUM = 3;
+}
+
+//升级礼包状态 0未达成 1可领取 2已领取
+enum UpgradeStatusType{
+  NOTAVAILABLE = 0;
+  AVAILABLE = 1;
+  ALREADY = 2;
+}
+
+
+message pbType{
+  uint64 userID = 1;
+}
+
+//vip配置获取
+message VipStatus{
+  uint32 level = 1;//0-10
+  string vipInfoUrl = 2;
+  uint32 value = 3;//获得VIP点数
+  uint32 limit = 4;//升级VIP点数
+  repeated vipConfig config = 5;
+}
+
+// vip配置
+message vipConfig{
+  uint32 level = 1;//1-10
+  uint32 loginBuff = 2;//签到buff
+  uint32 turnBuff = 3;//转盘buff
+  uint32 weekCounter = 4;//配置周礼包次数
+  uint32 alreadyBuyWeekCounter = 5;//已经购买周礼包次数
+  bool isHide = 6;//true有隐藏 false无隐藏功能
+  BorderLevelType borderLevel = 7;//像框级别 1初级 2高级 3特级
+  UpgradeStatusType upgradeStatus = 8;//升级礼包状态 0未达成 1可领取 2已领取
+  repeated upgradePacket upgradeList = 9;//领取升级礼包列表
+  uint32 weekPacketId = 10;
+}
+
+message upgradePacket{
+  uint32 packetId = 1;
+  uint32 packetNum = 2;
+}
+
+
+message upgradePacketReq{
+  uint64 userID = 1;
+  uint32 level = 2;//1-10
+}
+
+message upgradePacketResp{
+  uint32 level = 1;//1-10
+  repeated upgradePacket upgradeList = 2;
+}
+
+
+// vip升级
+message noticeVipUpgrade{
+  uint32 level = 1;//1-10
+  uint32 loginBuff = 2;//签到buff
+  uint32 turnBuff = 3;//转盘buff
+  uint32 weekCounter = 4;//周礼包次数
+  BorderLevelType borderLevel = 5;//像框级别 1初级 2高级 3特级
+  UpgradeStatusType upgradeStatus = 6;//升级礼包状态 0未达成 1可领取 2已领取
+  repeated upgradePacket upgradeList = 7;//领取升级礼包列表
+  uint32 weekPacketId = 8;//周礼包
+}
+
+// vip降级
+message noticeVipDowngrade{
+  uint32 level = 1;//1-10
+  uint32 days = 2;//天数
+  bool status = 3;  //true为降级
+}
+
+message levelBuff{
+  uint32 level = 1;//1-10
+  uint32 loginBuff = 2;//签到buff
+  uint32 turnBuff = 3;//转盘buff
+  uint32 weekCounter = 4;//周礼包次数
+  BorderLevelType borderLevel = 5;//像框级别 1初级 2高级 3特级
+  bool isHide = 6;//1有隐藏 0无隐藏功能
+}
+
+message dataHideReq{
+  uint64 userID = 1;
+}
+
+message dataHideResp{
+  bool enable = 1;
+}
+
+//设置数据隐藏
+message setDataHideReq{
+  uint64 userID = 1;
+  bool enable = 2;
+}
+
+
+message setDataHideResp{
+  bool enable = 1;
+}
+
+
+message noticeWeekPacketCounter{
+  uint32 level = 1;
+  uint32 counter = 2;
+}
+
+
+message noticeLevelCharge{
+  uint32 value = 1;//充值数额
+  uint32 limit = 2;//升级数额
+}
+
+message updateVipPointReq{
+  uint64 userID = 1;
+  uint32 vipPoint = 2;
+}
+
+message updateResp{
+  bool status = 1;
+}
+
+message updateWeekPackageReq{
+  uint64 userID = 1;
+  uint32 level = 2;
+}
+
+service VipInfo {
+  rpc GetVipStatus(pbType) returns (VipStatus) {}
+  rpc GetUpgradePacket(upgradePacketReq) returns (upgradePacketResp) {}
+  rpc GetDataHideInfo(dataHideReq) returns (dataHideResp) {}
+  rpc SetDataHideInfo(setDataHideReq) returns (setDataHideResp) {}
+  rpc UpdateVipPoint(updateVipPointReq) returns (updateResp) {}
+  rpc BuyWeekPackage(updateWeekPackageReq) returns (updateResp) {}
+  rpc NoticeVipChange(updateWeekPackageReq) returns (updateResp) {}
+}
+
+enum VipCode {
+  NONE = 0;
+  STATUS = 15001;
+  UPGRADE_PACKAGE = 15002;
+  DATA_HIDE = 15003;
+  SET_DATA_HIDE = 15004;
+  NOTICE_WEEK_PACKAGE_COUNTER = 15005;
+  NOTICE_VIP_POINT_UPDATE = 15006;
+  NOTICE_VIP_UPGRADE = 15007;
+  NOTICE_VIP_DOWNGRADE = 15008;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ========== vip状态请求 ==========
+//协议号：15001
+// c >> s:pbType
+// s >> c:VipStatus
+//
+// ========== 领取礼包 ==========
+//协议号：15002
+// c >> s:upgradePacketReq
+// s >> c:upgradePacketResp
+//
+// ========== 获取数据隐藏 ==========
+//协议号：15003
+// c >> s:dataHideReq
+// s >> c:dataHideResp
+//
+// ========== 设置数据隐藏 ==========
+//协议号：15004
+// c >> s:setDataHideReq
+// s >> c:setDataHideResp
+//
+// ========== 通知周礼包变更 ==========
+//协议号：15005
+//
+// s >> c:noticeWeekPacketCounter
+//
+// ========== 通知充值进度变更 ==========
+//协议号：15006
+//
+// s >> c:noticeLevelCharge
+//
+// ========== 通知vip升级 ==========
+//协议号：15007
+//
+// s >> c:noticeVipUpgrade
+//
+// ========== 通知vip降级 ==========
+//协议号：15008
+// c >> s:
+// s >> c:noticeVipDowngrade
+//

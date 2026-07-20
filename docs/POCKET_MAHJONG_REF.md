@@ -14,8 +14,8 @@
 | `assets/Script/{Login,Home,Mahjong,Module,framework}` | `assets/scripts/{scene,net,game}` | 逻辑分层；口袋偏完整商业大厅 |
 | `assets/resources/`（**Bundle**） | `client/assets/resources/` | 运行时 `resources.load` |
 | `assets/resources/ui/Card2d/` | **已拷贝** 同路径 | 2D 牌面 PNG |
-| `assets/Texture/home/` | （未接） | 大厅背景/入口图 |
-| `assets/resources/Audio/` | `resources/audio/`（3 个 SFX） | 点牌/出牌音效 |
+| `assets/Texture/home/` | `resources/ui/lobby/gamehall_*` 等 | 大厅立绘/入口图（已接） |
+| `assets/resources/Audio/` | `resources/audio/game/` | 点牌/出牌等 SFX |
 | `assets/Script/Module/hotUpdate/` | （未接） | 原生热更 |
 | `assets/project.manifest` + `version.manifest` | （未接） | 热更清单 |
 | `extensions/hot_update` | （未接） | Creator 扩展打清单 |

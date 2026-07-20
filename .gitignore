@@ -26,3 +26,7 @@ client/.creator/
 client/temp/
 client/library/
 client/local/
+
+_refs/
+_archive/
+client/node_modules/

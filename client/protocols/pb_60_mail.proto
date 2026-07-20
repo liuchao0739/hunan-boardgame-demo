@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package mail;
+
+option go_package = "apsara/protofile/autogen/client/mail";
+
+message pbMsgType{
+  optional uint64 roleId = 1;
+  optional MailType type = 2;   //1游戏公告  2系统消息
+}
+message pbClubApplicationReq{
+  optional uint64 roleId = 1;
+  optional uint32 clubId = 3;   //获取俱乐部申请时
+
+}
+message pbClubApplicationCountReq{
+  optional uint64 roleId = 1;
+  optional uint32 clubId = 3;   //获取俱乐部申请时
+}
+message pbClubApplicationCountResp{
+  optional uint32 unreadCount = 1;
+}
+message pbMailList{
+  optional uint64 roleId = 1;
+  optional MailType type = 2;   //1活动邮件  2系统邮件
+  repeated pbNotice list = 3;
+}
+
+message pbNotice{
+  optional string index = 1;
+  optional uint32 templateId = 2;
+  optional string templateData = 3;
+  optional MailStatus status = 4;//0未读状态  1 已读状态  3未读且未领取状态 4已读且未领取状态
+  optional uint64 time = 5;
+}
+
+message pbGetMailContent{
+  optional uint64 roleId = 1;
+  optional string index = 2;
+}
+
+message pbMailContent{
+  optional uint64 roleId = 1;
+  optional string index = 2;
+  optional MailType type = 3;
+  optional uint32 templateId = 4;
+  optional string templateData = 5;
+  optional uint64 time = 6;
+  repeated mail_attachment list = 7; //附件
+}
+
+message mail_attachment{
+  optional uint32 item_id = 1;
+  optional uint64 num = 2 ;
+}
+
+message pbGetMailAttachment{
+  optional uint64 roleId = 1;
+  optional string index = 2;
+}
+
+message pbMailAttachmentResp{
+  optional uint64 roleId = 1;
+  optional string index = 2;
+  repeated mail_attachment list = 3; //附件
+}
+
+
+message pbDeleteMail{
+  optional uint64 roleId = 1;
+  optional string index = 2;
+}
+
+message pbGetAllMailAttachment{
+  optional uint64 roleId = 1;
+}
+
+message pbAllMailAttachmentResp{
+  optional uint64 roleId = 1;
+  repeated mail_attachment list = 2; //附件
+}
+
+message pbDeleteAll{
+  optional uint64 roleId = 1;
+  optional uint32 type = 2;
+}
+
+enum MailType {
+  DEFAULTMAIL = 0;
+  EVENTMAIL = 1;
+  SYSTEMMAIL = 2;
+  CLUBAPPLICATION = 3;
+}
+
+enum MailStatus{
+  UNREAD = 0;//未读状态
+  READ = 1;//已读状态
+  UNREAD_NOT_RECEIVE = 2;//未读且未领取状态
+  READ_NOT_RECEIVE = 3;//已读且未领取状态
+}
+
+// ==========================================
+
+message pbSendMail{
+  optional uint64 roleId = 1;                    
+  optional uint32 templateId = 2;         
+  repeated mail_attachment mailAnnex = 3; //附件
+  optional string templateData = 4;
+  optional uint64 startTime = 5;
+  optional uint64 endTime = 6;
+}
+message pbStatus{
+  optional bool status = 1;
+}
+
+message pbSendSysMail{
+  optional string roleIdList = 1;
+  optional uint32 templateId = 2;
+  repeated mail_attachment mailAnnex = 3; //附件
+  optional string variableName = 4; //json
+  optional uint64 startTime = 5;
+  optional uint64 endTime = 6;
+}
+
+
+service Mail {
+  rpc SendMail(pbSendMail) returns (pbStatus) {} //模块内调用 发送活动邮件
+  rpc SendSysMail(pbSendSysMail) returns (pbStatus) {} //模块内调用 发送活动邮件
+}
+
+
+enum MailCode {
+  BROADCAST_INIT = 0;
+  /*
+  * 请求token
+  * c >> s:
+  * s >> c: pbMailList
+  */
+  BROADCAST_MAIL = 60000;
+  /*
+  * 获取邮箱
+  * c >> s: pbMsgType
+  * s >> c: pbMailList
+  */
+  GET_MAIL_LIST = 60001;
+  /*
+  * 打开邮件详情（阅读邮件）
+  * c >> s: pbGetMailContent
+  * s >> c: pbMailContent
+  */
+  OPEN_MAIL_DETAILED = 60002;
+  /*
+  * 领取附件（单个)
+  * c >> s: pbGetMailAttachment
+  * s >> c: pbAllMailAttachmentResp
+  */
+  RECEIVE_MAIL = 60003;
+  /*
+  * 删除邮件（单个)
+  * c >> s: pbDeleteMail
+  * s >> c: pbDeleteMail
+  */
+  DELETE_MAIL = 60004;
+  /*
+  * 批量删除邮件
+  * c >> s: pbDeleteAll
+  * s >> c: pbDeleteAll
+  */
+  DELETE_MAIL_ALL = 60005;
+  /*
+  * 提取所有邮件附件
+  * c >> s: pbGetAllMailAttachment
+  * s >> c: pbAllMailAttachmentResp
+  */
+  RECEIVE_MAIL_ALL = 60006;
+  /*
+  * 是否有未读邮件
+  * c >> s: pbGetAllMailAttachment
+  * s >> c: pbStatus
+  */
+  GET_MAIL_STATUS = 60007;
+  /*
+ * 服务器推送新邮件
+ *
+ */
+  PUSH_NEW_MAIL = 60008;
+
+  GET_CLUBAPPLICATION_LIST = 60009;
+  GET_CLUBAPPLICATION_UNREAD_COUNT = 60010;
+
+
+}

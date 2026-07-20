@@ -1,0 +1,127 @@
+{
+  "ver": "2.3.14",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "dab54f16-77f4-435d-8f3c-4a1b1b20abe1",
+  "files": [],
+  "subMetas": {
+    "aae43": {
+      "importer": "gltf-mesh",
+      "uuid": "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@aae43",
+      "displayName": "",
+      "id": "aae43",
+      "name": "ChamferBox001.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 204
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "940ca": {
+      "importer": "texture",
+      "uuid": "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@940ca",
+      "displayName": "",
+      "id": "940ca",
+      "name": "未标题_1.png.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": false,
+        "imageUuidOrDatabaseUri": "db://assets/Scene/Mahjong/World/Card/CardOutline/tex/未标题_1.png"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "22e2a": {
+      "importer": "gltf-material",
+      "uuid": "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@22e2a",
+      "displayName": "",
+      "id": "22e2a",
+      "name": "材质.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "e1752": {
+      "importer": "gltf-scene",
+      "uuid": "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@e1752",
+      "displayName": "",
+      "id": "e1752",
+      "name": "3.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "未标题_1.png",
+        "uri": "db://assets/Scene/Mahjong/World/Card/CardOutline/tex/未标题_1.png"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@aae43"
+      ],
+      "skeletons": [],
+      "textures": [
+        "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@940ca"
+      ],
+      "materials": [
+        "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@22e2a"
+      ],
+      "scenes": [
+        "dab54f16-77f4-435d-8f3c-4a1b1b20abe1@e1752"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}

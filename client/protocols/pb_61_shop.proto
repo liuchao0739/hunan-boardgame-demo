@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+package shop;
+
+option go_package = "apsara/protofile/autogen/client/shop";
+
+message pbGetShopConfig{
+  uint64 roleId = 1;
+
+}
+
+message pbShopInfo{
+  uint64 roleId = 1;
+  roleShopType status = 2;
+  repeated pbDiscountShop list = 3; //限时商城信息
+}
+
+message pbDiscountShop{
+  uint32 productId = 1;  //商品ID
+  uint64 num = 2 ;   //优惠后游戏币数量
+  labelType label = 3 ;    //标签
+  uint32 percentage = 4; //加量比例
+  repeated pbTimeInfo time = 5 ; //时间段
+}
+
+message pbTimeInfo {
+  uint64 startTime = 1 ; //开始时间
+  uint64 endTime = 2; //结束时间
+}
+
+message pbCreateOrderReq{
+  uint64 uid = 1;
+  uint32 productId  = 2;  //商品ID
+  storeType payType = 3;  //3 勾玉购买铜币 4 webao支付
+  uint32 shopPlace  = 4;  //俱乐部Id 如果为0 则是uid的记录
+}
+message pbCreateOrderRes{
+  uint64 uid = 1;
+  uint32 productId = 2;  //商品ID
+  string orderId = 3;    //订单ID
+  uint32 orderStatus = 4;//0: pending, 1:reject, 2:failed, 3:complete
+  string msg = 5;
+  storeType payType = 6; //支付渠道
+}
+
+message pbCreateWithDrawOrderReq{
+  uint64 uid = 1;
+  float  amount = 2;
+  uint32 shopPlace  = 3;  //俱乐部Id 如果为0 则是uid的记录
+}
+message pbCreateWithDrawOrderRes{
+  uint64 uid = 1;
+  string orderId = 2;    //订单ID
+  uint32 orderStatus = 3; //0: pending, 1:reject, 2:failed, 3:complete
+  string msg = 4;
+}
+
+message pbCheckOrderReq{
+  uint64 uid = 1;
+  storeType payType = 2; //支付渠道
+  string receiptData = 3; //第三方数据
+}
+
+message pbCheckOrderRes{
+  uint64 uid = 1;
+  repeated string token = 2; //第三方数据
+  storeType payType = 3; //支付渠道
+}
+
+message pbSendOrderReq{
+  uint64 uid = 1;
+  string token = 2; //第三方数据
+}
+
+message pbSendOrderRes{
+  uint64 uid = 1;
+  bool status = 2; //是否处理成功
+}
+
+message pbGetOrderInfoReq{
+  uint64 uid = 1;
+  uint32 shopPlace = 2; //俱乐部Id 如果为0 则是uid的记录
+  int64  startTime = 3;
+  int64  endTime = 4;
+}
+
+message pbGetOrderInfoRes{
+  repeated OrderInfo list = 1;
+}
+
+message pbGetClubOrderInfoReq{
+  uint32 clubId = 1;
+  int64  startTime = 3;
+  int64  endTime = 4;
+}
+
+message pbGetClubOrderInfoRes{
+  repeated OrderInfo list = 1;
+}
+
+
+message OrderInfo {
+  uint32 uid = 1;
+  uint32 productId = 2;  //商品ID
+  uint32 buyTime = 3;
+  uint32 payType = 4;   //参考下面 storeType
+  float  price = 5;     //价格
+  float  coin = 6;      //金币
+  uint32 reward = 7;
+  uint32 shopType = 8;  //3 显示购买铜币 4 显示购买勾玉 5 显示购买金币
+  uint32 shopPlace = 9; //俱乐部id
+  uint32 status = 10;   //0: pending, 1:reject, 2:failed, 3:complete
+  string buyerName = 11; //名字
+  float  balance = 12;   //余额
+}
+
+message pbGetStartPackReq{
+  uint64 uid = 1;
+}
+
+message pbGetStartPackRes{
+  uint64 uid = 1;
+  bool isBuy = 2;
+}
+
+
+message pbDeleteDiscountShop{
+  uint32 productId = 1;  //商品ID
+}
+
+message pbGetProductListReq{
+  roleShopType shopType = 1; //3 显示购买铜币 4 显示购买勾玉 5 显示购买金币
+  uint32       shopPlace =2; //俱乐部Id 如果是0大厅购买
+
+}
+message Product {
+  uint32        id = 1;
+  float         price =2;
+  string        name =3;
+  roleShopType  shopType =4; //3 显示购买铜币 4 显示购买勾玉 5 显示购买金币
+  uint32        shopPlace=5; //
+  string        image =6;
+}
+message pbGetProductListResp{
+  repeated Product productList = 1;
+}
+
+message pbStatus{
+  bool status = 1;
+}
+
+service Shop {
+  rpc GrpcAddDiscountShop(pbDiscountShop) returns (pbStatus) {} //后台添加限时商城信息
+  rpc GrpcDeleteDiscountShop(pbDeleteDiscountShop) returns (pbStatus) {} //后台删除限时商城信息
+}
+
+enum BagCode {
+  BROADCAST_INIT = 0;
+  GET_SHOP_INFO = 61001;
+  /*
+  * 获取商城信息（限时商城/每日礼包）
+  * c >> s: pbGetShopConfig
+  * s >> c: pbShopInfo
+  */
+  CREATE_ORDER = 61002;
+  /*
+  * 创建订单/领取免费商品
+  * c >> s: pbCreateOrderReq
+  * s >> c: pbCreateOrderRes
+  */
+  CHECK_ORDER = 61003;
+  /*
+  * 谷歌检查订单/苹果直接检查后发货
+  * c >> s: pbCheckOrderReq
+  * s >> c: pbCheckOrderRes
+  */
+  SEND_ORDER = 61004;
+  /*
+  * 谷歌完成订单发货
+  * c >> s: pbSendOrderReq
+  * s >> c: pbSendOrderRes
+  */
+  GET_ORDER_INFO = 61005;
+  /*
+  * 查询玩家购买记录
+  * c >> s: pbGetOrderInfoReq
+  * s >> c: pbGetOrderInfoRes
+  */
+  GET_START_PACK_INFO = 61006;
+  /*
+  * 查询玩家是否购买首冲礼包
+  * c >> s: pbGetStartPackReq
+  * s >> c: pbGetStartPackRes
+  */
+  GET_PRODUCT_LIST = 61007;
+  /*
+  * 获取商品列表支付平台类型为other
+  * c >> s: pbGetProductListReq
+  * s >> c: pbGetProductListRes
+  */
+
+  CREATE_WITHDRAW_ORDER = 61008;
+
+  GET_CLUB_ORDER_INFO = 61009;
+}
+
+//支付平台类型
+enum storeType {
+  TYPE_DEFAULT = 0;
+  TYPE_GOOGLE = 1;
+  TYPE_APPLE = 2;
+  TYPE_GOUYU = 3; //勾玉购买
+  TYPE_WEBAO = 4; //第三方支付
+  TYPE_WITHDRAW = 5; //取款
+  TYPE_GAME_IN = 6;  //对局
+  TYPE_GAME_OUT= 7;  //对局
+}
+
+//页面展示类型
+enum labelType {
+  LABEL_DEFAULT = 0;
+  LABEL_HOT = 1;
+  LABEL_BEST_DEAL = 2;
+  LABEL_POPULAR = 3;
+}
+
+//第一个位置的商品状态
+enum roleShopType {
+  SHOP_FREE = 0;  //显示免费
+  SHOP_DAILY = 1; //显示付费
+  SHOP_NONE = 2; //置灰
+  SHOP_TONGBI = 3; //显示购买铜币
+  SHOP_GOUYU  = 4; //显示购买勾玉
+  SHOP_COIN  = 5;  //显示购买金币
+}
+enum ShopPlace {
+  PLACE_DEFAULT = 0;  //铜币
+  PLACE_GOUYU   = 1;  //显示购买勾玉
+}

@@ -1,24 +1,19 @@
-# Third-Party Notices
+# 第三方声明
 
-## PocketMahjongClient（口袋麻将）
+## 主线客户端：口袋麻将
 
-- https://github.com/winktzhong/PocketMahjongClient · MIT
-- Used: `ui/Card2d/*`（除自绘 `hongzhong.png`）, `ui/lobby/*`, `audio/*`
-- Hot-update design参考: `HotUpdateScaffold.ts`
+- 来源：[winktzhong/PocketMahjongClient](https://github.com/winktzhong/PocketMahjongClient)（口袋麻将全集）
+- 路径：`client/`（完整拷贝，含真 3D 牌桌场景与模型）
+- 使用与许可以其仓库 README / 免责声明为准
+- 官方试玩：http://magame.110x.com
 
-## 安铺打牌（speedphp/anpu）
+## 归档：湘桌自制 Demo
 
-- https://github.com/speedphp/anpu · Apache-2.0
-- Backup: `ui/poker_anpu/*`
-- Primary poker: `ui/Poker/`（本仓库生成）
+- 路径：`_archive/xiangzhuo-client/`
+- 含自研 GameApp、Skynet JSON 协议客户端等，**已不再作为启动工程**
+- 自有代码仍按本仓库 MIT；其中曾引用的口袋 Card2d / 威海素材见归档内 `THIRD_PARTY_NOTICES` 历史说明
 
-## 幼麟棋牌（babykylin_scmj）
+## Skynet 服务端
 
-- https://github.com/babykylin/babykylin_scmj
-- Reference snippets: `ui/babykylin_hall/`, `ui/ops/`
-
-## 本仓库自绘
-
-- `ui/Phz/*` 跑胡子字牌
-- `ui/Card2d/hongzhong.png` 红中
-- `ui/Poker/*` 扑克 0–53
+- 路径：`server/`
+- 与口袋麻将 Protobuf 协议 **不兼容**，主线勿混用

@@ -1,0 +1,257 @@
+syntax = "proto3";
+
+package roleInfo;
+
+option go_package = "apsara/protofile/autogen/client/roleInfo";
+
+message RoleSimpleInfoReq{
+  uint64 userID = 1;  // 玩家ID
+}
+
+message RoleSimpleInfoResp{
+  uint64 userID = 1;      // 信息ID
+  string name = 2;        // 昵称
+  uint32 avatarTID = 3;   // 头像模板ID
+  string avatarUrl = 4;   // 头像URL
+  uint32 borderTID = 5;   // 头像框模板ID
+  uint32 password  = 6;   // password
+}
+
+message RoleInfoReq{
+  uint64 userID = 1;  // 玩家ID
+  uint64 infoID = 2;  // 信息ID
+}
+
+message RoleStaticsInfo{
+  uint64 infoID = 1;      // 信息ID
+  string name = 2;        // 昵称
+  uint32 avatarTID = 3;   // 头像模板ID
+  string avatarUrl = 4;   // 头像URL
+  uint32 borderTID = 5;   // 头像框模板ID
+  uint32 vip = 6;
+  uint32 level = 7;
+  uint32 money = 8;
+  uint32 totalTimes = 9;  //已玩局数
+  uint32 winTimes = 10;  //胜局数
+  uint32 inPotNum = 11;  //入池局数
+  uint64 maxPot = 12;  //最大底池
+  uint32 tanPaiNum = 13;  //摊牌局数
+  uint32 tanPaiWinNum = 14; //摊牌胜局数
+  uint32 allInNum = 15;//allin局数
+  uint32 allInWinNum = 16;//allin胜局数
+  repeated uint32  bestPokerList = 17;//最佳牌型
+}
+
+
+message RoleInfoResp{
+  RoleStaticsInfo info = 1;
+  uint32 nameChangeTimes = 2;
+}
+
+message RoleGameInfo {
+  uint32 id = 1;  // 牌桌ID
+}
+
+message AvatarInfoReq {
+  uint64 userID = 1;      // 玩家ID
+}
+
+message AvatarInfoList {
+  repeated AvatarInfo list = 1;
+}
+
+message AvatarInfo{
+  uint32 ano = 1;      //头像id
+  string url = 2;        //
+  bool status = 3;   // 状态
+}
+
+message SetAvatarReq {
+  uint64 userID = 1;      // 玩家ID
+  uint32 ano = 2;      //头像id
+}
+
+message SetAvatarResp {
+  uint64 userID = 1;      // 玩家ID
+  uint32 ano = 2;      //头像id
+}
+
+message SetNameReq {
+  uint64 userID = 1;      // 玩家ID
+  string name = 2;      //昵称
+}
+
+message SetNameResp {
+  uint64 userID = 1;      // 玩家ID
+  string name = 2;      //昵称
+  SetNameStatus status = 3;   // 状态
+}
+
+message BorderInfoReq {
+  uint64 userID = 1;      // 玩家ID
+}
+
+message BorderInfoList {
+  repeated BorderInfo list = 1;
+}
+
+message BorderInfo{
+  uint32 bno = 1;      //头像框id
+  string url = 2;        //
+  string name = 3;        //
+  uint32 expireTime = 4;        //
+  BorderSRC src = 5;        //来源
+  bool status = 6;   // 状态
+}
+
+enum SetNameStatus {
+  NAME_SUCCESS = 0;//成功
+  NAME_EXIST = 1;//存在
+  NAME_OUTS_OF_TIMES = 2;//没有次数
+}
+
+enum BorderSRC {
+  DEFAULT = 0;
+  ACTIVITY = 1;
+  OTHER = 2;
+}
+
+message SetBorderReq {
+  uint64 userID = 1;      // 玩家ID
+  uint32 bno = 2;      //头像框id
+}
+
+message SetBorderResp {
+  uint64 userID = 1;      // 玩家ID
+  uint32 bno = 2;      //头像框id
+}
+
+message SetResp{
+  bool status = 1;  //
+}
+
+
+message RoleJsonDataReq{
+  uint64 userID = 1;  //玩家ID
+}
+
+message RoleJsonDataResp {
+  int64 userID = 1;  // 玩家ID
+  string jsonData = 2;    // json格式，怎么存怎么取
+}
+
+message RoleJsonDataSettingReq{
+  uint64 userID = 1;  //玩家ID
+  string jsonData = 2;// json格式，怎么存怎么取
+}
+
+message RoleJsonDataSettingResp{
+  uint64 userID = 1;  //玩家ID
+  string jsonData = 2;// json格式，怎么存怎么取
+}
+
+message SendReward {
+  uint64 userID = 1;      // 玩家ID
+  repeated RewardContent list = 2; //附件
+}
+
+message RewardContent{
+  uint32 itemId = 1;      //物品Id
+  uint32 itemNum = 2;      //物品数量
+}
+message SetBankAccountReq {
+  uint64 userID = 1;           // 玩家ID
+  string bankAccountName = 2;  //名字 
+  string bankName = 3;         //银行名字
+  string subBankName = 4;      //分行名字
+  string bankCardNo  = 5;      //卡号
+}
+message SetBankAccountResp {
+  bool status = 1;  //0 失败 1成功
+}
+message GetBankAccountReq {
+  uint64 userID = 1;           // 玩家ID 
+}
+message GetBankAccountResp {
+  bool status = 1;             //0 失败 1成功
+  string bankAccountName = 2;  //名字 
+  string bankName = 3;         //银行名字
+  string subBankName = 4;      //分行名字
+  string bankCardNo  = 5;      //卡号
+}
+
+service RoleInfo {
+  rpc GetSimpleInfo(RoleSimpleInfoReq) returns (RoleSimpleInfoResp) {}
+  rpc GetInfo(RoleInfoReq) returns (RoleInfoResp) {}
+  rpc SetAvatarInfo(SetAvatarReq) returns (SetAvatarResp) {}
+  rpc SetNameInfo(SetNameReq) returns (SetNameResp) {}
+  rpc SetBorderInfo(SetBorderReq) returns (SetBorderResp) {}
+
+  rpc ReqJsonData(RoleJsonDataReq) returns (RoleJsonDataResp) {}
+  rpc SetJsonData(RoleJsonDataSettingReq) returns (RoleJsonDataSettingResp) {}
+
+  rpc BMSSendReward(SendReward) returns (SetResp) {}
+  rpc SetBankAccount(SetBankAccountReq) returns(SetBankAccountResp) {}
+  rpc GetBankAccount(GetBankAccountReq) returns(GetBankAccountResp) {}
+}
+
+
+enum RoleInfoCode {
+  UNSPECIFIED = 0;
+  /*
+   * 玩家简单信息请求
+   * c >> s: RoleSimpleInfoReq
+   * s >> c: RoleSimpleInfoResp
+   */
+  GET_SIMPLE_INFO = 11000;
+  /*
+   * 当前牌局信息（登录后请求，用于返回牌局）
+   * c >> s: -
+   * s >> c: RoleGameInfo
+   */
+  ROLE_GAME_INFO = 11001;
+  /*
+   * 玩家信息请求
+   * c >> s: RoleInfoReq
+   * s >> c: RoleInfoResp
+   */
+  GET_INFO = 11002;
+  /*
+   * 设置头像
+   * c >> s: SetAvatarReq
+   * s >> c: SetAvatarResp
+   */
+  SET_AVATAR_INFO = 11003;
+
+  /*
+   * 玩家修改名称
+   * c >> s: SetNameReq
+   * s >> c: SetNameResp
+   */
+  SET_NAME_INFO = 11004;
+
+  /*
+   * 设置头像框
+   * c >> s: SetBorderReq
+   * s >> c: SetBorderResp
+   */
+  SET_BORDER_INFO = 11005;
+
+  /*
+ * 个人暂存数据请求
+ * c >> s: RoleJsonDataReq
+ * s >> c: RoleJsonDataResp
+ */
+  REQ_JSON_DATA = 11006;
+
+  /*
+* 个人暂存数据设置
+* c >> s: RoleJsonDataSettingReq
+* s >> c: RoleJsonDataSettingResp
+*/
+  SET_JSON_DATA = 11007;
+
+  SET_BANKACCOUNT = 11008;
+  GET_BANKACCOUNT = 11009;
+
+}

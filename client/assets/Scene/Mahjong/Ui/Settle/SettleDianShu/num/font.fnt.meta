@@ -1,0 +1,66 @@
+{
+  "ver": "1.0.6",
+  "importer": "bitmap-font",
+  "imported": true,
+  "uuid": "f827799e-591a-4e27-9e6a-3cce28b9f89b",
+  "files": [
+    ".json"
+  ],
+  "subMetas": {},
+  "userData": {
+    "_fntConfig": {
+      "commonHeight": 32,
+      "fontSize": 32,
+      "atlasName": "font_0.png",
+      "fontDefDictionary": {
+        "49": {
+          "rect": {
+            "x": 165,
+            "y": 0,
+            "width": 39,
+            "height": 111
+          },
+          "xOffset": 0,
+          "yOffset": 0,
+          "xAdvance": 39
+        },
+        "50": {
+          "rect": {
+            "x": 0,
+            "y": 115,
+            "width": 81,
+            "height": 110
+          },
+          "xOffset": 0,
+          "yOffset": 0,
+          "xAdvance": 81
+        },
+        "51": {
+          "rect": {
+            "x": 87,
+            "y": 0,
+            "width": 77,
+            "height": 113
+          },
+          "xOffset": 0,
+          "yOffset": 0,
+          "xAdvance": 77
+        },
+        "52": {
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 86,
+            "height": 114
+          },
+          "xOffset": 0,
+          "yOffset": 0,
+          "xAdvance": 86
+        }
+      },
+      "kerningDict": {}
+    },
+    "fontSize": 32,
+    "textureUuid": "e649b46a-8257-4939-aeb7-d588500e82d7"
+  }
+}

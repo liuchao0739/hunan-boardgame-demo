@@ -1,44 +1,86 @@
-# 湘桌棋牌 · Cocos Creator 3.8.8 客户端
+<p align="center">
+  <strong>欢迎来到口袋麻将全集。本项目使用最新cocos creator开发，全新3D场景体验，typescript语言，支持热更，跨平台支持，支持网页版。</strong>
+  <img width="704" alt="Game screenshot" src="./resource/image/room.jpg">
+</p>
 
-**可以做微信小游戏，也可以做 iOS/Android App。**  
-详细步骤见 [BUILD.md](./BUILD.md)。
 
-## 你现在要做的（装好 Creator 后）
 
-```bash
-# 1. 起 Skynet 服
-cd ../server && ./run.sh
 
-# 2. 打开本工程（装好 3.8.8 后）
-./open-creator.sh
-# 或：Creator → 打开其他 → 选本 client 目录
+
+## 项目宗旨
+
+目标：打造公平、公正、公开的开源麻将游戏平台。目前，我们已经完成了日本麻将的开发。更多的麻将玩法正在开发中。
+
+我们希望通过开源，让更多人参与到项目中，并使游戏开发者从中获益。任何人/团队均可以快速定制自己的版本。
+
+
+
+## 测试地址
+
+http://magame.110x.com
+
+
+
+## 麻将规则
+
+开发的规则，可参考下面的文档：[mahjongdoc](https://github.com/openpokergame/MahjongRules)
+
+
+
+## 使用教程
+
+推荐使用cocos creator 3.7.4引擎，或者最新的引擎打开，并选择main场景作为第一个启动场景(第一个场景做了一些初始化的工作)，打开creator直接运行就行，有疑问，请加群。
+
+
+
+## 获取源码
+
+```
+git clone https://github.com/openpokergame/PocketMahjongClient.git
 ```
 
-编辑器内：
 
-1. 新建场景 `assets/scenes/Main.scene`，放 **Canvas**
-2. Canvas 挂脚本 **`GameApp`**
-3. `wsUrl` = `ws://127.0.0.1:9948`
-4. 点预览 ▶
 
-## 导出
+## 版本说明
 
-| 产品形态 | 构建平台 | 本机工具 |
-|----------|----------|----------|
-| 微信里玩 | **微信小游戏** | 已装 `wechatwebdevtools.app` |
-| 手机 App | Android / iOS | Android Studio / Xcode |
-| 网页调试 | 预览 / Web Desktop | 浏览器 |
+- master 分支：稳定版本，已通过测试
 
-> 招聘 JD 说的「小程序 + App」，在 Cocos 里就是：**微信小游戏 + 原生 App** 两个构建目标，同一套前端代码。
 
-## 目录
 
-```
-assets/scripts/
-  scene/GameApp.ts    # 大厅+牌桌入口
-  net/NetClient.ts    # WebSocket → Skynet
-  net/Protocol.ts
-  game/TileUtil.ts
-BUILD.md              # 小游戏 / App 发布说明
-open-creator.sh       # 一键打开工程
-```
+## 交流 & FAQ
+
+qq群：363029515
+
+官网：http://qipaiplay.com
+
+博客：http://www.xgeplayer.com
+
+email：openpokerorg@gmail.com
+
+
+
+## 免责声明
+
+严禁用于任何非法用途，后果自负
+
+
+
+
+
+## 更多游戏截图
+
+大厅-->
+
+![](./resource/image/hall.jpg)
+
+
+
+房间-->
+
+![](./resource/image/room.jpg)
+
+
+
+结算 -->
+
+![](./resource/image/over.jpg)

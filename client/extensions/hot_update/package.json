@@ -1,0 +1,19 @@
+{
+    "name": "hot_update",
+    "title": "打包设置",
+    "package_version": 2,
+    "version": "1.0.0",
+    "author": "samwei",
+    "description": "i18n:hot_update.description",
+    "contributions": {
+        "builder": "./dist/builder.js"
+    },
+    "dependencies": {
+        "@types/fs-extra": "^5.0.4",
+        "@types/node": "^14.5.2",
+        "fs-extra": "^10.0.0"
+    },
+    "scripts": {
+        "build": "tsc -w"
+    }
+}

@@ -1,0 +1,260 @@
+{
+  "ver": "2.3.14",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84",
+  "files": [],
+  "subMetas": {
+    "32942": {
+      "importer": "gltf-embeded-image",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@32942",
+      "displayName": "",
+      "id": "32942",
+      "name": "Diffuse Texture-0.image",
+      "userData": {
+        "gltfIndex": 0,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "d33d7": {
+      "importer": "gltf-mesh",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@d33d7",
+      "displayName": "",
+      "id": "d33d7",
+      "name": "tile 1.021_Material0.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 236
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c700e": {
+      "importer": "gltf-embeded-image",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c700e",
+      "displayName": "",
+      "id": "c700e",
+      "name": "Diffuse Texture-1.image",
+      "userData": {
+        "gltfIndex": 1,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "d1c23": {
+      "importer": "gltf-embeded-image",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@d1c23",
+      "displayName": "",
+      "id": "d1c23",
+      "name": "Diffuse Texture-2.image",
+      "userData": {
+        "gltfIndex": 2,
+        "fixAlphaTransparencyArtifacts": true,
+        "hasAlpha": true,
+        "type": "texture"
+      },
+      "ver": "1.0.3",
+      "imported": true,
+      "files": [
+        ".json",
+        ".png"
+      ],
+      "subMetas": {}
+    },
+    "3c5d2": {
+      "importer": "texture",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@3c5d2",
+      "displayName": "",
+      "id": "3c5d2",
+      "name": "Diffuse Texture-0.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@32942"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c45cd": {
+      "importer": "texture",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c45cd",
+      "displayName": "",
+      "id": "c45cd",
+      "name": "Diffuse Texture-1.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c700e"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c9b32": {
+      "importer": "texture",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c9b32",
+      "displayName": "",
+      "id": "c9b32",
+      "name": "Diffuse Texture-2.texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@d1c23"
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "6d5b8": {
+      "importer": "gltf-material",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@6d5b8",
+      "displayName": "",
+      "id": "6d5b8",
+      "name": "tile green.001.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c95ab": {
+      "importer": "gltf-material",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c95ab",
+      "displayName": "",
+      "id": "c95ab",
+      "name": "white.043.material",
+      "userData": {
+        "gltfIndex": 1
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "27a03": {
+      "importer": "gltf-scene",
+      "uuid": "48d7b996-cdfb-4968-8b75-8c3802d33e84@27a03",
+      "displayName": "",
+      "id": "27a03",
+      "name": "Mahjong card model.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [
+      {
+        "name": "Diffuse Texture",
+        "uri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@32942"
+      },
+      {
+        "name": "Diffuse Texture",
+        "uri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@c700e"
+      },
+      {
+        "name": "Diffuse Texture",
+        "uri": "48d7b996-cdfb-4968-8b75-8c3802d33e84@d1c23"
+      }
+    ],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@d33d7"
+      ],
+      "skeletons": [],
+      "textures": [
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@3c5d2",
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@c45cd",
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@c9b32"
+      ],
+      "materials": [
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@6d5b8",
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@c95ab"
+      ],
+      "scenes": [
+        "48d7b996-cdfb-4968-8b75-8c3802d33e84@27a03"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}

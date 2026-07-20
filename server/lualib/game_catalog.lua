@@ -56,9 +56,9 @@ local Catalog = {
   },
 }
 
+-- 正式开放三玩法；其余 factory 仍保留便于调试，但不进 list
 local ORDER = {
-  "changsha_mj", "xueliu_mj", "xuezhan_mj", "hongzhong_mj",
-  "shaoyang_phz", "doudizhu", "paodekuai",
+  "changsha_mj", "shaoyang_phz", "doudizhu",
 }
 
 local M = {}
@@ -79,6 +79,13 @@ end
 function M.is_mj(game_type)
   return game_type == "changsha_mj" or game_type == "xueliu_mj"
     or game_type == "xuezhan_mj" or game_type == "hongzhong_mj"
+end
+
+function M.is_listed(game_type)
+  for _, id in ipairs(ORDER) do
+    if id == game_type then return true end
+  end
+  return false
 end
 
 return M

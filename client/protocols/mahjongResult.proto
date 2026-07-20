@@ -1,0 +1,77 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "apsara/protofile/autogen/mahjongresult";
+
+
+package mahjongresult;
+
+
+//bellow code is from gameserver
+message FuLuInfo {
+    int32 fuluType = 1;                 // 副露类型(与操作码一致)
+    repeated int32 cards = 2;           // 牌值(例如，345，555，789，9999等)
+    int32 pos = 3;                      // 方位1(1:下家，2:对家，3:上家)[只有碰，明杠，补杠才有方位1] [默认值-1]
+}
+message FanInfo {
+    int32 type = 1;                       // 役种
+    string name = 2;                      // 役种名称
+    int32 score = 3;                      // 番数
+}
+message ResPlayerInfo {
+    int64 user_id = 1;                    // 用户id
+    int32 status = 2;                     // 是否在线状态
+    float money_plat = 3;                 // 用户的点数
+    float turn_money = 4;                 // 输的点数
+    int32 round_result = 5;               // 游戏结果(赢家|输家|平家[有人放炮时，没输没赢的人]，1:自摸，2:荣和，0:平，3:放炮者(相对于荣和)，4:输家(相当于自摸的输家))
+    repeated int32 rem_cards = 6;         // 玩家剩余手牌
+    int32 allFan = 7;                     // 总番数
+    int32 fu = 8;                         // 总符数
+    repeated FanInfo fans = 9;            // 所有役种(番数)
+    int32 rank = 10;                      // 排名
+    int32 winCard = 11;                   // 赢的那张牌 如果没有，值为0xFF
+    repeated FuLuInfo fulus = 12;         // 副露
+    repeated int32 dora = 13;             // 宝牌
+    repeated int32 lidora = 14;           // 里宝牌
+}
+message MahjongGameUser {
+    int64 user_id = 1;                  // 用户id
+    float user_yuanbao = 2;             // 用户的总元宝数
+    float relative_money = 3;           // 输赢的元宝数
+    float money_plat = 4;               // 用户总点数
+    float all_result = 5;               // 输赢总点数
+    int32 online_status = 6;            // 状态
+    int32 rank = 7;                     // 排名
+    float dedian = 8;                   // 得点
+}
+message MahjongResultReq {
+    int32 type = 1;                       // 0 中间局结果 1 终局结果
+    string tableId = 2;                   //牌桌id
+    int32 nRoundResult = 3;               // 游戏结果 (流局: 1 | 途中流局: 2 ｜ 自摸: 3 ｜ 放炮: 4)
+    int64 time_round = 4;                 // 这一局消耗的时间
+    int64 hu_or_pao_uid = 5;              // 自摸或者放炮的用户id
+    int32 hu_card = 6;                    // 胡的牌
+    bool stop_game = 7;                   // 是否一场结束(即所有圈都打完)
+    int32 nLiuJuType = 8;                 // 流局类型 (如果是流局，则---> 庄家听牌流局: 0x001, 流局满贯: 0x002; 如果是途中流局, 则---> 四杠散了: 1, 四风连打: 2, 四家立直: 3, 九种九牌: 4)
+    repeated ResPlayerInfo player_info = 9;  // 中间局玩家情况 
+    repeated MahjongGameUser users = 10;     // 终局结果用户信息
+}
+message MahjongResultResp {
+    int32 status = 1;                     //0 err, 1 success
+}
+
+
+

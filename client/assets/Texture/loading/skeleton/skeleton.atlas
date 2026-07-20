@@ -1,0 +1,20 @@
+
+skeleton.png
+size: 83,35
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+game_icn_mahjong_01
+  rotate: true
+  xy: 2, 2
+  size: 31, 50
+  orig: 31, 50
+  offset: 0, 0
+  index: -1
+game_icn_mahjong_02
+  rotate: true
+  xy: 54, 2
+  size: 31, 27
+  orig: 31, 27
+  offset: 0, 0
+  index: -1

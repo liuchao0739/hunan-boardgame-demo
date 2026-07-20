@@ -1,0 +1,167 @@
+{
+"skeleton": {
+	"hash": "Q07LsWHjfHw5SJHS+MLaLhI1dLU",
+	"spine": "3.8.75",
+	"x": -196.83,
+	"y": 0.42,
+	"width": 424.23,
+	"height": 50.99,
+	"images": "",
+	"audio": ""
+},
+"bones": [
+	{ "name": "root", "x": 29.98, "y": 123.68 },
+	{ "name": "game_icn_mahjong_01", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_2", "parent": "root", "x": -152.14, "y": -96.92 },
+	{ "name": "game_icn_mahjong_1", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_3", "parent": "root", "x": -117.2, "y": -95.79 },
+	{ "name": "game_icn_mahjong_4", "parent": "root", "x": -84.52, "y": -98.05 },
+	{ "name": "game_icn_mahjong_5", "parent": "root", "x": -49.58, "y": -95.79 },
+	{ "name": "game_icn_mahjong_6", "parent": "root", "x": 148.53, "y": -110.88 },
+	{ "name": "game_icn_mahjong_7", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_8", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_9", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_10", "parent": "root", "x": 5.64 },
+	{ "name": "game_icn_mahjong_11", "parent": "root", "x": 117.21, "y": -94.67 },
+	{ "name": "game_icn_mahjong_12", "parent": "root", "x": -21.94 }
+],
+"slots": [
+	{ "name": "game_icn_mahjong_01", "bone": "game_icn_mahjong_01", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_1", "bone": "game_icn_mahjong_1", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_2", "bone": "game_icn_mahjong_2", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_3", "bone": "game_icn_mahjong_3", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_4", "bone": "game_icn_mahjong_4", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_5", "bone": "game_icn_mahjong_5", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_6", "bone": "game_icn_mahjong_6", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_7", "bone": "game_icn_mahjong_7", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_8", "bone": "game_icn_mahjong_8", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_9", "bone": "game_icn_mahjong_9", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_10", "bone": "game_icn_mahjong_10", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_11", "bone": "game_icn_mahjong_11", "attachment": "game_icn_mahjong_01" },
+	{ "name": "game_icn_mahjong_12", "bone": "game_icn_mahjong_12", "attachment": "game_icn_mahjong_02" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"game_icn_mahjong_01": {
+				"game_icn_mahjong_01": { "x": -216.96, "y": -97.28, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": -217, "y": -108.35, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_1": {
+				"game_icn_mahjong_01": { "x": -183.36, "y": -97.71, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": -183.86, "y": -108.91, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_2": {
+				"game_icn_mahjong_01": { "x": 6.71, "y": -0.84, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 6.94, "y": -12.28, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_3": {
+				"game_icn_mahjong_01": { "x": 4.28, "y": -2.24, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 4.52, "y": -13.44, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_4": {
+				"game_icn_mahjong_01": { "x": 4.21, "y": -0.12, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 4.34, "y": -11.37, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_5": {
+				"game_icn_mahjong_01": { "x": 1.95, "y": -2.22, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 2.15, "y": -13.59, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_6": {
+				"game_icn_mahjong_01": { "x": 0.09, "y": 12.81, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 0.27, "y": 1.58, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_7": {
+				"game_icn_mahjong_01": { "x": -20.45, "y": -97.91, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": -20.46, "y": -109.43, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_8": {
+				"game_icn_mahjong_01": { "x": 12.23, "y": -97.76, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 12.26, "y": -109.31, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_9": {
+				"game_icn_mahjong_01": { "x": 44.64, "y": -98.26, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 44.71, "y": -109.29, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_10": {
+				"game_icn_mahjong_01": { "x": 77.54, "y": -98.09, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": 77.31, "y": -109.68, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_11": {
+				"game_icn_mahjong_01": { "x": -1.39, "y": -3.44, "width": 31, "height": 50 },
+				"game_icn_mahjong_02": { "x": -1.34, "y": -14.68, "width": 31, "height": 27 }
+			},
+			"game_icn_mahjong_12": {
+				"game_icn_mahjong_02": { "x": 203.85, "y": -109.42, "width": 31, "height": 27 }
+			}
+		}
+	}
+],
+"animations": {
+	"animation": {
+		"slots": {
+			"game_icn_mahjong_1": {
+				"attachment": [
+					{ "time": 1.0333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_9": {
+				"attachment": [
+					{ "time": 0.3333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_8": {
+				"attachment": [
+					{ "time": 0.4333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_6": {
+				"attachment": [
+					{ "time": 0.0333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_10": {
+				"attachment": [
+					{ "time": 0.2333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_01": {
+				"attachment": [
+					{ "time": 1.1333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_11": {
+				"attachment": [
+					{ "time": 0.1333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_3": {
+				"attachment": [
+					{ "time": 0.8333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_2": {
+				"attachment": [
+					{ "time": 0.9333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_5": {
+				"attachment": [
+					{ "time": 0.6333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_4": {
+				"attachment": [
+					{ "time": 0.7333, "name": "game_icn_mahjong_02" }
+				]
+			},
+			"game_icn_mahjong_7": {
+				"attachment": [
+					{ "time": 0.5333, "name": "game_icn_mahjong_02" }
+				]
+			}
+		}
+	}
+}
+}

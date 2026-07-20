@@ -1,0 +1,736 @@
+syntax = "proto3";
+
+package mahjong_jp;
+
+enum SHOW_TYPE {
+    SHOW_UNKNOW_TYPE = 0;                   // 无
+    SHOW_YIMAN = 1;                         // 役满
+    SHOW_LEIJIYIMAN = 2;                    // 累计役满
+    SHOW_ER_YIMAN = 3;                      // 二倍役满
+    SHOW_SAN_YIMAN = 4;                     // 三倍役满
+    SHOW_SI_YIMAN = 5;                      // 四倍役满
+    SHOW_WU_YIMAN = 6;                      // 五倍役满
+    SHOW_LIU_YIMAN = 7;                     // 六倍役满
+    SHOW_BEIMAN = 8;                        // 倍满
+    SHOW_MANGUAN = 9;                       // 满贯
+    SHOW_TIAOMAN = 10;                      // 跳满
+    SHOW_SAN_BEIMAN = 11;                   // 三倍满
+    SHOW_LIUJU_MANGUAN = 12;                // 流局满贯
+}
+
+enum FAN_TYPE {
+    JP_UNKNOW_TYPE = 0;
+    // 26番
+    JP_DA_SI_XI	= 1;                        // 大四喜
+    JP_SI_AN_KE_DAN_JI = 2;                 // 四暗刻单骑
+    JP_GUO_SHI_WU_SHUANG_13MIAN = 3;        // 国士无双十三面
+    JP_CHUN_JIU_LIAN_BAO_DENG = 4;          // 纯正九莲宝灯
+    JP_CHUN_LV_YI_SE = 5;                   // 纯正绿一色 [古]
+    JP_DA_QI_XING = 6;                      // 大七星 [古]
+
+    // 13番
+    JP_DA_SAN_YUAN = 7;                      // 大三元
+    JP_LV_YI_SE = 8;                         // 绿一色
+    JP_JIU_LIAN_BAO_DENG = 9;                // 九莲宝灯
+    JP_SI_GANG = 10;                         // 四杠子
+    JP_XIAO_ZHU_LIN = 11;                    // 小竹林 [古]
+    JP_XIAO_CHE_LUN = 12;                    // 小车轮 [古]
+    JP_XIAO_SHU_LIN = 13;                    // 小数邻 [古]
+    JP_DA_ZHU_LIN = 14;                      // 大竹林 [古]
+    JP_DA_CHE_LUN = 15;                      // 大车轮 [古]
+    JP_DA_SHU_LIN = 16;                      // 大数邻 [古]
+    JP_SHI_SAN_YAO = 17;                     // 国士无双
+    JP_QING_YAO_JIU = 18;                    // 清老头
+    JP_XIAO_SI_XI = 19;                      // 小四喜
+    JP_ZI_YI_SE = 20;                        // 字一色
+    JP_SI_AN_KE = 21;                        // 四暗刻
+    JP_YI_SE_SHUANG_LONG_HUI = 22;           // 一色双龙会 [古]
+    JP_YI_SE_SI_JIE_GAO = 23;                // 四连刻 [古]
+    JP_YI_SE_SI_TONG_SHUN = 24;              // 一色四顺 [古]
+    JP_YI_SE_SI_BU_GAO = 25;                 // 金门桥 [古]
+    JP_DI_HE = 26;                           // 地和
+    JP_TIAN_HE = 27;                         // 天和
+    JP_SHI_SHANG_SAN_NIAN = 28;              // 石上三年 [古]
+    JP_BA_LIAN_ZHUANG = 29;                  // 八连庄 [古]
+    JP_DONG_BEI_XIN_GAN_XIAN = 30;           // 东北新干线 [古]
+    JP_HEI_YI_SE = 31;                       // 黑一色 [古]
+    JP_BAI_WAN_SHI = 32;                     // 百万石 [古]
+    JP_HONG_KONG_QUE = 33;                   // 红孔雀 [古]
+    JP_FENG_HUA_XUE_YUE = 34;                // 风花雪月 [古]
+    JP_HUA_NIAO_FENG_YUE = 35;               // 花鸟风月 [古]
+    JP_KAI_LI_ZHI_RONG = 36;                 // 开立直
+    JP_REN_HE = 37;                          // 人和 [古]
+
+    // 6番
+    JP_QING_YI_SE = 38;                      // 清一色
+
+    // 5番
+    JP_YI_TONG_MO_YUE = 39;                  // 一筒摸月 [古]
+    JP_JIU_TONG_LAO_YUE = 40;                // 九筒捞鱼 [古]
+    JP_WU_TONG_KAI_HUA = 41;                 // 五筒开花 [古]
+    JP_JIN_JI_DU_LI = 42;                    // 金鸡独立 [古]
+    JP_DU_DIAO_HAN_JIANG_XUE = 43;           // 独钓寒江雪 [古]
+
+    // 3番
+    JP_HUN_YI_SE = 44;                       // 混一色
+    JP_ER_BEI_KOU = 45;                      // 二杯口
+    JP_CHUN_QUAN_DAI_YAO_JIU = 46;           // 纯全带幺九
+    JP_WU_XIN_TONG_GUAN = 47;                // 五心通贯 [古]
+
+    // 2番
+    JP_SAN_GANG = 48;                        // 三杠子
+    JP_HUN_YAO_JIU = 49;                     // 混老头
+    JP_HUN_QUAN_DAI_YAO_JIU = 50;            // 混全带幺九
+    JP_QI_DUI = 51;                          // 七对子
+    JP_XIAO_SAN_YUAN = 52;                   // 小三元
+    JP_YI_SE_SAN_JIE_GAO = 53;               // 三连刻 [古]
+    JP_QING_LONG = 54;                       // 一气通贯
+    JP_YI_SE_SAN_BU_GAO = 55;                // 一色三步 [古]
+    JP_SAN_TONG_KE = 56;                     // 三色同刻
+    JP_SAN_AN_KE = 57;                       // 三暗刻
+    JP_HUA_LONG = 58;                        // 三色通贯 [古]
+    JP_SAN_SE_SAN_TONG_SHUN = 59;            // 三色同顺
+    JP_PENG_PENG_HE = 60;                    // 对对和
+    JP_WU_MEN_QI = 61;                       // 五门齐 [古]
+    JP_SHUANG_LI_ZHI = 62;                   // 双立直
+    JP_KAI_LI_ZHI_ZIMO = 63;                 // 开立直 [古]
+
+    // 1番
+    JP_MIAO_SHOU_HUI_CHUN = 64;              // 海底捞月
+    JP_HAI_DI_YAO_YUE = 65;                  // 河底捞鱼
+    JP_GANG_SHANG_KAI_HUA = 66;              // 岭上开花
+    JP_QIANG_GANG_HE = 67;                   // 抢杠
+    JP_SAN_SE_SAN_BU_GAO = 68;               // 三色三步 [古]
+    JP_QUAN_FENG_KE = 69;                    // 圈风刻
+    JP_MEN_FENG_KE = 70;                     // 门风刻
+    JP_SANYUAN_KE = 71;                      // 三元牌
+    JP_PING_HE = 72;                         // 平和
+    JP_DUAN_YAO = 73;                        // 断幺九
+    JP_YI_BAN_GAO = 74;                      // 一杯口
+    JP_ZI_MO = 75;                           // 自摸
+    JP_LI_ZHI = 76;                          // 立直
+    JP_YI_FA = 77;                           // 一发
+    JP_YAN_FAN = 78;                         // 燕返 [古]
+    JP_GANG_ZHEN = 79;                       // 杠振 [古]
+    JP_SHI_ER_LUO_TAI = 80;                  // 十二落抬 [古]
+    JP_BAO_PAI = 81;                         // 宝牌
+    JP_LI_BAO_PAI = 82;                      // 里宝牌
+    JP_CHI_BAO_PAI = 83;                     // 赤宝牌
+}
+
+message Player {
+    uint64 userID = 1;                      // 用户id
+    uint32 seatID = 3;                      // 座位id
+    repeated uint32 holeCards = 7;          // 私牌列表
+}
+
+message GameStart {
+    repeated uint64 userIDs = 1;            // 参与牌局的玩家ID列表
+    uint32 bankerSeatID = 2;                // 庄位
+}
+
+message GameID {
+    uint32 id = 1;                          // 牌桌ID
+}
+
+message GameUUID {
+    string uuid = 1;                        // 牌桌uuID
+    uint64 clubid = 2;                      // 俱乐部id
+    uint64 lat = 3;                         // 用户经度
+    uint64 lon = 4;                         // 用户纬度
+}
+
+message PlayerCards {
+    uint64 userID = 1;
+    repeated uint32 holeCards = 2;          // 私牌列表
+}
+
+message PlayerID {
+    int64 user_id = 1;                      // 用户id
+}
+
+message ExitStatus {
+    int32 status = 1;                      // 退出状态, 1: 退出失败，正在游戏中，2：退出成功
+}
+
+message PlayerPlayStaticsInfo {
+    float avg_shunwei = 1;                  // 平均顺位
+    string name_nick1 = 2;                  // 段位名称: 日麻高手xxxx
+    string name_nick2 = 3;                  // 段位等级: 雀圣LV1
+    float one_lv = 4;                       // 最近十局一位率
+    float two_lv = 5;                       // 最近十局两位率
+    float three_lv = 6;                     // 最近十局三位率
+    float four_lv = 7;                      // 最近十局四位率
+    float he_lv = 8;                        // 和牌率
+    float pao_lv = 9;                       // 放铳率
+    float lizhi_lv = 10;                    // 立直率
+    float fulu_lv = 11;                     // 副露率
+    int64 game_count = 12;                  // 总对局数
+    float he_xun_count = 13;                // 平局和牌巡目
+    int32 avg_dianshu = 14;                 // 平均和牌点数
+    int32 avg_fangchou = 15;                // 平均放铳点数
+    repeated int32 shiju_status = 16;       // 最近10局排名走势图
+}
+
+message PlayerInfo {
+    int64 user_id = 1;                      // 用户id
+    int32 seat_id = 2;                      // 座位id
+    int32 ready = 3;                        // 是否准备
+    string nickname = 4;                     // 昵称
+    int32 header_id = 5;                    // 头像id
+    int64 money_plat = 6;                   // 点数
+    int32 from = 7;                         // 用户来源
+    int32 sex = 8;                          // 性别
+    int32 win_times = 9;                    // 赢的次数
+    int32 lost_times = 10;                  // 输的次数
+    int32 ping_times = 11;                  // 流局次数
+    int32 level = 12;                       // 等级
+    string level_name = 13;                  // 等级名称
+    int64 all_result = 14;                  // 输赢总点数
+    PlayerPlayStaticsInfo statics = 15;     // 统计信息
+}
+
+message MahjongTableEnterResponse {
+    int32 table_type = 1;                   // 桌子类型
+    int32 level = 2;                        // 等级
+    int32 table_id = 3;                     // 桌子id
+    int32 base_chips = 4;                   // 底注
+    int32 base_radix = 5;                   // 倍数
+    int32 quan = 6;                         // 圈数
+    int32 cur_quan = 7;                     // 当前圈
+    repeated PlayerInfo players = 8;        // 玩家信息
+    int32 out_card_timeout = 9;             // 出牌时间
+    int32 operation_timeout = 10;           // 操作时间
+    int32 next_round_start_time = 11;       // 一局结束到下一局开始时间
+}
+
+message MahjongReadyStart {
+    int32 bankerSeatId = 1;                 // 庄家座位id
+}
+
+message HandCard {
+    repeated int32 card = 1;                // 手牌
+}
+
+message TingCard {
+    repeated int32 card = 1;                // 听牌 [日麻不用这个结构]
+}
+
+message SendCard {
+    HandCard handCard = 1;                  // 用户手牌
+    repeated HucardInfo hucard = 2;         // 胡牌信息
+    repeated int32 changeCard = 3;          // 换牌信息(tw)
+}
+
+message GameUserStartInfo {
+    int64 user_id = 1;                      // 用户id
+    repeated int32 hua_card = 2;            // 花牌日麻为空
+    int64 nDianShu = 3;                     // 用户点棒数量
+}
+
+message HuaCardsInfo {
+    repeated GameUserStartInfo users = 1;   // 用户信息
+    int32 doraCard = 2;                     // 宝牌指示牌
+    int32 nShaiziCount = 3;                 // 筛子数值
+    int32 nQuan = 4;                        // 第几圈
+    int32 nRound = 5;                       // 第几局
+    int32 nBenJu = 6;                       // 第几本局
+    int32 nBankerSeatId = 7;                // 东家座位id，即庄家座位id，即东家=庄家
+    string cardMD5 = 8;                      // 牌局md5
+    int32 out_card_timeout = 9;             // 出牌时间
+    int32 operation_timeout = 10;           // 操作时间
+    int32 gongtuo = 11;                     // 拱托
+}
+
+message UserGrabCard {
+    repeated int32 byGrabCard = 1;        // 抓的牌
+    int32 nActionValue = 2;               // 操作码(自摸, 胡, 杠)
+    repeated int32 gangCards = 3;         // 杠牌信息
+    bool bGrabFinalCard = 4;              // 是否抓的最后一张牌
+    repeated HucardInfo hucard = 5;       // 胡牌信息
+    int32 diff_timeout = 6;               // 出牌灵活时间
+}
+
+message HucardInfo {
+    int32 card = 1;                       // 选择打出去的牌   
+    repeated TingInfo tings = 2;          // 选择打出去的牌 对应听的具体信息
+}
+
+message TingInfo {
+    int32 card = 1;                       // 听的牌
+    int32 fans = 2;                       // 番数 (日麻叫役)
+    int32 shengyu = 3;                    // 剩余
+    int32 fanxing = 4;                    // 翻型 (是否为特殊番型)
+    int32 comfanxing = 5;                 // 普通翻型
+}
+
+message BroadGrabCard {
+    int64 cur_user_id = 1;                // 抓牌用户id
+    int32 crab_card_index = 2;            // 抓牌下标
+    repeated int32 hua_cards = 3;         // 花牌(日麻没有花牌，这里为空)
+    bool grab_final_card = 4;             // 抓的是否最后一张牌
+}
+
+message UserOutCard {
+    int32 card = 1;                       // 出牌
+    int32 isTing = 2;                     // 是否立直(类似听)
+    bool isMoQie = 3;                     // 是否模切
+}
+
+message GangDoraCard {
+    int32 card = 1;                       // 杠dora指示牌
+}
+
+message UserOutCardRespond {
+    int64 nOutCardUserId = 1;             // 出牌者id
+    int32 nOpWeight = 2;                  // 操作码
+    bool isTing = 3;                      // 是否立直
+    int32 byFan = 4;                      // 番数 (日麻叫役)
+    int32 byOutCard = 5;                  // 出牌值
+    int32 diff_timeout = 6;               // 出牌灵活时间    
+    bool moqie = 7;                       // 是否模切(true: 模切，false: 手切)
+    repeated int32 disableCards = 8;      // 操作者不能出的牌
+    bool isZhenTing = 9;                  // 是否振听
+    bool isHengFang = 10;                 // 是否需要横着放
+}
+
+message UserLiZhiUpdateDianShu {
+    int64 nUserId = 1;                    // 用户id
+    int64 nDianShu = 2;                   // 用户当前的点数，中央显示
+    int32 gongtuo = 3;                    // 拱托，系统立直次数，左上角显示
+}
+
+message UserOperatorRequest {
+    int32 opValue = 1;                    // 操作码(吃碰杠等)
+    int32 opCard = 2;                     // 操作的牌
+    int32 redFiveCount = 3;               // 操作组的红五数量(例如碰5万，那就计算这三个5万中红五的数量，吃3万，那就算吃这一组红五的数量)
+}
+
+message UserOperatorRespond {
+    int64 operatorUserID = 1;             // 操作者id
+    int32 operationValue = 2;             // 操作码
+    int32 operationCard = 3;              // 操作牌值
+    int32 targetSeatID = 4;               // 被操作者的座位id
+    repeated HucardInfo hucard = 5;       // 胡牌信息 [对于操作者才有这个信息提示]
+    int32 diff_timeout = 6;               // 出牌灵活时间
+    repeated int32 disableCards = 7;      // 操作者不能出的牌
+    int32 redFiveCount = 8;               // 操作组的红五数量
+}
+
+message UserOperatorJumpReply {
+    int64 operatorUserID = 1;             // 操作者id
+    int32 diff_timeout = 2;               // 出牌灵活时间
+    bool isZhenTing = 3;                  // 是否振听
+}
+
+message FuLuInfo {
+    int32 fuluType = 1;                 // 副露类型(与操作码一致)
+    repeated int32 cards = 2;           // 牌值(例如，345，555，789，9999等)
+    int32 pos = 3;                      // 方位(1:下家，2:对家，3:上家)[只有碰，明杠，补杠才有方位] [默认值-1]
+}
+
+message PlayerTingInfo {
+    int64 userId = 1;                     // 用户id
+    repeated int32 cards = 2;             // 听的牌
+}
+
+message GameRoundResult {
+    int32 nRoundResult = 1;               // 游戏结果 (慌牌流局: 1 | 途中流局: 2 ｜ 自摸: 3 ｜ 放炮: 4)
+    int64 time_round = 2;                 // 这一局消耗的时间
+    int64 hu_or_pao_uid = 3;              // 自摸或者放炮的用户id
+    repeated ResPlayerInfo player_info = 4;  // 玩家情况
+    int32 hu_card = 5;                    // 胡的牌
+    bool stop_game = 6;                   // 是否一场结束(即所有圈都打完)
+    int32 nLiuJuType = 7;                 // 流局类型 (如果是慌牌流局，则[&]---> 庄家听牌流局: 0x001, 流局满贯: 0x002; 如果是途中流局, 则[=]---> 四杠散了: 1, 四风连打: 2, 四家立直: 3, 九种九牌: 4)
+    repeated PlayerTingInfo player_ting = 8;          // 如果是流局，并且用户有听牌信息，则这个数组有用户听牌信息
+}
+
+message ResPlayerInfo {
+    int64 user_id = 1;                    // 用户id
+    int32 status = 2;                     // 是否在线状态
+    int64 money_plat = 3;                 // 用户的点数
+    int64 turn_money = 4;                 // 番输赢的点数
+    int64 turn_money_all = 16;            // 总的输赢点数
+    int32 round_result = 5;               // 游戏结果(赢家|输家|平家[有人放炮时，没输没赢的人]，1:自摸，2:荣和，0:平，3:放炮者(相对于荣和)，4:输家(相当于自摸的输家))
+    repeated int32 rem_cards = 6;         // 玩家剩余手牌
+    int32 allFan = 7;                     // 总番数
+    int32 fu = 8;                         // 总符数
+    repeated FanInfo fans = 9;            // 所有役种(番数)
+    int32 rank = 10;                      // 排名
+    int32 winCard = 11;                   // 赢的那张牌 如果没有，值为0xFF
+    repeated FuLuInfo fulus = 12;         // 副露
+    repeated int32 dora = 13;             // 宝牌
+    repeated int32 lidora = 14;           // 里宝牌
+    PlayerPlayStaticsInfo statics = 15;   // 统计信息
+    SHOW_TYPE showType = 17;              // 显示类型
+    string nickName = 18;                 // 用户名
+}
+
+message FanInfo {
+    int32 type = 1;                       // 役种
+    string name = 2;                       // 役种名称
+    int32 score = 3;                      // 番数
+}
+
+// 结算桌子信息
+message MahjongTableInfo {
+    int32 table_type = 1;                       // 桌子类型
+    repeated MahjongGameUser users = 2;         // 桌子的用户信息(jp使用)
+    repeated MahjongGameUserTw users_tw = 3;    // 桌子的用户信息(tw使用)
+}
+
+message MahjongGameUser {
+    int64 user_id = 1;                  // 用户id
+    float user_yuanbao = 2;             // 用户的总元宝数
+    float relative_money = 3;           // 输赢的元宝数
+    int64 money_plat = 4;               // 用户总点数
+    int64 all_result = 5;               // 输赢总点数
+    int32 online_status = 6;            // 状态
+    int32 rank = 7;                     // 排名
+    float dedian = 8;                   // 得点
+}
+
+message MahjongGameUserTw {
+    int64 user_id = 1;                  // 用户id
+    int64 relative_money = 2;           // 输赢的金币数(当前局)
+    int64 money_plat = 3;               // 用户当前金币数量(已经包含结算结果)
+    int64 all_result = 4;               // 输赢总金币数(所有局)
+    int32 online_status = 5;            // 状态
+    int32 fangpao_nums = 6;             // 点炮次数
+    int32 zimo_nums = 7;                // 自摸次数
+    int32 gangshangkaihua_nums = 8;     // 杠上开花次数
+    int32 chihu_nums = 9;               // 吃胡次数
+    int32 max_fan = 10;                 // 胡牌最大番数
+}
+
+message PlayerData {
+    int64 user_id = 1;                  // 用户id
+    int32 win_times = 2;                // 赢的次数
+    int32 lost_times = 3;               // 输的次数
+    int32 ping_times = 4;               // 流局次数
+    int32 level = 5;                    // 等级
+    string level_name = 6;               // 等级名称
+    int32 exp = 7;                      // 经验
+}
+
+message PlayerUpdateData {
+    repeated PlayerData player_datas = 1;   // 需要更新信息的用户
+}
+
+message UserOffline {
+    repeated PlayerID players = 1;     // 掉线的用户
+}
+
+message UserTuoGuan {
+    int32 type = 1;                     // 托管类型，1:托管，0:取消托管
+}
+
+message BroadUserTuoGuan {
+    int64 user_id = 1;                  // 托管的用户id
+    int32 type = 2;                     // 托管类型，1:托管，0:取消托管
+}       
+
+message UserOperatorHint {
+    int32 opValue = 1;                  // 操作码(抢杠和等)
+    int32 opCard = 2;                   // 操作的牌
+    int32 seatID = 3;                   // 座位id
+    int32 fan = 4;                      // 番数
+    int32 diff_timeout = 5;             // 操作灵活时间    
+}
+
+message UserPriMes {
+    int64 receiveUid = 1;               // 发送者uid
+    int64 sendUid = 2;                  // 接收者uid
+    int32 faceid = 3;                   // 表情id
+}
+
+message OutCardInfo {
+    int32 outCard = 1;                  // 出的牌
+    int32 status = 2;                   // 出的牌的状态 [1被别人叫了，0没有被鸣牌]
+    int32 moQie = 3;                    // 是否模切
+}
+
+message PlayerInfoReconect {
+    int64 user_id = 1;                  // 用户id
+    int32 seat_id = 2;                  // 座位id
+    int32 ai = 3;                       // 是否托管
+    string nickname = 4;                // 昵称
+    int64 dianshu = 5;                  // 点数(金币)
+    int32 tingPai = 6;                  // 是否立直
+    int32 holdCount = 7;                // 手牌数量
+    repeated int32 holds = 8;           // 手牌，如果是其他玩家，则为空
+    repeated FuLuInfo fulus = 9;        // 副露
+    repeated OutCardInfo outCards = 10; // 出的牌
+    PlayerPlayStaticsInfo statics = 11; // 统计信息
+    int32 lizhiPaiIndex = 12;           // 立直牌在出牌中的第几个[从0开始数]
+    bool isReady = 13;                  // 是否已经准备好
+    int32 header_id = 14;               // 头像id
+    repeated int32 huaPais = 15;        // 花牌，如果没有，则为空数组
+    int32 sex = 16;                     // 用户性别
+    int64 allResult = 17;               // 总输赢分数
+    int32 winTimes = 18;                // 赢次数
+    int32 lostTimes = 19;               // 输次数
+    int32 pingTimes = 20;               // 平局次数
+    int32 level = 21;                   // 等级
+}
+
+message TableReconnectInfo_jp {
+    int32 nBenJu = 1;                   // 第几本局
+    int32 gongtuo = 2;                  // 拱托
+    repeated int32 doraCards = 3;       // dora宝牌
+}
+
+message TableReconectInfo {
+    int32 tableType = 1;                // 桌子类型
+    int32 baseChips = 2;                // 底注    
+    int32 baseRadix = 3;                // 倍数
+    int32 quan = 4;                     // 圈数 [总共要打几圈]
+    int32 outCardTimeOut = 5;           // 固定时间(出牌/操作)
+    int32 operationTimeOut = 6;         // 灵活时间(出牌/操作)
+    int32 curQaun = 7;                  // 当前圈数
+    int32 nRound = 8;                   // 第几局
+    int32 nBenJu = 9;                   // 第几本局
+    int32 gongtuo = 10;                 // 拱托
+    int32 eastSeatID = 11;              // 东风位置
+    int32 bankSeatID = 12;              // 庄家位置
+    int32 shuaizi = 13;                 // 筛子数
+    int32 leftCardCount = 14;           // 剩余麻将数
+    repeated int32 doraCards = 15;      // dora宝牌
+    repeated PlayerInfoReconect players = 16; // 用户信息
+    int32 gameState = 17;               // 游戏状态 1: 游戏中，2: 非游戏中
+    int32 curState = 18;                // 用户当前状态：1.轮到用户出牌, 2.轮到用户操作, 3.不是轮到用户，闲置状态
+    repeated int32 disableCards = 19;   // 操作者不能出的牌
+    bool isZhenTing = 20;               // 是否振听
+    int32 fixed_timeout = 21;           // 当前出牌者剩余固定时间(出牌/操作)
+    int32 diff_timeout = 22;            // 当前出牌者剩余灵活时间(出牌/操作)    
+    int64 preOutCardUid = 23;           // 上一个出牌者id
+    int32 nOpWeight = 24;               // 操作码 [状态2才有]
+    int32 byOutCard = 25;               // 上一家出牌值[对应操作码] [状态2才有]
+    int32 curOutCardUid = 26;           // 当前出牌者用户id 
+    repeated int32 gangCards = 27;      // 杠牌信息 [状态2才有]
+    int32 byGrabCard = 28;              // 玩家最后摸的一张牌 [状态1，2才有，状态2的情况下，如果不是暗杠补杠立直，自摸的情况则没有]
+    repeated HucardInfo hucard = 29;    // 胡牌信息
+    int32 tablemode = 30;               // 0: 普通模式， 1: 钻模式
+    int32 tableLevel = 31;              // 桌子等级
+    int32 tableID = 32;                 // 桌子id
+    int32 lianZhuangCount = 33;         // 连庄次数
+    int32 nextGameTime = 34;            // 下一局开始时间
+    string uuid = 35;                   // 牌桌uuID
+}
+
+message KickUser {
+    uint32 leftTime = 1;                // 踢出倒计时
+}
+
+message GameUUIDTestData {
+    string uuid = 1;                        // 牌桌uuID
+    uint64 clubid = 2;                      // 俱乐部id
+    bool isSet = 3;                         // true 设置牌，false 随机发牌
+}
+
+message GameIDReq {
+    uint64 roomLevel = 1;                   // 房间等级
+}
+
+message RoomLevelInfo {
+    int32 level = 1;                        // 房间等级
+    uint64 baseChip = 2;                    // 底注
+    uint64 enterLimit = 3;                  // 进入限制
+    int32 onlineCount = 4;                  // 当前在线人数
+}
+
+message RoomLevelInfos {
+    repeated RoomLevelInfo roomInfos = 1;   // 房间配置
+}
+
+enum mahjongJPCode {
+    UNSPECIFIED_MAHJONG_JP = 0;
+    /*
+     * 登录成功，返回用户信息
+     * s >> c: PlayerInfo
+     */
+    MAHJONG_SERVER_LOGIN_SUCCESS            = 0x2329;
+    /*
+     * 获取房间配置
+     * c >> s: 空
+     * s >> c: RoomLevelInfos
+     */
+    MAHJONG_CLIENT_ROOMLEVEL_REQ            = 0x2214;
+    /*
+     * 进入房间成功, 返回桌子信息
+     * s >> c: MahjongTableEnterResponse
+     */
+    MAHJONG_SERVER_COMMAND_LOGIN_SUCCESS    = 0x2307;
+    /*
+     * 重连请求
+     * c >> s: 空
+     */
+    MAHJONG_CLIENT_RECONNECT_REQ            = 0x2213;
+    /*
+     * 断线重连重绑定成功
+     * s >> c: TableReconectInfo
+     */
+    MAHJONG_SERVER_COMMAND_RECONNECT_SUCCESS= 0x2308;
+    /*
+     * 获取桌子ID
+     * c >> s: GameIDReq
+     * s >> c: GameID
+     */
+    PANGU_CLIENT_COMMAND_CHOOSE_ROOM        = 0x2219;
+    /*
+     * 用户进入友人房间
+     * c >> s: GameID
+     */
+    PANGU_CLIENT_COMMAND_ENTER_ROOM         = 0x2220;
+    /*
+     * 用户进入俱乐部房间
+     * c >> s: GameUUID
+     */
+    PANGU_CLIENT_COMMAND_ENTER_CLUB_ROOM    = 0x2343;
+    /*
+     * 用户退出房间[俱乐部，友人房都是使用这个]
+     * c >> s: 空
+     */
+    MAHJONG_CLIENT_COMMAND_LOGOUT           = 0x2201;
+    /*
+     * 用户准备
+     * c >> s: 空
+     */
+    MAHJONG_CLIENT_COMMAND_READY            = 0x2203;
+    /*
+     * 广播用户准备
+     * s >> c: PlayerID
+     */
+    MAHJONG_SERVER_BROADCAST_USER_READY     = 0x2301;
+    /*
+     * 用户出牌
+     * c >> s: UserOutCard
+     */
+    MAHJONG_CLIENT_COMMAND_OUT_CARD         = 0x2204;
+    /*
+     * 服务器广播用户出牌
+     * s >> c: UserOutCardRespond
+     */
+    MAHJONG_SERVER_BROADCAST_USER_OUT_CARD  = 0x2302;
+    /*
+     * 服务器广播立直更新数据
+     * s >> c: UserLiZhiUpdateDianShu
+     */
+    MAHJONG_SERVER_COMMAND_LIZHI_UPDATE     = 0x2342;    
+    /*
+     * 广播用户托管
+     * s >> c: BoardUserTuoGuan
+     */
+    MAHJONG_SERVER_BROADCAST_USER_AI        = 0x2303;
+    /*
+     * 服务器告诉客户端可以进行操作(例如抢杠和, 发生在用户杠的时候，通知客户端可以抢杠和)
+     * s >> c: UserOperatorHint
+     */
+     MAHJONG_SERVER_COMMAND_OPEERATION_HINT  = 0x2304;
+    /*
+     * 用户执行操作
+     * c >> s: UserOperatorRequest
+     * s >> c: 空(确认回复)
+     */
+     MAHJONG_CLIENT_COMMAND_TAKE_OPERATION   = 0x2205;
+    /*
+     * 回复跳过
+     * s >> c: UserOperatorJumpReply
+     */
+     MAHJONG_SERVER_COMMAND_JUMP_REPLY       = 0x2341;     
+    /*
+     * 用户托管或取消托管
+     * c >> s: UserTuoGuan
+     */
+    MAHJONG_CLIENT_COMMAND_REQUEST_AI        = 0x2206;
+    /*
+     * 广播用户进入
+     * s >> c: PlayerInfo
+     */
+    MAHJONG_SERVER_BROADCAST_USER_LOGIN     = 0x2309;
+    /*
+     * 用户退出回复
+     * s >> c: ExitStatus
+     */
+    MAHJONG_SERVER_COMMAND_LOGOUT_ROOM_RY   = 0x2344;
+    /*
+     * 广播用户退出
+     * s >> c: PlayerID
+     */
+     MAHJONG_SERVER_BROADCAST_USER_LOGOUT    = 0x230A;
+    /*
+     * 广播掉线的用户
+     * s >> c: UserOffline
+     */
+    MAHJONG_SERVER_BROADCAST_OFFLINE_USER   = 0x230B;
+    /*
+     * 服务器发牌
+     * s >> c: SendCard
+     */
+    MAHJONG_SERVER_COMMAND_DEAL_CARD        = 0x2317;
+    /*
+     * 服务器抓牌发给用户
+     * s >> c: UserGrabCard
+     */
+    MAHJONG_SERVER_COMMAND_GRAB_CARD       = 0x2318;
+    /*
+     * 无效操作(例如: 杠的时候发的牌不合法)
+     * s >> c: 空
+     */
+    MAHJONG_SERVER_COMMAND_INVALID_OPERATION = 0x2319;
+    /*
+     * 游戏准备开始，广播庄家 东风位置
+     * s >> c: MahjongReadyStart
+     */
+    MAHJONG_SERVER_BROADCAST_READY_START    = 0x231B;
+    /*
+     * 服务器广播游戏开始
+     * s >> c: HuaCardsInfo
+     */
+    MAHJONG_SERVER_BROADCAST_START_GAME     = 0x231C;
+    /*
+     * 杠dora指示牌
+     * s >> c: GangDoraCard
+     */    
+    MAHJONG_SERVER_GANG_DORA                = 0x2340;
+    /*
+     * 广播用户进行了什么操作(例如: 杠)
+     * s >> c: UserOperatorRespond
+     */
+    MAHJONG_SERVER_BROADCAST_TAKE_OPERATION = 0x231D;
+    /*
+     * 广播当前玩家ID
+     * s >> c: BroadGrabCard
+     */
+    MAHJONG_SERVER_BROADCAST_CURRENT_PLAYER = 0x231E;
+    /*
+     * 广播数据更新(用户输赢次数)
+     * s >> c: PlayerUpdateData
+     */
+    MAHHONG_SERVER_BROADCAST_DATA_UPDATE    = 0x2334;    
+    /*
+     * 一局结算
+     * s >> c: GameRoundResult
+     */
+    MAHJONG_SERVER_BROADCAST_STOP_ROUND     = 0x231F;
+    /*
+     * 广播游戏停止(一盘游戏结束，日麻一盘游戏分为很多局组成)
+     * s >> c: MahjongTableInfo
+     */
+    MAHJONG_SERVER_BROADCAST_STOP_GAME      = 0x2320;
+    /*
+     * 踢出玩家
+     * s >> c: KickUser
+     */
+    MAHJONG_SERVER_KICK_USER_NOT_READY      = 0x232A;
+    /*
+     * 设置测试数据
+     * c >> s: GameUUIDTestData
+     * s >> c: 空(确认回复)
+     */
+    MAHJONG_CLIENT_COMMAND_SET_TEST_DATA    = 0x2212;
+}
+
+// 麻将协议规则 (能复用就复用，含义变化则标注)
+// 通用协议：所有麻将都使用
+// 地方协议：地方麻将专用

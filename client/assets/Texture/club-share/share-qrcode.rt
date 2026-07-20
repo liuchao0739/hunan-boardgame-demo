@@ -1,0 +1,9 @@
+{
+  "__type__": "cc.RenderTexture",
+  "content": {
+    "base": "2,2,0,0,0,0",
+    "w": 250,
+    "h": 250,
+    "n": "share-qrcode"
+  }
+}

@@ -1,0 +1,798 @@
+syntax = "proto3";
+import public "mahjongResult.proto";
+
+package club;
+option go_package="apsara/protofile/autogen/client/club";
+
+
+message ClubInfo{
+    uint32 clubId = 1;
+    string name = 2;  
+    uint32 avatarId = 3;         
+    string avatarUrl = 4;      
+    uint32 ownerId = 5;         //创建者Id
+    uint32 clubType = 6;        // 1 钻 0 铜
+    uint32 maxPlayerNo = 7;     //最大成员数
+    uint32 curPlayerNo = 8;     //当前成员数
+    uint32 actvieTableNo = 9;   //当前在玩桌数
+    uint32 clubStatus = 10;     //0 关闭 1 正常
+    string ownerName = 11;      //创建者名字
+    float  totalAsset = 12;
+}
+
+message ChangStatistic {
+	 float   AveRate      = 1;   //平均顺位     
+	 float   No1Rate      = 2;   //1位率            
+	 float   No2Rate      = 3;   //2位率            
+	 float   No3Rate      = 4;   //3位率            
+	 float   No4Rate      = 5;   //4位率            
+	 float   AveWinXun    = 6;   //平均和牌巡目  
+	 float   WinRate      = 7;   //和牌率           
+	 float   FailRate     = 8;   //放铳率          
+	 float   ReadyRate    = 9;   //立直率          
+	 float   FuluRate     = 10;  //副露率           
+	 uint32  TotalRound   = 11;  //总对局数         
+	 float   AveWinPoint  = 12;  //平均和牌点数  
+	 float   AveFailPoint = 13;  //平局放铳点数     
+}
+
+message Fulu {
+    int32 FuluType = 1;                 // 副露类型(与操作码一致)
+    repeated int32 Cards = 2;           // 牌值(例如，345，555，789，9999等)
+    int32 Pos = 3;                      // 方位1(1:下家，2:对家，3:上家)[只有碰，明杠，补杠才有方位1] [默认值-1]
+}
+message RecentHeCard {
+    repeated int32 RemCards = 1;
+    repeated Fulu Fulus  = 2;
+    uint32 ShowType = 3; 
+}
+message Fan {
+    uint32 type = 1;
+    uint32 value = 2;
+}
+message StatisticExtra {
+    uint32 heCount = 1;
+    uint32 roundCount =2;
+    float  hePoint = 3;
+    uint32 fuluCount = 4;
+    uint32 fangpaoCount = 5;
+    float  fangpaoPoint = 6;
+}
+message Statistic {
+   RecentHeCard recentHeCard = 1;   //最近和牌牌型
+   uint32 winCard = 2;        //和牌牌名
+   uint32 power =3;           //攻：最近100局的和牌率*最近100局的平均和牌点数 / 2000 * 100，最大值100；
+   uint32 defense =4;         //防：[1 -（最近100局的放铳率*最近100局的平均放铳点 / 2000）] * 100，最大值100；
+   uint32 speed = 5;          //速：最近100局的露率 * 100，最大值100；
+   uint32 luck = 6;           //运：最近20次和牌中悬赏役的次数 / 20 *100，最大值100；
+   repeated uint32 position = 7; 
+   ChangStatistic East  = 8;   
+   ChangStatistic South = 9;  
+   repeated Fan fans = 10;
+   StatisticExtra Extra = 11;
+
+}
+
+message PlayerInfo{
+    uint32 playerId = 1;
+    string name = 2;
+    uint32 avatarId = 3;         
+    string avatarUrl = 4;    
+    float  balance =5;                      //金币
+    float  fee = 6;                         //服务费
+    bool   isOnline = 7;                    //是否在线
+    repeated uint32 joinedClubIdList = 8;   //已加入俱乐部Id列表
+    uint32 recentClubId = 9;                //最近加入的俱乐部Id
+    uint32 gouyu = 10;                      //勾玉
+	uint32 tongbi  = 11;                    //铜币
+    Statistic clubstatistic = 12;           //俱乐部统计
+    Statistic friendstatistic = 13;         //友人场统计
+    float ledgerBalance = 14;               //盈亏
+    int64 lastLoginTime = 15;
+    int64 lastPlayTime  = 16;
+    uint32 totalRoundNo = 17;               //总对局数
+
+}
+message ClubPlayerInfo{    
+    uint32 clubId   = 1;
+    uint32 playerId = 2;
+    float  balance  = 3;        //金币
+    float  fee      = 4;        //服务费
+    int64  joininTime = 5;      //加入时间
+    int64  lastPlayTime = 6;    //最后游戏时间
+    float  maxWinCoins = 7;     //赢得最大金币
+    float  maxWinPoints = 8;    //最大得点
+    uint32 totalRoundNo = 9;    //对局数
+    float  ledgerBalance = 10;  //总输赢
+    uint32 status = 11;         //玩家状态 0 被踢 1 加入 2 退出
+    string playerName = 12;    
+    uint32 playerAvatarId  = 13;
+    string playerAvatarUrl = 14;
+}
+message TablePlayerInfo  {
+	uint32  playerId   = 1;   
+	float   amount     = 2;//金币   
+    float   varyAmount = 3;//变动金币
+	string  name       = 4;//玩家名字
+	float   point      = 5;//点数   
+    uint32  rank       = 6;//排名1,2,3,4
+    uint32  avatarId   = 7;
+    string  avatarUrl  = 8;
+    uint32  seatNum    = 9;
+}
+message TableInfo {
+	string  tableId        = 1;                  //牌桌Id
+	uint32  clubId	       = 2;                  //俱乐部Id
+	uint32  ownerId        = 3;                  //创建者Id
+	uint32  mode           = 4;                  //四人模式
+	uint32  roundNo        = 5;                  //局数 0 东风 1 东南战
+	uint32  thinkTime      = 6;                  //思考时间 0 3+5秒 1 5+15秒 3 60+0秒 3 300+0秒
+	uint32  level          = 7;                  //游戏级别 金币 / 每点
+	float   bringInAmount  = 8;                  //带入要求
+	uint32  fee            = 9;                  //服务费
+    uint32  startPoint     = 10;                 //起始点数
+	uint32  redCard        = 11;                 //赤宝牌
+	int32   exPoint1       = 12;                 //额外点数
+    int32   exPoint2       = 13;                 //额外点数
+    int32   exPoint3       = 14;                 //额外点数
+    int32   exPoint4       = 15;                 //额外点数
+	uint32  headJumpFlag   = 16;                 //头跳
+	uint32  doubleFlag     = 17;                 //双倍役满
+	uint32  hintFlag       = 18;                 //摸切提示
+	uint32  convenientFlag = 19;                 //便捷提示
+	uint32  noWinnerFlag   = 20;                 //途中流局
+	uint32  autoStartFlag  = 21;                 //自动开始
+	repeated TablePlayerInfo players = 22;       //玩家结果信息
+    int64   startAt        = 23;                 //牌桌开始时间
+	int64   finishAt       = 24;                 //牌桌结束时间
+	uint32  status         = 25;                 //牌桌状态 1 open 0 close
+    uint32  roomId         = 26;                 //友人牌局房间Id
+    string  clubName       = 27;                 //俱乐部name
+    uint32  gameId         = 28;                 //牌谱Id
+    uint32  isSaved        = 29;                 //是否收藏
+    string  paipuLink      = 30;                 //牌谱链接
+    string  anoPaipuLink   = 31;                 //匿名牌谱链接
+    string  paipuName      = 32;                 //牌谱name
+    uint32  isDiamondClub  = 33;  
+    bool    isGpsIPCheck   = 34;
+    uint32  createSrc      = 35;                 //建立来源 0 正常 1 匹配
+}
+
+message OrderInfo{
+    uint32 orderId = 1;
+    uint32 clubId = 2;
+    uint32 playerId = 3;
+    string name = 4;
+    string payType =5;//(buy,bringin,bringout,withdraw)
+    float  coins = 6;
+    uint32 status = 7;// 0: pending, 1:reject, 2:failed, 3:complete
+    int64  orderTime = 8;
+}
+message MoneyInfo{
+    uint32 orderId = 1;
+    uint32 clubId = 2;
+    uint32 payType = 32; // 0 deposit 1 withdraw
+    float  coins = 4;
+    float  amount = 5;
+    int64  orderTime = 6;
+    uint32 status = 7;// 0: pending, 1:reject, 2:failed, 3:complete
+}
+message ApplicationInfo {
+    uint32 playerId =1;
+    string name =2 ;
+    uint32 avatarId = 3;
+    string avatarUrl= 4;
+    string comment = 5;
+    int64  applyTime =6;
+}
+message ItemInfo {
+    uint32 itemId = 1;
+    uint32 avatarId =2;
+    string name = 3;
+    uint32 coins = 4;
+    float amount = 5;
+}
+
+//////////////////////////////////////////////////
+message CreateClubReq{   
+    string name = 1;  
+    uint32 avatarId = 2;         
+    string avatarUrl = 3;      
+    uint32 creatorId = 4;
+    uint32 clubType  = 5;// 1 diamond 0 brown
+    uint32 maxPlayerNo = 6; // 最大人数
+    uint32 clubStatus = 7; //1 open 0 close
+}
+message CreateClubResp{
+    string res = 1;
+    string msg = 2;
+    uint32 clubId = 3;   
+}
+message ModifyClubReq{
+    uint32 clubId = 1;
+    string name = 2;  
+    uint32 avatarId = 3;         
+    string avatarUrl = 4;      
+    uint32 clubType   = 5;  //修改club的时候必须带 1 diamond  0 brown
+    uint32 clubStatus = 6;  //修改club的时候必须带 1 open 0 解散俱乐部
+    uint32 maxPlayerNo = 7; //修改最大人数
+}
+message ModifyClubResp{
+    string res = 1;
+    string msg = 2;
+}
+message ModifyClubTypeReq{
+    uint32 clubId   = 1;   
+    uint32 clubType = 2;  //修改club的时候必须带 1 diamond  0 brown
+}
+message ModifyClubTypeResp{
+    string res = 1;
+    string msg = 2;
+}
+message GetClubInfoReq{
+    uint32 clubId =1;
+}
+message GetClubInfoResp{
+    string res = 1;
+    string msg = 2;    
+    ClubInfo clubInfo =3;
+}
+message QuitClubReq {
+    uint32 clubId = 1;
+    uint32 playerId = 2;
+}
+message QuitClubResp{
+    string res = 1;
+    string msg = 2;    
+}
+message InvitePlayerReq{
+    uint32 clubId = 1;
+    uint32 playerId = 2;
+    string comment = 3;
+}
+message InvitePlayerResp{
+    string res = 1;
+    string msg = 2;    
+}
+message CheckApplicationReq {
+    uint32 playerId = 1;
+    uint32 clubId   = 2;
+    uint32 ownerId  = 3;
+}
+message CheckApplicationResp {
+    string res = 1;
+    string msg = 2;
+    uint32 code = 3; // 0 未申请 1 已申请 2 已加入
+}
+message SendClubJoinReq{
+    uint32 playerId = 1;
+    uint32 clubId   = 2;
+    uint32 ownerId  = 3;
+    string comment  = 4;
+}
+message SendClubJoinResp{
+    string res = 1;
+    string msg = 2;
+}
+message GetClubListReq{
+    uint32 playerId = 1; //all clubs 
+}
+message GetClubListResp{
+    string res = 1; 
+    string msg = 2;
+    repeated ClubInfo clubList = 3;
+}
+message CreateTableReq{
+    uint32  clubId         = 1;
+    uint32  ownerId        = 2;
+    uint32  mode           = 3;// 0 四人
+    uint32  roundNo        = 4;//局数 0 东风 1 东南战
+    uint32  thinkTime      = 5;//0 3+5 1 15+15 2 60+0 3 300+0
+    uint32  level          = 6;// 金币每点
+    float   bringInAmount  = 7;//带入要求/起始点数
+    uint32  fee            = 8;//服务费
+    uint32  redCard        = 10;//赤宝牌 0 无赤 1 3赤
+    int32   exPoint1       = 11; //额外得点 
+    int32   exPoint2       = 12; //额外得点 
+    int32   exPoint3       = 13; //额外得点 
+    int32   exPoint4       = 14; //额外得点 
+    uint32  headJumpFlag   = 15;//头跳 0 否 1 是
+    uint32  doubleFlag     = 16;//双倍役满 0 否 1 是
+    uint32  hintFlag       = 17;//摸切提示 0 否 1 是
+    uint32  convenientFlag = 18;//便捷提示 0 否 1 是
+    uint32  noWinnerFlag   = 19;//途中流局 0 否 1 是
+    uint32  autoStartFlag  = 20;//自动开桌 0 否 1 是
+    uint32  startPoint     = 21; //起始点数 默认25000
+    bool    isGpsIPCheck   = 22; 
+}
+message CreateTableResp{
+    string res = 1;
+    string msg = 2;
+    string tableId = 3;
+    uint32 roomId  = 4;
+}
+message CloseTableReq {
+    uint32 clubId  = 1;
+    uint32 ownerId = 2;
+    string tableId = 3;
+}
+message CloseTableResp {
+    string res = 1;
+    string msg = 2;
+}
+message ModifyTableReq {
+    string tableId = 1 ;
+    uint32 status  = 2 ; //1 OPEN 0 CLOSE
+}
+message ModifyTableResp {
+    string res = 1;
+    string msg = 2;
+}
+message GetTableInfoReq {
+    string tableId = 1;
+}
+message GetTableInfoResp {
+    string res = 1;
+    string msg = 2;
+    TableInfo tableInfo =3;
+
+}
+message GetClubPlayerListReq{
+    uint32 clubId = 1;
+}
+
+message GetClubPlayerListResp{
+    string res = 1;
+    string msg = 2;
+    uint32 ownerId =3;
+    repeated PlayerInfo playerList = 4;
+}
+message GetClubPlayerDetailReq{
+    uint32 playerId = 1;
+    uint32 clubId   = 2;   
+    int64  startTime = 3;
+    int64  endTime = 4;
+}
+message GetClubPlayerDetailResp{
+    string res = 1;
+    string msg = 2;
+    ClubPlayerInfo clubPlayerInfo = 3;
+}
+message SetClubPlayerDetailReq{
+    uint32 playerId = 1;
+    uint32 clubId   = 2;   
+    float  varyBalance = 3;
+    int64 timeStamp = 4;   
+    string sign = 5;
+    uint32 source  = 6; //0 游戏结果 1 购买/取款 2 admin
+    uint32 payType = 7; //DEFAULT=0 GOOGLE=1 APPLE=2 GOUYU=3 WEBAO=4 WITHDRAW=5 GAME_IN=6 GAME_OUT=7  //admin set to 0
+}
+message SetClubPlayerDetailResp{
+    string res = 1;
+    string msg = 2;   
+    float  balance = 3; 
+}
+
+message SetClubPlayerDCReq {//datacenter
+    uint32 playerId = 1;
+    uint32 clubId   = 2;  
+    float  varyBalance = 3;
+}
+message SetClubPlayerDCResp {//datacenter
+    uint32 status = 1;
+}
+message GetClubPlayerDCReq {//datacenter
+    uint32 playerId = 1;
+    uint32 clubId   = 2; 
+}
+message GetClubPlayerDCResp {//datacenter
+    uint32 clubType = 1;
+    ClubPlayerInfo clubPlayerInfo = 2;
+}
+message GetGameStartReq {
+    uint32 clubId  = 1;
+    string tableId = 2;
+    int64  gameId  = 3;
+    int64  startAt = 4;
+    uint32 status  = 5; // 1 start 2 finish
+
+}
+message GetGameStartResp{
+    uint32 status = 1;   
+}
+message KickoutClubPlayerReq{//踢人
+    uint32 clubId = 1;
+    uint32 playerId = 2;
+}
+message KickoutClubPlayerResp{
+    string res = 1;
+    string msg = 2;  
+}
+message GetClubAppliCationListReq{
+    uint32 clubId = 1;
+    uint32 ownerId =2;
+}
+message GetClubAppliCationListResp{
+    string res = 1;
+    string msg = 2;        
+    repeated ApplicationInfo applicationList =3; 
+}
+message GetClubOrderListReq {
+    uint32 clubId =1;
+    int64  startTime = 2;
+    int64  endTime = 3;
+}
+message GetClubOrderListResp{
+    string res = 1;
+    string msg = 2;        
+    repeated OrderInfo orderList =3; 
+}
+message GetClubTableListReq{
+    uint32 clubId = 1;  
+    uint32 status = 2; //0 active 1 all
+}
+message GetClubTableListResp{
+    string res = 1;
+    string msg = 2; 
+    repeated TableInfo tableList =3; 
+}
+message GetFriendTableListReq{
+    uint32 playerId = 1;  
+    uint32 status = 2; //0 active 1 all
+}
+message GetFriendTableListResp{
+    string res = 1;
+    string msg = 2; 
+    repeated TableInfo tableList =3; 
+}
+message GetFriendTableReq{
+    uint32 roomId = 1;    
+}
+message GetFriendTableResp{
+    string res = 1;
+    string msg = 2; 
+    TableInfo tableInfo =3;
+}
+message GetPlayerInfoReq {
+    uint32 playerId =1;
+    uint32 mode = 2; //0 不返回统计 1 返回俱乐部统计 2 返回友人场统计
+}
+message GetPlayerInfoResp {
+    string res =1;
+    string msg =2;
+    PlayerInfo playerInfo =3;
+}
+message GetClubPlayerGameHistoryReq{
+    uint32 playerId = 1;    
+    uint32 clubId   = 2;
+    int64  startTime = 3;
+    int64  endTime   = 4;
+}
+message GetClubPlayerGameHistoryResp{
+    string res = 1;
+    string msg = 2;        
+    uint32 totalRoundNo =3;
+    float fee = 4;
+    float balance = 5;
+    repeated TableInfo tableList =6; 
+}
+message GetPlayerGameHistoryReq{
+    uint32 playerId = 1;    
+    uint32 mode = 2;     //0 牌谱总览 1 俱乐部 2 友人场 3 收藏
+}
+message GetPlayerGameHistoryResp{
+    string res = 1;
+    string msg = 2;        
+    repeated TableInfo tableList = 3; 
+}
+message GetClubItemListReq{// 先别看，后面应该会用商店的
+    uint32 clubId =1;
+}
+message GetClubItemListResp{
+    string res = 1;
+    string msg = 2;  
+    repeated ItemInfo itemList = 3;
+}
+message GetClubMoneyOrderListReq{// 先别看，后面应该会用商店的
+    uint32 clubId =1;
+    int64  startTime = 2;
+    int64  endTime = 3;
+}
+message GetClubMoneyOrderListResp{
+    string res = 1;
+    string msg = 2;  
+    repeated MoneyInfo MoneyList = 3;
+}
+//joinrequest
+message DecideClubJoinReq {
+    uint32 clubId = 1;
+    uint32 playerId = 2;
+    bool decision = 3;// true 同意加入 false 拒绝加入
+    uint32 ownerId = 4;
+    string applicationId = 5;
+    string Comment = 6;
+} 
+message DecideClubJoinResp {
+    string res = 1;
+    string msg = 2;   
+}
+//join table
+message JoinTableReq{
+    string tableId = 1;
+    uint32 playerId = 2;
+    uint32 seatNum  = 3;
+}
+message JoinTableResp{
+    string res = 1;
+    string msg = 2; 
+}
+message QuitTableReq{
+    string tableId  = 1;
+    uint32 playerId = 2;
+}
+message QuitTableResp {
+    string res = 1;
+    string msg = 2; 
+}
+message QueryTableReq{
+    string tableId  = 1;
+}
+message QueryTableResp{
+    string res = 1;
+    string msg = 2;
+    repeated PlayerInfo players =3;
+}
+message SetPredefinedCardReq{
+    string tableId = 1;
+    string card = 2;
+}
+message SetPredefinedCardResp{
+    string res = 1;
+    string msg = 2;
+}
+message UpdateTableReq {   
+}
+message UpdateTableResp{ 
+}
+message SaveGameHistoryReq {
+    uint32 playerId = 1;
+    string tableId  = 2;
+    int64  gameId   = 3;
+    uint32 save     = 4;  // 0 取消收藏 1 收藏
+    string name     = 5;
+}
+message SaveGameHistoryResp {
+    string res = 1;
+    string msg = 2;
+}
+message GetGameHistoryDetailReq {
+    string tableId  = 1;
+    int64  gameId   = 2;
+    uint32 playerId = 3;
+    string paipuLink = 4;
+    uint32 mode     = 5; //0 查看牌谱 1 链接查询牌谱 
+}
+message PaipuData {
+    int64  holdemcode  = 1;
+    string jsondata = 2;
+    int64  logtime = 3;
+}
+message GetGameHistoryDetailResp {
+    string   res = 1;
+    string   msg = 2;
+    string   tableId = 3;
+    int64    gameId  = 4;
+    repeated PaipuData data = 5;
+}
+
+message PushPlayerInfo  {
+	uint32  PlayerId   = 1;   
+	string  PlayerName = 2;
+	uint32  AvatarId   = 3;
+	string  AvatarUrl  = 4;
+    uint32  SeatNum    = 5;
+}
+message PushMsg  {
+	uint32    Code     = 1;    //1 俱乐部解散 2 收到加入俱乐部申请 3 同意加入俱乐部 4 拒绝加入俱乐部 5 牌桌人员变动 6 新建牌桌 7 金币变动 8 关闭牌桌 9 匹配
+	uint32    ClubId   = 2;
+	string    ClubName = 3;
+    string    TableId  = 4;
+	repeated  PushPlayerInfo Players = 5; 
+}
+
+message GetPlayingTalbeIdReq {
+    uint32    clubId   = 1;
+    uint32    playerId = 2;
+}
+message GetPlayingTalbeIdResp {
+    string   res = 1;
+    string   msg = 2;
+    repeated TableInfo tableList = 3;
+}
+message GetWBBindInfoReq {
+    uint32 playerId =1;   
+}
+message GetWBBindInfoResp {
+    string res = 1;
+    string msg = 2;
+    bool isWBBind   = 3; //we宝是否绑定
+    float WBbalance = 4; //we宝余额 
+    string icon   = 5;   //头像
+    string mobile = 6;   
+    string nick   = 7;   //昵称
+}
+message GetWBRandCodeReq {
+    uint32 playerId = 1;
+}
+message GetWBRandCodeResp {
+    string res = 1;
+    string msg = 2;
+    string code = 3;
+    string extraParam = 4;
+}
+message GetWBLoginTokenReq{
+    uint32 playerId = 1;
+}
+message GetWBLoginTokenResp {
+    string res = 1;
+    string msg = 2;
+    string token = 3;
+    int64 time  = 4;
+}
+message CancelWBBindReq {
+    uint32 playerId = 1;
+}
+message CancelWBBindResp{
+    string res = 1;
+    string msg = 2;
+}
+
+message MatchingJoinReq{
+    uint32  playerId    = 1;
+    uint32  clubId      = 2;//10018 or 0
+    uint32  roundNo     = 3;//局数 0 东风 1 东南战    
+    uint32  level       = 4;//klevel
+    uint32  clubType    = 5;//0 铜 1 钻
+}
+message MatchingQuitReq{
+    uint32  playerId    = 1;   
+}
+message MatchingQueryReq{
+    uint32  playerId    = 1; //用户如果已经进入排队队列，应该使用用户id查询 则无需带clubid和mode, 
+    uint32  clubId      = 2; //用户未进入排队队列使用clubid和roundNo,level查询，此时playid必须设置为0
+    uint32  roundNo     = 3; //局数 0 东风 1 东南战    
+    uint32  level       = 4; //klevel
+}
+message MatchingResp{
+    string res = 1;
+    string msg = 2;
+    uint32 playerNo = 3;
+    repeated uint32 players = 4;
+}
+
+service Club {
+    
+    rpc CreateClub(CreateClubReq) returns (CreateClubResp) {}    
+    rpc ModifyClub(ModifyClubReq) returns (ModifyClubResp) {}    
+    rpc QuitClub(QuitClubReq)     returns (QuitClubResp) {}
+    
+    rpc SendClubJoinRequest(SendClubJoinReq) returns (SendClubJoinResp){}                        //申请加入
+    rpc DecideClubJoinRequest(DecideClubJoinReq) returns(DecideClubJoinResp) {}                  //同意或拒绝
+    rpc InvitePlayer(InvitePlayerReq) returns (InvitePlayerResp) {}                              //邀请加入
+
+    rpc GetClubList(GetClubListReq) returns (GetClubListResp) {}                                 //获取club列表
+    rpc GetClubInfo(GetClubInfoReq) returns (GetClubInfoResp) {}                                 //获取club信息
+    rpc GetClubTableList(GetClubTableListReq) returns (GetClubTableListResp) {}                  //获取club的牌桌列表
+    rpc GetClubPlayerList(GetClubPlayerListReq) returns (GetClubPlayerListResp) {}               //获取club下的玩家列表   
+    rpc GetClubPlayerDetail(GetClubPlayerDetailReq) returns(GetClubPlayerDetailResp) {}          //获取club里玩家的详情
+    rpc KickoutClubPlayer(KickoutClubPlayerReq) returns (KickoutClubPlayerResp) {}               //踢出club
+  
+    rpc CreateTable(CreateTableReq) returns (CreateTableResp) {}                                 //创建牌桌
+    rpc JoinTable(JoinTableReq) returns (JoinTableResp) {}                                       //弃用
+    rpc QuitTable(QuitTableReq) returns (QuitTableResp) {}                                       //弃用
+    rpc QueryTable(QueryTableReq) returns (QueryTableResp) {}                                    //获取牌桌玩家加入信息
+    rpc UpdateTable(UpdateTableReq) returns (UpdateTableResp){}                                  //给游戏服务器用
+    rpc GetTableInfo(GetTableInfoReq) returns (GetTableInfoResp) {}
+  
+    rpc GetPlayerInfo(GetPlayerInfoReq) returns (GetPlayerInfoResp) {}                           //获取玩家信息
+
+    rpc GetClubPlayerGameHistory(GetClubPlayerGameHistoryReq) returns(GetClubPlayerGameHistoryResp) {}    //获取club玩家牌桌历史
+    rpc GetPlayerGameHistory(GetPlayerGameHistoryReq) returns(GetPlayerGameHistoryResp) {}                //获取玩家牌桌历史
+
+          
+    rpc GetClubApplicationList(GetClubAppliCationListReq) returns(GetClubAppliCationListResp){}  //弃用   
+    rpc GetClubOrderList(GetClubOrderListReq) returns(GetClubOrderListResp) {}                   //待考虑
+    rpc GetClubItemList(GetClubItemListReq) returns(GetClubItemListResp) {}                      //待考虑
+    rpc GetClubMoneyOrderList(GetClubMoneyOrderListReq) returns (GetClubMoneyOrderListResp) {}   //待考虑
+// for game server data update
+    rpc SetClubPlayerDetail(SetClubPlayerDetailReq) returns(SetClubPlayerDetailResp) {}          //接受牌桌结果设置club里玩家的详情    
+
+    rpc GetFriendTableList(GetFriendTableListReq) returns (GetFriendTableListResp) {}            //获取玩家友人牌桌列表
+    rpc GetFriendTableByRoomId(GetFriendTableReq) returns (GetFriendTableResp) {}                //获取玩家友人牌桌
+
+    rpc SetPredefinedCard(SetPredefinedCardReq) returns (SetPredefinedCardResp) {}
+
+    rpc NLHEGameDataNotice(mahjongresult.MahjongResultReq) returns (mahjongresult.MahjongResultResp){}
+
+    rpc SaveGameHistory(SaveGameHistoryReq) returns (SaveGameHistoryResp) {}
+    rpc GetGameHistoryDetail(GetGameHistoryDetailReq) returns (GetGameHistoryDetailResp) {}
+
+    rpc GetPlayingTableIds(GetPlayingTalbeIdReq) returns (GetPlayingTalbeIdResp) {}
+    
+    rpc GetWBBindInfo(GetWBBindInfoReq) returns (GetWBBindInfoResp) {}
+    rpc GetWBRandCode(GetWBRandCodeReq) returns (GetWBRandCodeResp) {}
+    rpc GetWBLoginToken(GetWBLoginTokenReq) returns (GetWBLoginTokenResp) {}
+    rpc CancelWBBind(CancelWBBindReq) returns (CancelWBBindResp){}
+    rpc ModifyTable(ModifyTableReq) returns (ModifyTableResp) {}
+
+    rpc ModifyClubType(ModifyClubTypeReq) returns (ModifyClubTypeResp){}
+
+    rpc GetGameStart(GetGameStartReq) returns(GetGameStartResp) {} //receive from gameserver
+
+
+    rpc MatchingJoin(MatchingJoinReq) returns (MatchingResp) {}
+    rpc MatchingQuit(MatchingQuitReq) returns (MatchingResp) {}
+    rpc MatchingQuery(MatchingQueryReq) returns (MatchingResp) {}
+
+}
+enum ClubCode {   
+    UNSPECIFIED = 0;
+	CLUB_CREATECLUB             = 65001;   //创建俱乐部
+    CLUB_MODIFYCLUB             = 65002;   //修改俱乐部
+    CLUB_SENDCLUBJOINREQUEST    = 65003;   //发送加入俱乐部请求
+    CLUB_DECIDECLUBJOINREQUEST  = 65004;   //决定是否允许加入
+    CLUB_GETCLUBLIST            = 65005;   //获取俱乐部列表
+    CLUB_GETCLUBINFO            = 65006;   //获取俱乐部详情
+    CLUB_GETCLUBTABLELIST       = 65007;   //获取俱乐部牌桌列表
+    CLUB_GETCLUBPLAYERLIST      = 65008;   //获取俱乐部玩家列表
+    CLUB_GETCLUBPLAYERDETAIL    = 65009;   //获取俱乐部玩家详情
+    CLUB_KICKOUTCLUBPLAYER      = 65010;   //踢出玩家
+    CLUB_CREATETABLE            = 65011;   //创建牌桌
+    CLUB_JOINTABLE              = 65012;   //加入牌桌
+    CLUB_QUITTABLE              = 65013;   //退出牌桌
+    CLUB_UPDATETABLE            = 65014;   //更新牌桌
+ 
+    CLUB_GETPLAYERINFO             = 65015;   //获取玩家详情
+    CLUB_GETCLUBPLAYERGAMEHISTORY  = 65016;   //获取club玩家牌桌历史
+ 
+    CLUB_GETCLUBAPPLICATIONLIST = 65017;   //弃用
+    CLUB_GETCLUBORDERLIST       = 65018;   //弃用
+    CLUB_GETCLUBITEMLIST        = 65019;   //弃用
+    CLUB_GETCLUBMONEYORDERLIST  = 65020;   //弃用
+
+    CLUB_SETCLUBPLAYERDETAIL    = 65021;   //弃用 设置俱乐部玩家详情
+ 
+    CLUB_GETTABLEINFO           = 65022;   //获取牌桌信息
+    CLUB_QUERYTABLE             = 65023;   //查询牌桌玩家
+ 
+    CLUB_QUITCLUB               = 65024;   //退出俱乐部
+    CLUB_INVITEPLAYER           = 65025;   //邀请加入
+ 
+    CLUB_GETFRIENDTABLELIST     = 65026;   //获取友人桌列表
+    CLUB_GETFRIENDTABLE         = 65027;   //获取友人桌
+
+    CLUB_SETPREDEFINEDCARD      = 65028;   //设置预定义牌
+
+    CLUB_GETPLAYERGAMEHISTORY   = 65029;   //获取玩家牌桌历史
+
+    CLUB_SAVEGAMEHISTORY        = 65030;   //收藏牌谱
+    CLUB_GETGAMEHISTORYDETAIL   = 65031;   //获取牌谱回放
+
+    CLUB_GETWBBINDINFO          = 65032;   //获取we宝绑定信息
+
+    CLUB_MODIFYTABLE            = 65033;   //修改牌桌配置
+
+    CLUB_MODIFYCLUBTYPE         = 65034;   //修改俱乐部类型
+
+    CLUB_GETWBRANDCODE          = 65035;   //WE BAO RANDOM CODE
+    CLUB_GETWBLOGINTOKEN        = 65036;   //WE BAO LOGIN TOKEN
+    CLUB_CANCELWBBIND           = 65037;   //CANCLE WE BAO BIND
+
+    CLUB_CHECKCLUBAPPLICATION   = 65038;   //检查是否申请过
+    CLUB_CLOSETABLE             = 65039;   //关闭牌桌
+
+    CLUB_MATCHING_JOIN          = 65040;   //加入匹配
+    CLUB_MATCHING_QUIT          = 65041;   //退出匹配
+    CLUB_MATCHING_QUERY         = 65042;   //查询匹配 如果30s内无任何查询则自动退出匹配
+
+}

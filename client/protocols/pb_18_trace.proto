@@ -1,0 +1,38 @@
+syntax = "proto3";
+package trace;
+option go_package="apsara/protofile/autogen/client/trace";
+
+
+
+enum TraceType {
+   UNSPECIFIED = 0;
+   TRACE_FEEDBACK = 1;
+}
+
+
+message traceInfo{
+  uint64 userID = 1;
+  TraceType type = 2;        // 事件类型
+  string traceData = 3;        // 附加json，不同事件根据需求协商字段信息
+}
+
+
+message traceStatus{
+  bool status = 1;
+}
+
+enum TraceOpCode {
+  TRACE_NONE = 0;
+  TRACE_INFO = 18001;
+}
+
+service TraceInfo {
+  rpc Info(traceInfo) returns (traceStatus) {}//追踪事件接口
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ========== 追踪事件 ==========
+//协议号：18001
+// c >> s:traceInfo
+// s >> c:traceStatus
+//

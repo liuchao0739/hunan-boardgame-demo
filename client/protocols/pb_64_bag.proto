@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package bag;
+
+option go_package = "apsara/protofile/autogen/client/bag";
+
+message pbGetBag{
+  uint64 roleId = 1;
+}
+
+message pbBagInfo{
+  uint64 roleId = 1;
+  repeated itemInfo list = 2; //附件
+}
+
+message itemInfo{
+  uint32 boxId = 1;  //格子ID
+  uint32 itemId = 2; //物品ID
+  uint64 num = 3; // 物品数量
+  uint64 ExpTime = 4; //过期时间
+  string jsonData = 5; //额外参数
+}
+
+// ==========================================
+message pbOpBagItemList{
+  uint64 roleId = 1;
+  repeated opBagItem list = 2;
+  ChangeReason reason = 3;
+}
+
+message opBagItem{
+  uint32 itemId = 2;
+  int64 num = 3 ;
+  uint64 expTime = 4 ;
+  string jsonData = 5 ;
+}
+
+message pbStatus{
+  bool status = 1;
+}
+
+message pbGetItem{
+  uint64 roleId = 1;
+  uint32 itemId = 2;
+}
+
+message pbGetItemTypeReq{
+  uint64 roleId = 1;
+  ItemType itemType = 2;
+}
+
+message pbGetItemTypeRes{
+  uint64 roleId = 1;
+  ItemType itemType = 2;
+  repeated itemInfo list = 3;
+}
+
+service Bag {
+  rpc GrpcOpBagItem(pbOpBagItemList) returns (pbStatus) {} //模块内调用增加或删除玩家物品(一次性传输所有物品列表)
+  rpc GrpcGetUserItemInfo(pbGetItem) returns (itemInfo) {}
+  rpc GrpcGetItemTypeInfo(pbGetItemTypeReq) returns (pbGetItemTypeRes) {}
+}
+
+enum BagCode {
+  BROADCAST_INIT = 0;
+  GET_BAG_LIST = 64001;
+  /*
+  * 获取所有物品
+  * c >> s: pbGetBag
+  * s >> c: pbBagInfo
+  */
+}
+
+enum ItemType {
+  DEFAUL_TYPE = 0;
+  HEAD_PORTRAIT_BOX = 11; //头像框
+  POKER_BACK = 12;
+  HEAD_PIC = 13;  //头像
+}
+
+enum ChangeReason {
+  DEFAULT = 0 ;  // 默认
+  REGISTER = 1;   // 注册
+  CHARGE = 2;      // 充值
+  CHECKIN = 3;     //签到
+  TURNTABLE = 4;     //转盘
+}

@@ -1,0 +1,263 @@
+syntax = "proto3";
+
+package account;
+
+option go_package="apsara/protofile/autogen/client/account";
+
+enum AccountType {
+    GUEST = 0;
+    FACEBOOK = 1;
+    GOOGLE = 2;
+    APPLE = 3;
+    PHONE = 4;
+    REGISTER = 5;
+}
+
+message TokenReq{
+    AccountType type = 1;  // 账号类型
+    string id = 2;         // 设备id或第三方openid
+    string token = 3;      // 第三方token
+    string password = 4;
+    string deviceInfo = 5; // 设备信息json
+    string recommendCode = 6; //推荐码
+}
+
+message TokenResp{
+    string res = 1;
+    string msg = 2;
+    string account = 3;    // 玩家账户名
+    string token   = 4;      // 玩家服务器token
+    uint64 timestamp = 5;  // token有效截止时间戳
+    uint32 accountId = 6;
+    bool   isNewAccount = 7;
+}
+
+message LoginReq{
+    string account = 1;  // 玩家账户名
+    string token = 2;    // 玩家服务器token
+    string deviceID = 3; // 设备号
+    uint64 userID = 4;   // 用户id
+}
+
+message LoginResp{
+    uint64 userID = 1;
+    uint64 timestamp = 2; // 服务器时间截
+}
+
+message Heartbeat {
+    uint64 timestamp = 1; // 服务器时间截
+}
+
+message CloseAccountReq {
+    string account = 1;  // 玩家账户名
+    string token = 2;    // 玩家服务器token
+}
+
+message CloseAccountResp {
+    bool status = 1;
+}
+
+message ServerURLReq {
+    string account = 1;  // 玩家账户名
+}
+
+message ServerURLResp {
+    string serverURL = 1;  // websocket服务器地址
+}
+
+message IsDeletionAccountReq{
+    string account = 1;  // 玩家账户名
+    string token = 2;    // 玩家服务器token
+	  uint64 userID = 3;
+}
+
+message IsDeletionAccountResp{
+    uint64 userID = 1;
+    bool isClose = 2; //是否可以销户
+}
+
+message DeletionAccountReq{
+    string account = 1;  // 玩家账户名
+    string token = 2;    // 玩家服务器token
+	  uint64 userID = 3;
+}
+
+message DeletionAccountResp{
+    uint64 userID = 1;
+    uint64 time = 2; //销户时间戳
+    bool isDeletion = 3; //是否销户申请成功
+}
+
+message AccountBindReq{
+    AccountType type = 1;  // 账号类型
+    string id = 2;         // 设备id或第三方openid
+    string token = 3;      // 第三方token
+    string bind_token = 4;    // 需要绑定的游客token
+    string bind_account = 5;    // 需要绑定的游客account
+}
+
+message AccountBindResp{
+    string account = 1;     // 玩家账户名
+    string token = 2;       // 玩家服务器token
+    uint64 timestamp = 3;   // token有效截止时间戳
+    bool another = 4;       // 是否另外的账号（指定的第三方账号已绑定）
+}
+
+message DeleteReq{
+    uint64 userID = 1;
+}
+
+message DeleteResp {
+    bool status = 1;
+}
+
+
+message NoticeLogin{
+    uint64 userID = 1;
+}
+
+message NoticeResp {
+    bool status = 1;
+}
+
+message PhoneAccountReq{
+    string phoneNo = 1;
+    string code = 2;
+    string password = 3;
+    string countryCode = 4;
+}
+message PhoneAccountResp{
+    string res = 1;
+    string msg = 2;
+    string account = 3;  
+    string token = 4;    
+    string deviceID = 5; 
+    string code = 6;  
+    uint64 accountId = 7;   
+}
+
+message ProfileReq{
+    uint64 accountId = 1;
+    string name = 2;
+    string avatarId = 3;
+    string avatarUrl = 4;
+    string account = 5;
+    string password = 6;
+    string code = 7;
+}
+message ProfileResp{    
+    string res = 1;
+    string msg = 2;
+    uint64 accountId = 3;
+    string account = 4;   
+    string name = 5;
+    string avatarId = 6;
+    string avatarUrl = 7;
+}
+
+service Account {
+    rpc Login(TokenReq) returns (TokenResp) {}
+    rpc TokenLogin(LoginReq) returns (LoginResp) {}
+    
+    rpc AccountLogin(NoticeLogin) returns (NoticeResp) {} //通知go有玩家登录，为辅助一些玩法或者逻辑
+
+    rpc PreCloseAccount(IsDeletionAccountReq) returns (IsDeletionAccountResp) {}
+    rpc CloseAccount(DeletionAccountReq) returns (DeletionAccountResp) {}
+    rpc ServerURLInfo(ServerURLReq) returns (ServerURLResp) {}
+    rpc AccountBind(AccountBindReq) returns (AccountBindResp) {}
+    rpc DeleteAccount(DeleteReq) returns (DeleteResp) {}
+
+    rpc GetPhoneCode(PhoneAccountReq) returns (PhoneAccountResp) {} 
+    rpc ModifyProfile(ProfileReq) returns (ProfileResp) {}
+    rpc GetProfile(ProfileReq) returns (ProfileResp) {}
+}
+
+enum AccountCode {
+    UNSPECIFIED = 0;
+
+    /*
+     * 请求token
+     * c >> s: TokenReq
+     * s >> c: TokenResp
+     */
+    TOKEN = 10000;
+
+    /*
+     * 登录
+     * c >> s: LoginReq
+     * s >> c: LoginResp
+     */
+    LOGIN = 10001;
+
+    /*
+     * 账号在别处登录
+     * s >> c: -
+     */
+    LOGGED_IN_ELSEWHERE = 10002;
+
+    /*
+     * 心跳包
+     * c >> s: -
+     * s >> c: Heartbeat
+     */
+    HEARTBEAT = 10003;
+
+    /*
+     * 登出
+     * c >> s: -
+     */
+    LOGOUT = 10004;
+
+    /*
+     * 销户状态判断
+     * c >> s: IsDeletionAccountReq
+     * s >> c: IsDeletionAccountResp
+     */
+    PRE_CLOSE_ACCOUNT = 10005;
+
+    /*
+     * 销户
+     * c >> s: DeletionAccountReq
+     * s >> c: DeletionAccountResp
+     */
+    CLOSE_ACCOUNT = 10006;
+
+    /*
+     * websocket服务器地址
+     * c >> s: ServerURLReq
+     * s >> c: ServerURLResp
+     */
+    SERVER_URL = 10007;
+
+    /*
+     * 账号绑定
+     * c >> s: AccountBindReq
+     * s >> c: AccountBindResp
+     */
+    ACCOUNT_BIND = 10008;
+
+	/*
+     * Request phone code and verfiy phonecode and register phone
+	 * c >> s: PhoneAccountReq
+	 * s >> c: PhoneAccountResp
+    */
+	PHONE_CODE_REQ     = 10009;
+	
+    PHONE_PW_CHANGE    = 10012;
+
+    PROFILE_REQ        = 10020;
+    PROFILE_MODIFY     = 10021;
+    
+}
+/*
+login 接口: (10000) 
+phone + code             Type_PHONE 4
+phone + password         Type_PHONE 4
+register                 Type_REGISTER 5
+
+忘记密码: (10012)
+PHONE_PW_CHANGE
+
+修改手机号码和密码: (10021)
+PROFILE_MODIFY
+*/

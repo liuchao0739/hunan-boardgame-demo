@@ -1,0 +1,97 @@
+{
+  "ver": "2.3.14",
+  "importer": "fbx",
+  "imported": true,
+  "uuid": "6a32d3db-b0c7-4683-9385-e5f2583e095e",
+  "files": [],
+  "subMetas": {
+    "99380": {
+      "importer": "gltf-material",
+      "uuid": "6a32d3db-b0c7-4683-9385-e5f2583e095e@99380",
+      "displayName": "",
+      "id": "99380",
+      "name": "Material.001.material",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "c9cd3": {
+      "importer": "gltf-mesh",
+      "uuid": "6a32d3db-b0c7-4683-9385-e5f2583e095e@c9cd3",
+      "displayName": "",
+      "id": "c9cd3",
+      "name": "tile 1.002.mesh",
+      "userData": {
+        "gltfIndex": 0,
+        "triangleCount": 54
+      },
+      "ver": "1.1.1",
+      "imported": true,
+      "files": [
+        ".bin",
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "4564a": {
+      "importer": "gltf-scene",
+      "uuid": "6a32d3db-b0c7-4683-9385-e5f2583e095e@4564a",
+      "displayName": "",
+      "id": "4564a",
+      "name": "vfx card plane 2.prefab",
+      "userData": {
+        "gltfIndex": 0
+      },
+      "ver": "1.0.14",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "imageMetas": [],
+    "fbx": {
+      "smartMaterialEnabled": true,
+      "matchMeshNames": false
+    },
+    "assetFinder": {
+      "meshes": [
+        "6a32d3db-b0c7-4683-9385-e5f2583e095e@c9cd3"
+      ],
+      "skeletons": [],
+      "textures": [],
+      "materials": [
+        "6a32d3db-b0c7-4683-9385-e5f2583e095e@99380"
+      ],
+      "scenes": [
+        "6a32d3db-b0c7-4683-9385-e5f2583e095e@4564a"
+      ]
+    },
+    "lods": {
+      "enable": false,
+      "hasBuiltinLOD": false,
+      "options": [
+        {
+          "screenRatio": 0.25,
+          "faceCount": 1
+        },
+        {
+          "screenRatio": 0.125,
+          "faceCount": 0.25
+        },
+        {
+          "screenRatio": 0.01,
+          "faceCount": 0.1
+        }
+      ]
+    }
+  }
+}

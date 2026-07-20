@@ -1,19 +1,13 @@
 {
+  "__version__": "1.0.6",
   "general": {
     "designResolution": {
       "width": 1280,
       "height": 720,
-      "fitWidth": true,
-      "fitHeight": true
-    }
+      "fitHeight": true,
+      "fitWidth": false
+    },
+    "highQuality": false
   },
-  "script": {
-    "preserveSymlinks": true
-  },
-  "__version__": "1.0.6",
-  "fbx": {
-    "legacyFbxImporter": {
-      "visible": true
-    }
-  }
+  "custom_joint_texture_layouts": []
 }

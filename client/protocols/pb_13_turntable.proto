@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package turntable;
+
+option go_package="apsara/protofile/autogen/client/turntable";
+
+message TurnTableInfoReq{
+    uint64 userID = 1;//角色ID
+    TurnTableType type = 2;  //0,普通转盘  1,超级转盘  2,免费转盘
+}
+
+enum TurnTableType {
+    NORMAL = 0;
+    SUPER = 1;
+    FREE = 2;
+    SHOP1 = 3;
+    SHOP2 = 4;
+}
+
+message TurnTableInfoResp{
+    uint32 count = 1; //次数
+    uint32 time = 2; //时间
+    uint32 freeCount = 3; //免费转盘次数
+}
+
+message TurnTableReq{
+    uint64 userID = 1;
+    TurnTableType type = 2;  //0,普通转盘  1,超级转盘  2,免费转盘 ,3,4.99转盘  4,49.99转盘
+}
+
+message TurnTableResp{
+    uint32 count = 1; //次数
+    uint32 time = 2; //时间
+    uint32 freeCount = 3; //免费转盘次数
+    uint64 money = 4;   //金额
+    uint64 vipAdd = 5;   //Vip加成
+}
+
+message ShopTurnTableInfoReq{
+    optional uint64 userID = 1;//角色ID
+}
+
+message ShopTurnTable{
+    TurnTableType type = 1;    //3.4.99转盘,4.49.99转盘
+    uint32 num = 2;  //1，已购买 0，未购买
+}
+
+message ShopTurnTableInfoResp{
+    repeated ShopTurnTable list = 1;    //转盘列表
+}
+
+message ShopTurnTableResp{
+    TurnTableType type = 1;    //3.4.99转盘,4.49.99转盘
+    uint32 num = 2;  //1，已购买 0，未购买
+    uint64 money = 4;    //金额
+    uint64 vipAdd = 5;   //Vip加成
+}
+
+message ShopTurnTableBuyCounterReq{
+    optional uint64 userID = 1;//角色ID
+}
+
+message ShopTurnTableBuyCounterResp{
+    repeated ShopTurnTableBuyCounter list = 1;    //购买次数
+}
+
+message ShopTurnTableBuyCounter{
+    TurnTableType type = 1;    //3.4.99转盘,4.49.99转盘
+    uint32 num = 2;  //当天已经购买次数
+}
+
+service TurnTable {
+  rpc GetFreeInfo(TurnTableInfoReq) returns (TurnTableInfoResp) {}
+  rpc FreeReq(TurnTableReq) returns (TurnTableResp) {}
+  rpc GetShopInfo(ShopTurnTableInfoReq) returns (ShopTurnTableInfoResp) {}
+  rpc ShopReq(TurnTableReq) returns (ShopTurnTableResp) {}
+  rpc GetBuyCounter(ShopTurnTableBuyCounterReq) returns (ShopTurnTableBuyCounterResp) {}
+}
+
+enum TurnTableCode {
+    NONE = 0;
+    /*
+     * 转盘信息请求
+     * c >> s: TurnTableInfoReq
+     * s >> c: TurnTableInfoResp
+     */
+    GET_FREE_INFO = 13000;
+    /*
+     * 转盘请求
+     * c >> s: TurnTableReq
+     * s >> c: TurnTableResp
+     */
+    FREE_REQ = 13001;
+
+    /*
+     * 付费转盘信息请求
+     * c >> s: ShopTurnTableInfoReq
+     * s >> c: ShopTurnTableInfoResp
+     */
+    GET_SHOP_INFO = 13002;
+    /*
+     * 付费转盘请求
+     * c >> s: TurnTableReq
+     * s >> c: ShopTurnTableResp
+     */
+    SHOP_REQ = 13003;
+    /*
+     * 获取购买次数
+     * c >> s: ShopTurnTableBuyCounterReq
+     * s >> c: ShopTurnTableBuyCounterResp
+     */
+    BUY_COUNTER_REQ = 13004;
+}

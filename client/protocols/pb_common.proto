@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package="apsara/protofile/autogen/client/common";
+package pb_common;
+
+// 错误信息
+message pbError{
+    optional ERRCode errCode = 1;
+    optional string errMsg = 2;
+}
+
+// 协议号前缀（两位数字） + 序号（三位数字）
+enum ERRCode {
+    ERRCode_Router = 0;
+    ERRCode_ProtoCode = 1;
+    ERRCode_ProtoMsg = 2;
+}

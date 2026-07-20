@@ -1,0 +1,214 @@
+syntax = "proto3";
+
+// import public "pb_20_texas_holdem.proto";
+
+package task;
+option go_package="apsara/protofile/autogen/client/task";
+
+//任务类型
+//    跟注操作	1
+//    加注操作	2
+//    赢牌	3
+//    玩牌	4
+//    All in操作	5
+//    All in操作并赢牌	6
+//    每日登录	7
+//    获得指定手牌（不需要打到摊牌）	8
+//    获得指定手牌并赢牌（不需要打到摊牌）	9
+//    获得某种牌型（不需要打到摊牌）	10
+//    获得某种牌型并赢牌（不需要打到摊牌）	11
+//    充值超过指定金额的任务	12
+//    充值任意金额	13
+//    玩老虎机	14
+//    分享	15
+//    使用互动道具	16
+//    在游戏场中赢得一定数量的筹码	17
+
+
+enum TaskType {
+   UNSPECIFIED = 0;
+   TASK_FOLLOW_OP = 1;
+  TASK_RAISE_OP = 2;
+  TASK_WIN_RESULT = 3;
+  TASK_PLAYER_GAME = 4;
+  TASK_ALLIN_OP = 5;
+  TASK_ALLIN_WIN = 6;
+   TASK_LOGIN = 7;
+   TASK_SPE_HANDCARD = 8;
+   TASK_SPE_HANDCARD_WIN = 9;
+   TASK_SPE_HANDLEVEL = 10;
+   TASK_SPE_HANDLEVEL_WIN = 11;
+   TASK_CHARGE_SPE_VALUE = 12;
+   TASK_CHARGE = 13;
+   TASK_PLAYER_SLOTS = 14;
+   TASK_SHARE = 15;
+   TASK_GIVE_GIFT = 16;
+   TASK_WIN_ONCE_CHIP = 17;
+}
+
+message NLHEGameData {
+  uint32 id = 1;  // 牌桌ID
+  uint32 round = 2; //局数
+  repeated playerInfo info = 3;
+  GamePhase phase = 4; //阶段
+}
+
+enum GamePhase {
+  PHASE_NONE = 0;
+  PHASE_ACTION = 1;//操作阶段
+  PHASE_BALANCE = 2;//结算阶段
+}
+
+message playerInfo {
+  uint64 userId = 1;
+  // texas_holdem.Action opType = 2;
+  bool isWin = 3;
+  bool isALLIN = 4;
+  bool isGiveGift = 5;
+  repeated uint32  showCards = 6; //玩家手牌
+  int32 pokerLev = 7; //玩家结算牌型等级
+  uint64 chipOffset = 8; // 玩家实际输赢
+}
+
+
+//任务信息通知
+message taskInfoNotice{
+  TaskType type = 1;//1-17
+  uint64 userID = 2;
+  uint32 roundNum = 3;
+  // texas_holdem.Action opType = 4;
+  uint64 value = 5; //对应值 牌局：赢筹码数  充值：充值额
+  repeated uint32 holeCards = 6;
+  int32 pokerLev = 7; //玩家结算牌型等级
+}
+
+message noticeResp{
+  bool status = 1;
+}
+
+message reqUserID{
+  uint64 userID = 1;
+}
+
+message respStatus{
+  bool status = 1;
+}
+
+message reqInfo{
+  uint64 userID = 1;
+}
+
+message taskInfo{
+  int32 taskId = 1;
+  uint32 taskNum = 2;
+  TaskStatusType taskStatus = 3;
+}
+
+message taskInfoList{
+  uint64 userID = 1;
+  repeated taskInfo list = 2;
+  TaskClassType status = 3;
+}
+
+message rewardClaimReq{
+  uint64 userID = 1;
+  int32 taskId = 2;
+}
+
+message rewardClaimResp{
+  uint64 userID = 1;
+  repeated int32 rewardTaskList = 2;
+  repeated taskInfo list = 3;
+  int32 status = 4;
+}
+
+message jackpotRewardReq{
+  uint64 userID = 1;
+}
+
+message jackpotRewardRecord{
+  uint64 userID = 1;
+  uint64 reward = 2;
+  uint64 timestamp = 3;
+}
+
+message jackpotRewardResp{
+  uint64 userID = 1;
+  uint64 reward = 2;
+  repeated jackpotRewardRecord list = 3;
+  bool status = 4;
+}
+
+
+message noticeTaskStatusUpdate{
+  uint64 userID = 1;
+  int32 taskId = 2;
+}
+
+
+enum TaskOpCode {
+  TASK_NONE = 0;
+  TASK_REQ_INFO = 17001;
+  TASK_REWARD_CLAIM = 17002;
+  TASK_JACKPOT_REWARD = 17003;
+  TASK_STATUS_UPDATE = 17004;
+  TASK_JACKPOT_CLAIM = 17005;
+}
+
+enum TaskClassType{
+  NONE = 0;
+  NEW_HAND = 1;
+  NEW_HAND_ALL = 2;
+  EVERYDAY = 3;
+}
+
+// 0为未完成，1正在进行中，2为已经完成可领取，3 已经领取
+enum TaskStatusType{
+  LOCKED= 0;
+  TODO = 1;
+  FINISH = 2;
+  REWARDED = 3;
+}
+
+service TaskInfo {
+  rpc NLHEGameDataNotice(NLHEGameData) returns (noticeResp) {}//玩法数据通知接口
+  // rpc notice(taskInfoNotice) returns (noticeResp) {}//具体任务触发接口
+  rpc initNoviceTask(reqUserID) returns (respStatus) {}
+  rpc GetTaskInfo(reqInfo) returns (taskInfoList) {}
+  rpc taskRewardClaim(rewardClaimReq) returns (rewardClaimResp) {}
+  rpc jackpotReward(jackpotRewardReq) returns (jackpotRewardResp) {}
+  rpc JackpotRewardInfo(jackpotRewardReq) returns (jackpotRewardResp) {}
+  rpc taskStatus(noticeTaskStatusUpdate) returns (noticeResp) {}
+
+  //test interface
+  rpc InitRegularTask(reqUserID) returns (respStatus) {}
+  rpc ResetPrize(noticeTaskStatusUpdate) returns (noticeResp) {}
+  rpc AddSweepstake(reqUserID) returns (noticeResp) {}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ========== 任务列表状态 ==========
+//协议号：17001
+// c >> s:reqInfo
+// s >> c:taskInfoList
+//
+
+// ========== 领取任务奖励 ==========
+//协议号：17002
+// c >> s:rewardClaimReq
+// s >> c:rewardClaimResp
+
+// ========== Jackpot奖励记录 ==========
+//协议号：17003
+// c >> s:jackpotRewardReq
+// s >> c:jackpotRewardResp
+
+// ========== 任务状态变更 ==========
+//协议号：17004
+// c >> s:
+// s >> c:noticeTaskStatusUpdate
+
+// ========== 领取Jackpot奖励 ==========
+//协议号：17005
+// c >> s:jackpotRewardReq
+// s >> c:jackpotRewardResp

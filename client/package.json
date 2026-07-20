@@ -1,9 +1,24 @@
 {
-  "name": "xiangzhuo-client",
-  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Mahjong",
+  "uuid": "29873ce9-9107-4daa-9de9-2442f263b888",
   "creator": {
     "version": "3.8.8"
   },
-  "version": "3.8.8",
-  "description": "湘桌棋牌 · Cocos Creator 3.8.8 客户端（长沙麻将 / 邵阳跑胡子）"
+  "dependencies": {
+    "crypto-es": "~1.2.7",
+    "protobufjs": "~7.1.2",
+    "protobufjs-cli": "^1.1.1",
+    "xlsx": "~0.18.5",
+    "@akamfoad/qrcode": "~0.3.1"
+  },
+  "scripts": {
+    "make-project": "npm install",
+    "remake-project": "rm -rf node_modules package-lock.json && npm install",
+    "build-protocol-for-temporary": "touch ./assets/Script/protocols/protocol.js && npm run build-protocol:pbjs && npm run build-protocol:pbts && npm run build-protocol:pbjs -- --no-comments",
+    "build-protocol": "touch  ./assets/Script/protocols/protocol.js && npm run build-protocol:pbjs && npm run build-protocol:pbts && npm run build-protocol:pbjs -- --no-comments && node ./tools/scripts/wrap-pbts-result.js",
+    "build-protocol:pbjs": "pbjs --dependency protobufjs/minimal.js --target static-module --wrap commonjs --no-create --no-convert --no-verify --no-delimited --no-beautify --no-service --no-typeurl --out ./assets/Script/protocols/protocol.js ./protocols/*.proto",
+    "build-protocol:pbts": "pbts --main --no-comments --out  ./assets/Script/protocols/protocol.d.ts  ./assets/Script/protocols/*.js",
+    "export-template-data": "node ./tools/scripts/export-template-data.js"
+  },
+  "description": "口袋麻将全集客户端（对标 winktzhong/PocketMahjongClient）"
 }
