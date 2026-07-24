@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>威海麻将 · 远程演示</title>
+  <style>
+    :root {
+      --bg0: #0c1a14;
+      --bg1: #163528;
+      --ink: #e8f2ec;
+      --muted: #9bb5a6;
+      --accent: #c9a227;
+      --line: rgba(232, 242, 236, 0.14);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #2a5a40 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 20%, #1a3d2e 0%, transparent 50%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12vh 1.5rem 4rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin: 0 0 0.4rem;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+      margin: 0 0 2rem;
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,0.22);
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+      color: var(--accent);
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      font-weight: 600;
+    }
+    code, .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      word-break: break-all;
+    }
+    a { color: #d4c078; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.7rem 1.1rem;
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      text-decoration: none;
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      font-size: 0.95rem;
+      background: rgba(201, 162, 39, 0.12);
+    }
+    .btn:hover { background: rgba(201, 162, 39, 0.22); }
+    .status { margin-top: 0.75rem; color: var(--muted); font-family: "PingFang SC", sans-serif; font-size: 0.9rem; }
+    .ok { color: #7dcea0; }
+    .bad { color: #e8a0a0; }
+    ul { margin: 0; padding-left: 1.2rem; font-family: "PingFang SC", sans-serif; line-height: 1.7; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>威海麻将</h1>
+    <p class="sub">Skynet + Cocos Creator 3.8.8 远程演示入口。游戏服已部署在本机；完整 Web 客户端需 Creator 构建发布后上传。</p>
+
+    <section class="panel">
+      <h2>游戏服地址</h2>
+      <div class="mono" id="ws">ws://47.242.242.119:20480/websocket</div>
+      <div class="status" id="probe">正在探测服务…</div>
+      <div class="row">
+        <a class="btn" href="https://github.com/liuchao0739/hunan-boardgame-demo" target="_blank" rel="noopener">GitHub 源码</a>
+        <a class="btn" href="https://github.com/liuchao0739/hunan-boardgame-demo/blob/main/docs/DEPLOY_SEAFILE.md" target="_blank" rel="noopener">部署说明</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>本地 Creator 联机</h2>
+      <ul>
+        <li>打开仓库 <code>client/</code>，预览 Login 场景</li>
+        <li>地址栏加 <code>?serverAddr=47.242.242.119:20480</code></li>
+        <li>或登录页服务器填 <code>47.242.242.119:20480</code></li>
+        <li>DEV 登录 → 创建房间 → 自动 3 机器人 → 开局</li>
+      </ul>
+    </section>
+  </main>
+  <script>
+    const el = document.getElementById('probe');
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    // 优先走同域反代（若已配置），否则直连公网端口
+    const candidates = [
+      proto + '://' + location.host + '/websocket',
+      'ws://47.242.242.119:20480/websocket'
+    ];
+    let i = 0;
+    function tryNext() {
+      if (i >= candidates.length) {
+        el.className = 'status bad';
+        el.textContent = '服务暂未连通（防火墙或进程未起）';
+        return;
+      }
+      const url = candidates[i++];
+      const ws = new WebSocket(url);
+      const t = setTimeout(() => { try { ws.close(); } catch (_) {} tryNext(); }, 2500);
+      ws.onopen = () => {
+        clearTimeout(t);
+        el.className = 'status ok';
+        el.textContent = '服务在线 · ' + url;
+        document.getElementById('ws').textContent = url;
+        ws.close();
+      };
+      ws.onerror = () => { clearTimeout(t); try { ws.close(); } catch (_) {} tryNext(); };
+    }
+    tryNext();
+  </script>
+</body>
+</html>
