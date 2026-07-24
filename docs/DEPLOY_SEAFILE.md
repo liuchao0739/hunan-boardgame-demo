@@ -75,13 +75,17 @@ whmj.xiandan.me:20480
 
 若只开 443、不开 20480，需 Caddy 把 `/websocket` 反代到 `127.0.0.1:20480`（并保证 MsgBus 使用 `wss://whmj.xiandan.me/websocket`）。
 
-## 演示地址（部署完成后）
+## 演示地址（已上线）
 
 | 用途 | 地址 |
 |------|------|
-| 游戏服 WebSocket | `ws://47.242.242.119:20480/websocket` |
-| 域名（DNS 生效后） | `https://whmj.xiandan.me/`（静态页）+ `wss://…` |
+| 演示落地页 | https://chaoren.xiandan.me/whmj/ |
+| 游戏服 WSS（推荐） | `wss://chaoren.xiandan.me/websocket` |
+| Creator 联机 | `?serverAddr=wss://chaoren.xiandan.me/websocket` |
+| 独立域名（待 DNS） | `https://whmj.xiandan.me/`（容器已部署，加 A 记录后自动出证） |
 | 源码 | https://github.com/liuchao0739/hunan-boardgame-demo |
+
+> 阿里云轻量默认只放行 22/80/443，**公网直连 `:20480` 不通**；请走上方 WSS。
 
 ## 构建 Web 客户端
 

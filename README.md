@@ -33,9 +33,9 @@ cd docker && docker compose up -d   # MySQL + Redis
 
 见 [docs/NETWORK.md](docs/NETWORK.md)、[docs/DEPLOY_SEAFILE.md](docs/DEPLOY_SEAFILE.md)。
 
-- 游戏服：`ws://47.242.242.119:20480/websocket`（Seafile 同机 VPS）
-- 预览联机：`?serverAddr=47.242.242.119:20480`
-- 域名页（DNS / 静态构建就绪后）：`https://whmj.xiandan.me/`
+- 落地页：https://chaoren.xiandan.me/whmj/
+- 游戏服：`wss://chaoren.xiandan.me/websocket`
+- Creator 预览：`?serverAddr=wss://chaoren.xiandan.me/websocket`
 
 ## 当前进度（摘要）
 
