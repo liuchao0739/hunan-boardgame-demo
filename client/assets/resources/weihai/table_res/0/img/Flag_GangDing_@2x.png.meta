@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "0617a3f7-05c9-4306-b5d3-60bdabb8836c",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Flag_GangDing_@2x": {
+      "ver": "1.0.4",
+      "uuid": "47d26c17-a8d7-439f-a984-f47a001d5ee9",
+      "rawTextureUuid": "0617a3f7-05c9-4306-b5d3-60bdabb8836c",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1,
+      "offsetY": 0,
+      "trimX": 1,
+      "trimY": 0,
+      "width": 80,
+      "height": 141,
+      "rawWidth": 84,
+      "rawHeight": 141,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "0617a3f7-05c9-4306-b5d3-60bdabb8836c@6c48a",
+      "displayName": "Flag_GangDing_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "0617a3f7-05c9-4306-b5d3-60bdabb8836c",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "0617a3f7-05c9-4306-b5d3-60bdabb8836c@6c48a"
+  }
+}

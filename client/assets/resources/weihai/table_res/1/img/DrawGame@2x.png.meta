@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "275791a6-5aae-4697-b47c-ca456a5bb26b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "DrawGame@2x": {
+      "ver": "1.0.4",
+      "uuid": "9dea3c4b-e933-4c72-b5f4-a362da5e9818",
+      "rawTextureUuid": "275791a6-5aae-4697-b47c-ca456a5bb26b",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 2,
+      "offsetY": 0,
+      "trimX": 6,
+      "trimY": 0,
+      "width": 332,
+      "height": 70,
+      "rawWidth": 340,
+      "rawHeight": 70,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "275791a6-5aae-4697-b47c-ca456a5bb26b@6c48a",
+      "displayName": "DrawGame@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "275791a6-5aae-4697-b47c-ca456a5bb26b",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "275791a6-5aae-4697-b47c-ca456a5bb26b@6c48a"
+  }
+}

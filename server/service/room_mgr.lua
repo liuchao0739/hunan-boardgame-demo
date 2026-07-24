@@ -1,142 +1,196 @@
 local skynet = require "skynet"
-local Room = require "room"
-local Club = require "club"
-local History = require "history"
+local Room = require "weihai.room"
 
 local rooms = {}
+local user_room = {}
+local next_room_id = 100000
 
-local function get(id)
-  return rooms[id]
+local function alloc_room_id()
+  next_room_id = next_room_id + 1
+  if next_room_id > 999999 then next_room_id = 100000 end
+  return next_room_id
+end
+
+local function plain_player(p)
+  return {
+    userId = p.userId,
+    userName = p.userName,
+    seatIndex = p.seatIndex,
+    prepare = p.prepare,
+    hand = p.hand,
+    discard = p.discard,
+    peng = p.peng,
+    gang = p.gang,
+    score = p.score,
+    currScore = p.currScore,
+    totalScore = p.totalScore or 0,
+    dingPiao = p.dingPiao,
+    liangFeng = p.liangFeng,
+    zuoZhuangTimez = p.zuoZhuangTimez or 0,
+    ziMoTimez = p.ziMoTimez or 0,
+    dianPaoTimez = p.dianPaoTimez or 0,
+    huPaiTimez = p.huPaiTimez or 0,
+  }
+end
+
+local function plain_room(room)
+  if not room then return nil end
+  local players = {}
+  for _, p in ipairs(room.players) do
+    players[#players + 1] = plain_player(p)
+  end
+  return {
+    roomId = room.roomId,
+    state = room.state,
+    actUser = room.act_user,
+    lastDiscard = room.last_discard,
+    lastDiscardUser = room.last_discard_user,
+    round = room.round,
+    max_rounds = room.max_rounds,
+    wallLeft = math.max(0, #room.wall - room.wall_idx + 1),
+    gameType0 = room.gameType0,
+    gameType1 = room.gameType1,
+    rules = room.rules,
+    roomUUId = room.roomUUId,
+    players = players,
+  }
 end
 
 local CMD = {}
 
-function CMD.create(game_type, nick, agent)
-  local ok, left = Club.cost_card(nick, 1)
-  if not ok then return nil, left end
-  local room = Room.new(game_type)
-  rooms[room.id] = room
-  local seat, err = room:add_player(nick, agent, false)
-  if not seat then
-    Club.add_cards(nick, 1)
-    return nil, err
+function CMD.create(userId, userName, rules)
+  if user_room[userId] then return nil, "already in room" end
+  local rid = alloc_room_id()
+  local room = Room.new(rid, { userId = userId, userName = userName }, rules)
+  rooms[rid] = room
+  user_room[userId] = rid
+  return plain_room(room)
+end
+
+function CMD.join(userId, userName, roomId)
+  local room = rooms[roomId]
+  if not room then return nil, "room not found" end
+  if room.state ~= "waiting" then return nil, "already started" end
+  local seat, err = room:add_player(userId, userName)
+  if err then return nil, err end
+  user_room[userId] = roomId
+  return plain_room(room)
+end
+
+function CMD.room_of_user(userId)
+  local rid = user_room[userId]
+  if not rid then return nil end
+  return plain_room(rooms[rid])
+end
+
+function CMD.prepare(userId, yes)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local p = room:player(userId)
+  if not p then return nil, "no player" end
+  p.prepare = yes ~= false
+  local started = false
+  local mo = nil
+  if room:all_prepared() then
+    mo = room:deal()
+    started = true
   end
-  return {
-    roomId = room.id,
-    seat = seat,
-    gameType = room.game_type,
-    roomCards = left,
-  }
+  return plain_room(room), started, mo
 end
 
-function CMD.join(room_id, nick, agent)
-  room_id = string.upper(room_id or "")
-  local room = rooms[room_id]
-  if not room then return nil, "房间不存在" end
-  if room.started then return nil, "对局已开始" end
-  local seat, err = room:add_player(nick, agent, false)
-  if not seat then return nil, err end
-  return {
-    roomId = room.id,
-    seat = seat,
-    gameType = room.game_type,
-    roomCards = Club.get_cards(nick),
-  }
+function CMD.chu_pai(userId, tile)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local ok, err = room:chu_pai(userId, tile)
+  if not ok then return nil, err end
+  return plain_room(room)
 end
 
-function CMD.fill_bots(room_id)
-  local room = get(room_id)
-  if not room then return "房间不存在" end
-  room:fill_bots()
-  return nil
+function CMD.draw_next(afterUserId)
+  local rid = user_room[afterUserId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local next_uid = room:next_user(afterUserId)
+  local mo, err = room:draw(next_uid)
+  if not mo then
+    return nil, err or "huangzhuang", plain_room(room), next_uid
+  end
+  return plain_room(room), next_uid, mo
 end
 
-function CMD.ready(room_id, seat)
-  local room = get(room_id)
-  if not room then return "房间不存在" end
-  room:on_ready(seat)
-  return nil
+function CMD.peng(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room or not room.last_discard then return nil, "no discard" end
+  local tile = room.last_discard
+  local ok, err = room:peng(userId, tile)
+  if not ok then return nil, err end
+  return plain_room(room), tile
 end
 
-function CMD.action(room_id, seat, action, payload)
-  local room = get(room_id)
-  if not room then return "房间不存在" end
-  return room:on_action(seat, action, payload)
+function CMD.liang_feng(userId, t0, t1, t2)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local lf, err = room:liang_feng(userId, t0, t1, t2)
+  if not lf then return nil, err end
+  return plain_room(room), lf
 end
 
-function CMD.snapshot(room_id, seat)
-  local room = get(room_id)
+function CMD.bu_feng(userId, tile)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  if not tile then
+    local p = room:player(userId)
+    if not p then return nil, "no player" end
+    for _, t in ipairs(p.hand) do
+      if t >= 31 and t <= 37 then tile = t break end
+    end
+  end
+  if not tile then return nil, "no feng tile" end
+  local lf, err = room:bu_feng(userId, tile)
+  if not lf then return nil, err end
+  return plain_room(room), lf
+end
+
+function CMD.hu(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local items, err
+  if room.act_user == userId then
+    items, err = room:hu_zi_mo(userId)
+  else
+    items, err = room:hu_dian_pao(userId)
+  end
+  if not items then return nil, err end
+  return plain_room(room), items
+end
+
+function CMD.hand_of(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
   if not room then return nil end
-  return room:build_public(seat)
+  local p = room:player(userId)
+  return p and p.hand or nil, room.act_user, room.roomId
 end
 
-function CMD.broadcast(room_id)
-  local room = get(room_id)
-  if not room then return end
-  for i = 0, room.n - 1 do
-    local s = room.seats[i]
-    if s and s.agent and not s.is_bot then
-      skynet.send(s.agent, "lua", "push_state", room_id, i)
-    end
-  end
-end
-
-function CMD.chat(room_id, seat, nick, text)
-  local room = get(room_id)
-  if not room then return end
-  for i = 0, room.n - 1 do
-    local s = room.seats[i]
-    if s and s.agent and not s.is_bot then
-      skynet.send(s.agent, "lua", "push_chat", room_id, seat, nick, text)
-    end
-  end
-end
-
-function CMD.history_list()
-  return History.list(20)
-end
-
-function CMD.history_get(id)
-  return History.get(id)
-end
-
-function CMD.club_create(nick, name)
-  return Club.create_club(nick, name)
-end
-
-function CMD.club_list()
-  return Club.list_clubs()
-end
-
-function CMD.club_join(id, nick)
-  return Club.join_club(id, nick)
-end
-
-function CMD.room_cards(nick)
-  return Club.get_cards(nick)
-end
-
-function CMD.unbind(room_id, seat)
-  local room = get(room_id)
-  if not room or not room.seats[seat] then return end
-  room.seats[seat].agent = nil
-end
-
-function CMD.bind(room_id, seat, agent)
-  local room = get(room_id)
-  if not room or not room.seats[seat] then return end
-  room.seats[seat].agent = agent
+function CMD.leave(userId)
+  user_room[userId] = nil
 end
 
 skynet.start(function()
-  math.randomseed(math.floor(skynet.time() * 1000))
   skynet.dispatch("lua", function(_, _, cmd, ...)
     local f = CMD[cmd]
     if f then
       skynet.ret(skynet.pack(f(...)))
     else
-      skynet.error("room_mgr unknown cmd", cmd)
+      skynet.error("room_mgr unknown", cmd)
       skynet.ret(skynet.pack(nil, "unknown"))
     end
   end)
+  skynet.error("weihai room_mgr ready")
 end)

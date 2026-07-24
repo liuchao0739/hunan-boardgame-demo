@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "381ed71d-0f06-4ce8-8f91-a38abfef0b93",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "MahjongVal_89_@2x": {
+      "ver": "1.0.4",
+      "uuid": "670d45d3-cf55-4dda-bac8-7c49530b4a09",
+      "rawTextureUuid": "381ed71d-0f06-4ce8-8f91-a38abfef0b93",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 2,
+      "trimY": 2,
+      "width": 45,
+      "height": 56,
+      "rawWidth": 49,
+      "rawHeight": 60,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "381ed71d-0f06-4ce8-8f91-a38abfef0b93@6c48a",
+      "displayName": "MahjongVal_89_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "381ed71d-0f06-4ce8-8f91-a38abfef0b93",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "381ed71d-0f06-4ce8-8f91-a38abfef0b93@6c48a"
+  }
+}

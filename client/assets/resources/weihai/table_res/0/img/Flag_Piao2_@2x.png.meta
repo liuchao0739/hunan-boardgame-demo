@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "8a72d733-9a42-4416-9fe3-d6a40ea246bb",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Flag_Piao2_@2x": {
+      "ver": "1.0.4",
+      "uuid": "1f4318aa-7add-4dd9-8d3e-e5f76a53d7ca",
+      "rawTextureUuid": "8a72d733-9a42-4416-9fe3-d6a40ea246bb",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -0.5,
+      "offsetY": 0,
+      "trimX": 1,
+      "trimY": 0,
+      "width": 112,
+      "height": 75,
+      "rawWidth": 115,
+      "rawHeight": 75,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "8a72d733-9a42-4416-9fe3-d6a40ea246bb@6c48a",
+      "displayName": "Flag_Piao2_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "8a72d733-9a42-4416-9fe3-d6a40ea246bb",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "8a72d733-9a42-4416-9fe3-d6a40ea246bb@6c48a"
+  }
+}

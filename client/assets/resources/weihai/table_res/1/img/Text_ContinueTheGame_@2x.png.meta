@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "0ec0f90c-d41f-41b9-b8cd-0d2a0880c9b8",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Text_ContinueTheGame_@2x": {
+      "ver": "1.0.4",
+      "uuid": "d5a748ac-ef5c-4d24-8178-334516cbe82e",
+      "rawTextureUuid": "0ec0f90c-d41f-41b9-b8cd-0d2a0880c9b8",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 196,
+      "height": 54,
+      "rawWidth": 196,
+      "rawHeight": 54,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "0ec0f90c-d41f-41b9-b8cd-0d2a0880c9b8@6c48a",
+      "displayName": "Text_ContinueTheGame_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "0ec0f90c-d41f-41b9-b8cd-0d2a0880c9b8",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "0ec0f90c-d41f-41b9-b8cd-0d2a0880c9b8@6c48a"
+  }
+}

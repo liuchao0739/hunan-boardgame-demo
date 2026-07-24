@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "1725ca30-703e-4723-8be5-a56fe2eb0bb9",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Button_LiangFeng_@2x": {
+      "ver": "1.0.4",
+      "uuid": "66394ff6-a6ea-4c86-8e3d-913afea87149",
+      "rawTextureUuid": "1725ca30-703e-4723-8be5-a56fe2eb0bb9",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -0.5,
+      "offsetY": -1.5,
+      "trimX": 1,
+      "trimY": 4,
+      "width": 237,
+      "height": 235,
+      "rawWidth": 240,
+      "rawHeight": 240,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "1725ca30-703e-4723-8be5-a56fe2eb0bb9@6c48a",
+      "displayName": "Button_LiangFeng_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "1725ca30-703e-4723-8be5-a56fe2eb0bb9",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "1725ca30-703e-4723-8be5-a56fe2eb0bb9@6c48a"
+  }
+}

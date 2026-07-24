@@ -30,3 +30,4 @@ client/local/
 _refs/
 _archive/
 client/node_modules/
+server/playback/

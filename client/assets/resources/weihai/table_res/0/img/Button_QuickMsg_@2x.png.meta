@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "6a5f7260-497c-495c-9e8f-f1e4b2898b06",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Button_QuickMsg_@2x": {
+      "ver": "1.0.4",
+      "uuid": "269e101e-064c-4c84-899e-c53f1b325c18",
+      "rawTextureUuid": "6a5f7260-497c-495c-9e8f-f1e4b2898b06",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 99,
+      "height": 99,
+      "rawWidth": 99,
+      "rawHeight": 99,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "6a5f7260-497c-495c-9e8f-f1e4b2898b06@6c48a",
+      "displayName": "Button_QuickMsg_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "6a5f7260-497c-495c-9e8f-f1e4b2898b06",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "6a5f7260-497c-495c-9e8f-f1e4b2898b06@6c48a"
+  }
+}

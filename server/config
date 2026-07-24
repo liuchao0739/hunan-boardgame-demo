@@ -1,5 +1,5 @@
--- 湖南棋牌 Skynet 配置
--- 启动：cd server && ./skynet/skynet config
+-- 威海麻将 Skynet 配置
+-- 启动：cd server && ./run.sh
 
 root = "./skynet/"
 thread = 8
@@ -16,5 +16,5 @@ luaservice = "./service/?.lua;" .. root .. "service/?.lua;" .. root .. "examples
 lua_path = "./lualib/?.lua;" .. "./lualib/?/init.lua;" .. root .. "lualib/?.lua;" .. root .. "lualib/?/init.lua"
 snax = root .. "examples/?.lua"
 
--- 业务端口
-ws_port = 9948
+-- 与原版威海 proxyserver 对齐
+ws_port = 20480

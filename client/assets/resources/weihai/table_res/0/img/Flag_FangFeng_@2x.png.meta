@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "79f259af-5b85-44c2-aca3-d0e0c36ba15b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Flag_FangFeng_@2x": {
+      "ver": "1.0.4",
+      "uuid": "8590b708-08d0-4691-8b52-e1c3738d2425",
+      "rawTextureUuid": "79f259af-5b85-44c2-aca3-d0e0c36ba15b",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 38,
+      "height": 36,
+      "rawWidth": 38,
+      "rawHeight": 36,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "79f259af-5b85-44c2-aca3-d0e0c36ba15b@6c48a",
+      "displayName": "Flag_FangFeng_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "79f259af-5b85-44c2-aca3-d0e0c36ba15b",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "79f259af-5b85-44c2-aca3-d0e0c36ba15b@6c48a"
+  }
+}

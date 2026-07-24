@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "0a57ac53-d998-4e02-8cfe-cf73f75120ac",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "LoserBG@2x": {
+      "ver": "1.0.4",
+      "uuid": "e5836105-ac7b-4752-a820-5978ac370ded",
+      "rawTextureUuid": "0a57ac53-d998-4e02-8cfe-cf73f75120ac",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0.5,
+      "trimX": 2,
+      "trimY": 1,
+      "width": 256,
+      "height": 270,
+      "rawWidth": 260,
+      "rawHeight": 273,
+      "borderTop": 128,
+      "borderBottom": 88,
+      "borderLeft": 32,
+      "borderRight": 32,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "0a57ac53-d998-4e02-8cfe-cf73f75120ac@6c48a",
+      "displayName": "LoserBG@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "0a57ac53-d998-4e02-8cfe-cf73f75120ac",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "0a57ac53-d998-4e02-8cfe-cf73f75120ac@6c48a"
+  }
+}

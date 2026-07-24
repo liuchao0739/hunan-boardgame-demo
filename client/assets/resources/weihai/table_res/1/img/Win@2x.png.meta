@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "540ab9b1-2f2f-4d38-8650-c4d8966337ba",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Win@2x": {
+      "ver": "1.0.4",
+      "uuid": "b65bc261-dee3-49ee-92d0-e0712b548e08",
+      "rawTextureUuid": "540ab9b1-2f2f-4d38-8650-c4d8966337ba",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 338,
+      "height": 70,
+      "rawWidth": 340,
+      "rawHeight": 70,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "540ab9b1-2f2f-4d38-8650-c4d8966337ba@6c48a",
+      "displayName": "Win@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "540ab9b1-2f2f-4d38-8650-c4d8966337ba",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "540ab9b1-2f2f-4d38-8650-c4d8966337ba@6c48a"
+  }
+}

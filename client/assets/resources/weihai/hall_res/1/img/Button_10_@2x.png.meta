@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "09b1ecda-0b81-4a00-9dbc-42bb502adcf5",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Button_10_@2x": {
+      "ver": "1.0.4",
+      "uuid": "03bf9ff9-3d2d-4c7e-a575-50a72c1f654c",
+      "rawTextureUuid": "09b1ecda-0b81-4a00-9dbc-42bb502adcf5",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 1,
+      "trimY": 1,
+      "width": 122,
+      "height": 50,
+      "rawWidth": 124,
+      "rawHeight": 52,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 31,
+      "borderRight": 31,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "09b1ecda-0b81-4a00-9dbc-42bb502adcf5@6c48a",
+      "displayName": "Button_10_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "09b1ecda-0b81-4a00-9dbc-42bb502adcf5",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "09b1ecda-0b81-4a00-9dbc-42bb502adcf5@6c48a"
+  }
+}

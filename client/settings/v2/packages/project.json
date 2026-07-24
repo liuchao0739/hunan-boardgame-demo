@@ -1,13 +1,7 @@
 {
-  "__version__": "1.0.6",
-  "general": {
-    "designResolution": {
-      "width": 1280,
-      "height": 720,
-      "fitHeight": true,
-      "fitWidth": false
-    },
-    "highQuality": false
+  "layers": {
+    "DEFAULT": 1073741824,
+    "UI_2D": 33554432
   },
-  "custom_joint_texture_layouts": []
+  "__version__": "1.0.6"
 }

@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "59cb8d3a-0169-45f3-947a-8b75de0e1a79",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "DaYingJia@2x": {
+      "ver": "1.0.4",
+      "uuid": "0b793274-236d-44e8-82fd-f5ae909dad14",
+      "rawTextureUuid": "59cb8d3a-0169-45f3-947a-8b75de0e1a79",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": -0.5,
+      "trimX": 0,
+      "trimY": 1,
+      "width": 107,
+      "height": 39,
+      "rawWidth": 107,
+      "rawHeight": 40,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "59cb8d3a-0169-45f3-947a-8b75de0e1a79@6c48a",
+      "displayName": "DaYingJia@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "59cb8d3a-0169-45f3-947a-8b75de0e1a79",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "59cb8d3a-0169-45f3-947a-8b75de0e1a79@6c48a"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "035da8e8-a317-41ef-bf70-aa07233b7247",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "GameWndBG_A_@2x": {
+      "ver": "1.0.4",
+      "uuid": "bab32225-cdc9-4360-a658-9b458faea158",
+      "rawTextureUuid": "035da8e8-a317-41ef-bf70-aa07233b7247",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -0.5,
+      "offsetY": -0.5,
+      "trimX": 1,
+      "trimY": 1,
+      "width": 187,
+      "height": 127,
+      "rawWidth": 190,
+      "rawHeight": 128,
+      "borderTop": 70,
+      "borderBottom": 30,
+      "borderLeft": 104,
+      "borderRight": 80,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "035da8e8-a317-41ef-bf70-aa07233b7247@6c48a",
+      "displayName": "GameWndBG_A_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "035da8e8-a317-41ef-bf70-aa07233b7247",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "035da8e8-a317-41ef-bf70-aa07233b7247@6c48a"
+  }
+}

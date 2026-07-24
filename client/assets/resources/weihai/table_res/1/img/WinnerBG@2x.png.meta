@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "b4e9ce71-7d44-414c-8425-19f092ef3198",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "WinnerBG@2x": {
+      "ver": "1.0.4",
+      "uuid": "f2036aed-5dcd-4868-8da3-a21795b9fefc",
+      "rawTextureUuid": "b4e9ce71-7d44-414c-8425-19f092ef3198",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0.5,
+      "trimX": 2,
+      "trimY": 1,
+      "width": 256,
+      "height": 270,
+      "rawWidth": 260,
+      "rawHeight": 273,
+      "borderTop": 128,
+      "borderBottom": 140,
+      "borderLeft": 64,
+      "borderRight": 64,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "b4e9ce71-7d44-414c-8425-19f092ef3198@6c48a",
+      "displayName": "WinnerBG@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "b4e9ce71-7d44-414c-8425-19f092ef3198",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "b4e9ce71-7d44-414c-8425-19f092ef3198@6c48a"
+  }
+}

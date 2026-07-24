@@ -1,59 +1,48 @@
-# 口袋麻将（对标 PocketMahjongClient）
+# 威海麻将（Skynet + Cocos Creator 3.8.8）
 
-本仓库客户端已切换为开源 **[口袋麻将全集](https://github.com/winktzhong/PocketMahjongClient)** 原版工程（Cocos Creator · 真 3D 麻将桌）。
+完整复刻 [hjj2017/whmj](https://github.com/hjj2017/whmj.cocos2d_client) 玩法与 **MsgBus/Protobuf** 协议，后端用 **Skynet/Lua**，前端 **Cocos Creator 3.8.8**。
 
-演示地址（官方）：http://magame.110x.com
+对照仓（本地 gitignore）：`_refs/whmj.cocos2d_client`、`_refs/whmj.java_server`。
 
-> 湘桌自制大厅 / 跑胡子 / 斗地主等已移出主线，见 `_archive/xiangzhuo-client/`（仅归档，不再维护）。
+## 快速开始
 
-## 启动（唯一推荐方式）
+### 1. 服务端
 
-1. 安装 **Cocos Creator 3.7.4+**（本机可用 **3.8.8** 打开，按提示升级工程）
-2. 打开工程目录：`hunan-boardgame-demo/client/`
-3. 首次可在 `client/` 执行：`npm install --legacy-peer-deps`
-4. **启动场景选 `assets/Scene/Main/MainScene`**
-5. 点预览 / 运行
+```bash
+cd server
+./run.sh
+# 监听 ws://0.0.0.0:20480
+```
 
-### 登录 / 验证码（重要）
+可选：
 
-口袋麻将 **不连** 本仓库 `server/`（Skynet `:9948`）。
+```bash
+cd docker && docker compose up -d   # MySQL + Redis
+```
 
-官方测试服 `mhtest.openpokergame.net:8086` 当前 **502 挂了**（浏览器 Network 可见），真短信/真验证码都不可用。
+### 2. 客户端
 
-因此工程已默认开启 **本地离线登录旁路**（`AppVar.offlineAuth = true`），会伪造验证码、登录、角色、俱乐部等全部 HTTP：
+1. 安装 **Cocos Creator 3.8.8**
+2. Dashboard 打开本仓库 `client/`（项目名可能仍显示旧备注，不影响）
+3. **按 [client/SCENE_SETUP.md](client/SCENE_SETUP.md) 逐步建 Login / Hall / Table 并绑按钮**（必读）
+4. 预览；地址可加 `?serverAddr=127.0.0.1:20480`
 
-1. **停预览再开**（必须重载）
-2. 注册：验证码自动 `888888`，密码如 `abc123`
-3. 或直接登录：同一手机号 + 密码
-4. 应进入大厅（控制台一串 `offlineAuth mock [...]`，**不应再出现** `mhtest...502`）
+登录方式：DEV（`loginMethod=0`），名称来自输入框 / `testerName`。
 
-说明：离线模式只能进客户端 UI / 看 3D 场景资源，**不能联机对战**。  
-想看完整联机可去官网：http://magame.110x.com
+### 3. 远程
 
-## 工程结构（口袋原版）
+见 [docs/NETWORK.md](docs/NETWORK.md)。客户端将 `serverAddr` 改为公网地址即可。
+
+## 目录
 
 | 路径 | 说明 |
 |------|------|
-| `assets/Scene/Main` | 入口场景（必选） |
-| `assets/Scene/Login` | 登录 |
-| `assets/Scene/Home` | 大厅 |
-| `assets/Scene/Mahjong` | **真 3D 牌桌** |
-| `assets/Script/Mahjong` | 3D 牌桌逻辑 / CardFactory |
-| `assets/Scene/Mahjong/World/Card` | 3D 牌模型 FBX |
-
-## 已去掉的无关内容
-
-- 自制 `GameApp` 灰盒大厅 / 伪 3D `Table3D`
-- 长沙/跑胡子/斗地主多玩法 Skynet Demo 客户端（归档）
-- 威海大厅拼装、加入房数字键盘等湘桌临时 UI
-
-服务端 `server/`（Skynet）与口袋协议不兼容，**跑口袋麻将请用其自带联机**，不必再启 `./server/run.sh`。
+| `server/` | Skynet 网关 + 房间 + 威海牌局 |
+| `server/protocol/` | 原版 `.proto` |
+| `client/assets/scripts/` | MsgBus / 登录 / 大厅 / 牌桌 |
+| `docs/PROTOCOL_WEIHAI.md` | 协议说明 |
+| `_refs/` | 官方前后端蓝本（不提交） |
 
 ## 许可
 
-口袋麻将客户端源码按其上游许可证使用（见 [PocketMahjongClient](https://github.com/winktzhong/PocketMahjongClient) README）。  
-归档的湘桌自制代码仍为 MIT。
-
-## 免责
-
-严禁用于任何非法用途，后果自负。
+服务端/客户端自研代码 MIT；蓝本威海工程遵循其 Apache-2.0，仅作对照。

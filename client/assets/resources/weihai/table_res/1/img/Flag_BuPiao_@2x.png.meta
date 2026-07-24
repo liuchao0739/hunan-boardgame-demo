@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "ef15c098-f5ec-4554-85fe-a65a8f45fd60",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Flag_BuPiao_@2x": {
+      "ver": "1.0.4",
+      "uuid": "bf3bc195-b918-4ef7-81a6-7a01340445f9",
+      "rawTextureUuid": "ef15c098-f5ec-4554-85fe-a65a8f45fd60",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1,
+      "offsetY": 0,
+      "trimX": 2,
+      "trimY": 0,
+      "width": 105,
+      "height": 88,
+      "rawWidth": 111,
+      "rawHeight": 88,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "ef15c098-f5ec-4554-85fe-a65a8f45fd60@6c48a",
+      "displayName": "Flag_BuPiao_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "ef15c098-f5ec-4554-85fe-a65a8f45fd60",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "ef15c098-f5ec-4554-85fe-a65a8f45fd60@6c48a"
+  }
+}

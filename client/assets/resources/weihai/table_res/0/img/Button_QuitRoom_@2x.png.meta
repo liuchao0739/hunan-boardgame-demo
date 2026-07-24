@@ -1,0 +1,70 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "0035f0e1-c908-4c8c-9429-a77439e8be7b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "Button_QuitRoom_@2x": {
+      "ver": "1.0.4",
+      "uuid": "1bec80e6-5446-463c-b845-56db6ee94762",
+      "rawTextureUuid": "0035f0e1-c908-4c8c-9429-a77439e8be7b",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -0.5,
+      "offsetY": 0.5,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 481,
+      "height": 104,
+      "rawWidth": 482,
+      "rawHeight": 105,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {},
+      "importer": "*",
+      "imported": false,
+      "files": [],
+      "userData": {},
+      "displayName": "",
+      "id": "",
+      "name": ""
+    },
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "0035f0e1-c908-4c8c-9429-a77439e8be7b@6c48a",
+      "displayName": "Button_QuitRoom_@2x",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "repeat",
+        "wrapModeT": "repeat",
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0,
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "0035f0e1-c908-4c8c-9429-a77439e8be7b",
+        "visible": false
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "texture",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "0035f0e1-c908-4c8c-9429-a77439e8be7b@6c48a"
+  }
+}

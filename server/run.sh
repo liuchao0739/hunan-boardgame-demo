@@ -5,5 +5,5 @@ if [[ ! -x ./skynet/skynet ]]; then
   echo "正在编译 Skynet…"
   make -C skynet macosx
 fi
-echo "启动 Skynet 棋牌服 → ws://0.0.0.0:9948"
+echo "启动威海麻将 Skynet → ws://0.0.0.0:20480"
 exec ./skynet/skynet config
