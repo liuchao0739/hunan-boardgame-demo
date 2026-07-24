@@ -1,17 +1,24 @@
--- Weihai mahjong tile helpers. Values: 1-9 wan, 11-19 tiao, 21-29 tong, 31-37 feng/jian
+-- Weihai mahjong tiles — values aligned with Java/Cocos MahjongTileDef
+-- 万 21-29, 条 41-49, 饼 81-89, 风 101/103/105/107, 箭 126/188/255
 
 local M = {}
+
+local WAN = { 21,22,23,24,25,26,27,28,29 }
+local TIAO = { 41,42,43,44,45,46,47,48,49 }
+local BING = { 81,82,83,84,85,86,87,88,89 }
+local FENG = { 101,103,105,107 }
+local JIAN = { 126,188,255 }
 
 function M.build_wall()
   local tiles = {}
   local function add(v, n)
     for _ = 1, n do tiles[#tiles + 1] = v end
   end
-  for i = 1, 9 do add(i, 4) end
-  for i = 11, 19 do add(i, 4) end
-  for i = 21, 29 do add(i, 4) end
-  for i = 31, 37 do add(i, 4) end
-  -- shuffle
+  for _, v in ipairs(WAN) do add(v, 4) end
+  for _, v in ipairs(TIAO) do add(v, 4) end
+  for _, v in ipairs(BING) do add(v, 4) end
+  for _, v in ipairs(FENG) do add(v, 4) end
+  for _, v in ipairs(JIAN) do add(v, 4) end
   for i = #tiles, 2, -1 do
     local j = math.random(i)
     tiles[i], tiles[j] = tiles[j], tiles[i]
@@ -27,8 +34,19 @@ local function counts(hand)
   return c
 end
 
+local function is_suit_tile(t)
+  return (t >= 21 and t <= 29) or (t >= 41 and t <= 49) or (t >= 81 and t <= 89)
+end
+
+local function can_chow_at(t)
+  -- t is first of sequence t,t+1,t+2 within same suit
+  if t >= 21 and t <= 27 then return true end
+  if t >= 41 and t <= 47 then return true end
+  if t >= 81 and t <= 87 then return true end
+  return false
+end
+
 local function can_meld(c)
-  -- recursive check for sets/sequences after removing one pair
   local keys = {}
   for k, v in pairs(c) do
     if v > 0 then keys[#keys + 1] = k end
@@ -37,17 +55,14 @@ local function can_meld(c)
   if #keys == 0 then return true end
   local t = keys[1]
   local n = c[t]
-  -- pung
   if n >= 3 then
     c[t] = n - 3
     if can_meld(c) then return true end
     c[t] = n
   end
-  -- chow (only suits)
-  if t < 30 then
+  if is_suit_tile(t) and can_chow_at(t) then
     local a, b = t + 1, t + 2
-    -- block across 9/10/20
-    if (t % 10) <= 7 and (c[a] or 0) > 0 and (c[b] or 0) > 0 then
+    if (c[a] or 0) > 0 and (c[b] or 0) > 0 then
       c[t] = n - 1
       c[a] = c[a] - 1
       c[b] = c[b] - 1
@@ -102,6 +117,11 @@ end
 function M.sort_hand(hand)
   table.sort(hand)
   return hand
+end
+
+function M.is_feng_jian(t)
+  return (t == 101 or t == 103 or t == 105 or t == 107
+    or t == 126 or t == 188 or t == 255)
 end
 
 return M

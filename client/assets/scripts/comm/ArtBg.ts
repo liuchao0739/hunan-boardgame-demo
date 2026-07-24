@@ -1,0 +1,196 @@
+import {
+  resources, Sprite, SpriteFrame, Node, UITransform, view, Texture2D, ImageAsset,
+  Button, Label, Color, Layers, EventTouch, NodeEventType,
+} from 'cc';
+
+const frameCache = new Map<string, SpriteFrame>();
+
+export function loadSpriteFrame(path: string): Promise<SpriteFrame | null> {
+  if (frameCache.has(path)) return Promise.resolve(frameCache.get(path)!);
+  return new Promise((resolve) => {
+    const done = (f: SpriteFrame | null) => {
+      if (f) frameCache.set(path, f);
+      resolve(f);
+    };
+    resources.load(`${path}/spriteFrame`, SpriteFrame, (err, frame) => {
+      if (!err && frame) { done(frame); return; }
+      resources.load(path, SpriteFrame, (err2, frame2) => {
+        if (!err2 && frame2) { done(frame2); return; }
+        resources.load(path, ImageAsset, (err3, img) => {
+          if (err3 || !img) {
+            console.warn('[Art] load fail', path, err || err2 || err3);
+            done(null);
+            return;
+          }
+          const tex = new Texture2D();
+          tex.image = img;
+          const sf = new SpriteFrame();
+          sf.texture = tex;
+          done(sf);
+        });
+      });
+    });
+  });
+}
+
+export function attachBg(parent: Node, path: string): void {
+  if (!parent || parent.getChildByName('__AutoBg')) return;
+  const bg = new Node('__AutoBg');
+  parent.insertChild(bg, 0);
+  bg.layer = parent.layer || Layers.Enum.UI_2D;
+  const ui = bg.addComponent(UITransform);
+  const vs = view.getVisibleSize();
+  ui.setContentSize(vs.width, vs.height);
+  bg.setPosition(0, 0, 0);
+  const sp = bg.addComponent(Sprite);
+  sp.sizeMode = Sprite.SizeMode.CUSTOM;
+  void loadSpriteFrame(path).then((frame) => {
+    if (!frame || !bg.isValid) return;
+    sp.spriteFrame = frame;
+    const tw = frame.originalSize?.width || frame.rect.width;
+    const th = frame.originalSize?.height || frame.rect.height;
+    if (tw > 0 && th > 0) {
+      const s = Math.max(vs.width / tw, vs.height / th);
+      ui.setContentSize(tw * s, th * s);
+    }
+  });
+}
+
+/** 用独立子节点贴图，避免默认 Button 白块；成功后再藏 Label */
+export function skinButton(btn: Button | null | undefined, path: string, hideLabel = true, maxW = 360): void {
+  if (!btn) return;
+  btn.transition = Button.Transition.SCALE;
+  btn.zoomScale = 0.94;
+  void loadSpriteFrame(path).then((frame) => {
+    if (!frame || !btn.node?.isValid) return;
+    let skin = btn.node.getChildByName('__Skin');
+    if (!skin) {
+      skin = new Node('__Skin');
+      btn.node.insertChild(skin, 0);
+      skin.layer = btn.node.layer;
+      skin.addComponent(UITransform);
+      skin.addComponent(Sprite);
+    }
+    const sp = skin.getComponent(Sprite)!;
+    const ui = skin.getComponent(UITransform)!;
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    sp.type = Sprite.Type.SIMPLE;
+    sp.spriteFrame = frame;
+    const tw = frame.originalSize?.width || frame.rect.width || 200;
+    const th = frame.originalSize?.height || frame.rect.height || 80;
+    const scale = Math.min(1, maxW / tw);
+    ui.setContentSize(tw * scale, th * scale);
+    const host = btn.node.getComponent(UITransform);
+    if (host) host.setContentSize(tw * scale, th * scale);
+    const hostSp = btn.getComponent(Sprite);
+    if (hostSp) hostSp.enabled = false;
+    if (hideLabel) {
+      for (const lab of btn.node.getComponentsInChildren(Label)) {
+        if (lab.node.parent === skin) continue;
+        lab.string = '';
+        lab.node.active = false;
+      }
+    }
+  });
+}
+
+export function styleLabel(lab: Label | null | undefined, size = 28): void {
+  if (!lab) return;
+  lab.fontSize = size;
+  lab.color = new Color(255, 255, 255, 255);
+  lab.enableOutline = true;
+  lab.outlineColor = new Color(40, 20, 0, 220);
+  lab.outlineWidth = 2;
+}
+
+export type TileGesture = {
+  onSelect?: (tile: number, node: Node) => void;
+  onDiscard?: (tile: number, node: Node) => void;
+};
+
+/**
+ * 手牌交互（只走 TOUCH，避免和 MOUSE 双触发把逻辑打坏）：
+ * - 单击 → onSelect（外层再点同一张 = 出牌）
+ * - 上滑超过阈值 → onDiscard（滑动中途就出，不等松手）
+ */
+export async function createTileNode(
+  tile: number,
+  parent: Node,
+  w = 52,
+  h = 72,
+  gesture?: TileGesture | ((tile: number, node: Node) => void),
+): Promise<Node> {
+  const n = new Node(`T_${tile}`);
+  parent.addChild(n);
+  n.layer = parent.layer;
+  const ui = n.addComponent(UITransform);
+  ui.setContentSize(w, h);
+  const back = n.addComponent(Sprite);
+  back.sizeMode = Sprite.SizeMode.CUSTOM;
+  const backSf = await loadSpriteFrame('weihai/tiles/back');
+  if (backSf) back.spriteFrame = backSf;
+  ui.setContentSize(w, h);
+  const face = new Node('face');
+  n.addChild(face);
+  face.layer = parent.layer;
+  const fui = face.addComponent(UITransform);
+  fui.setContentSize(w * 0.88, h * 0.78);
+  face.setPosition(0, 3, 0);
+  const fsp = face.addComponent(Sprite);
+  fsp.sizeMode = Sprite.SizeMode.CUSTOM;
+  if (tile > 0) {
+    const faceSf = await loadSpriteFrame(`weihai/tiles/${tile}`);
+    if (faceSf) fsp.spriteFrame = faceSf;
+  } else {
+    face.active = false;
+  }
+  fui.setContentSize(w * 0.88, h * 0.78);
+
+  const g: TileGesture = typeof gesture === 'function'
+    ? { onSelect: gesture }
+    : (gesture || {});
+
+  if (g.onSelect || g.onDiscard) {
+    let startY = 0;
+    let baseY = 0;
+    let fired = false;
+
+    n.on(NodeEventType.TOUCH_START, (e: EventTouch) => {
+      startY = e.getUILocation().y;
+      baseY = n.position.y;
+      fired = false;
+    }, n);
+
+    n.on(NodeEventType.TOUCH_MOVE, (e: EventTouch) => {
+      if (fired) return;
+      const dy = e.getUILocation().y - startY;
+      if (dy > 0) {
+        n.setPosition(n.position.x, baseY + dy, n.position.z);
+      }
+      // 上滑足够：立刻出牌（不要等 END，否则拖出节点就丢事件）
+      if (g.onDiscard && dy > 24) {
+        fired = true;
+        g.onDiscard(tile, n);
+      }
+    }, n);
+
+    n.on(NodeEventType.TOUCH_END, (e: EventTouch) => {
+      if (fired) return;
+      const dy = e.getUILocation().y - startY;
+      if (g.onDiscard && dy > 24) {
+        fired = true;
+        g.onDiscard(tile, n);
+        return;
+      }
+      // 单击选中（再点同一张由 TableScene 出牌）
+      n.setPosition(n.position.x, baseY, n.position.z);
+      g.onSelect?.(tile, n);
+    }, n);
+
+    n.on(NodeEventType.TOUCH_CANCEL, () => {
+      if (fired) return;
+      if (n.isValid) n.setPosition(n.position.x, baseY, n.position.z);
+    }, n);
+  }
+  return n;
+}

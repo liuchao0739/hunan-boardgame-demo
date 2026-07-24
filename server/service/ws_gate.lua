@@ -175,6 +175,7 @@ local function handle_prepare(id)
       send_bin(wid, Code.OfficialStartBroadcast, "")
       send_bin(wid, Code.RoundStartedBroadcast, "")
       send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(room.actUser))
+      send_bin(wid, Code.MahjongMoPaiBroadcast, pb.encode_sint32(1, room.wallLeft or 0))
     end)
     push_hands(room)
     for wid, c in pairs(clients) do
@@ -182,32 +183,29 @@ local function handle_prepare(id)
         send_bin(wid, Code.MahjongMoPaiResult, encode_tile(mo))
       end
     end
+    schedule_bot_ai(room.roomId)
   end
 end
 
-local function handle_chu(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_chu_pai_cmd(body)
-  local room, err = skynet.call(room_mgr, "lua", "chu_pai", uid, cmd.t)
-  if not room then
-    skynet.error("chu fail", err)
-    return
-  end
-  send_bin(id, Code.MahjongChuPaiResult, "")
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongChuPaiBroadcast, Codec.encode_chu_pai_broadcast(uid, cmd.t))
-  end)
-
-  local r2, next_uid, mo = skynet.call(room_mgr, "lua", "draw_next", uid)
+local function proceed_after_claim(discarderId)
+  local r2, a, b = skynet.call(room_mgr, "lua", "finish_claim_draw", discarderId)
+  -- finish_claim_draw 成功: room, next_uid, mo
+  -- 失败: nil, err, ...
   if not r2 then
-    broadcast_room(room, function(wid, _)
-      send_bin(wid, Code.MahjongHuangZhuangBroadcast, "")
-    end)
+    -- 只有真正摸完才荒庄；已被碰走不要弹臭了
+    if a ~= "huangzhuang" then return end
+    local room = skynet.call(room_mgr, "lua", "room_of_user", discarderId)
+    if room then
+      broadcast_room(room, function(wid, _)
+        send_bin(wid, Code.MahjongHuangZhuangBroadcast, "")
+      end)
+    end
     return
   end
+  local next_uid, mo = a, b
   broadcast_room(r2, function(wid, _)
     send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(next_uid))
-    send_bin(wid, Code.MahjongMoPaiBroadcast, "")
+    send_bin(wid, Code.MahjongMoPaiBroadcast, pb.encode_sint32(1, r2.wallLeft or 0))
   end)
   for wid, c in pairs(clients) do
     if c.userId == next_uid then
@@ -219,18 +217,128 @@ local function handle_chu(id, body)
       send_bin(wid, Code.MahjongInHandChangedResult, Codec.encode_mahjong_in_hand_changed_result(next_uid, hand, mo))
     end
   end
+  schedule_bot_ai(r2.roomId)
 end
 
-local function handle_peng(id)
-  local uid = clients[id].userId
+local function apply_chu(uid, tile)
+  local room, err = skynet.call(room_mgr, "lua", "chu_pai", uid, tile)
+  if not room then
+    skynet.error("chu fail", uid, err)
+    return nil
+  end
+  broadcast_room(room, function(wid, _)
+    send_bin(wid, Code.MahjongChuPaiBroadcast, Codec.encode_chu_pai_broadcast(uid, tile))
+  end)
+  push_hands(room)
+
+  local claimants = skynet.call(room_mgr, "lua", "who_can_claim", uid) or {}
+  if #claimants == 0 then
+    proceed_after_claim(uid)
+  else
+    local discarder = uid
+    local has_human = false
+    for _, c in ipairs(claimants) do
+      if not skynet.call(room_mgr, "lua", "is_bot", c.userId) then
+        has_human = true
+        break
+      end
+    end
+    -- 有真人可碰/胡：给 20 秒；纯机器人：0.8 秒
+    local wait = has_human and 2000 or 80
+    skynet.timeout(wait, function()
+      local r = skynet.call(room_mgr, "lua", "room_of_user", discarder)
+      if r and r.claim_pending and r.lastDiscardUser == discarder then
+        proceed_after_claim(discarder)
+      end
+    end)
+    schedule_bot_ai(room.roomId)
+  end
+  return room
+end
+
+local function apply_peng(uid)
   local room, tile = skynet.call(room_mgr, "lua", "peng", uid)
-  if not room then return end
-  send_bin(id, Code.MahjongPengResult, "")
+  if not room then
+    skynet.error("peng fail", uid, tile)
+    return
+  end
   broadcast_room(room, function(wid, _)
     send_bin(wid, Code.MahjongPengBroadcast, Codec.encode_chu_pai_broadcast(uid, tile or 0))
     send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(uid))
   end)
   push_hands(room)
+  schedule_bot_ai(room.roomId)
+end
+
+local function apply_guo(uid)
+  local room, done, discarder = skynet.call(room_mgr, "lua", "guo", uid)
+  if done and discarder then
+    proceed_after_claim(discarder)
+  elseif room then
+    schedule_bot_ai(room.roomId)
+  end
+end
+
+function schedule_bot_ai(roomId)
+  skynet.timeout(35, function()
+    local room = skynet.call(room_mgr, "lua", "get_room", roomId)
+    if not room or room.state ~= "playing" then return end
+
+    if room.claim_pending and room.lastDiscardUser then
+      local claimants = skynet.call(room_mgr, "lua", "who_can_claim", room.lastDiscardUser) or {}
+      for _, c in ipairs(claimants) do
+        if skynet.call(room_mgr, "lua", "is_bot", c.userId) then
+          if c.canHu then
+            local r2, items = skynet.call(room_mgr, "lua", "hu", c.userId)
+            if r2 then
+              broadcast_room(r2, function(wid, _)
+                send_bin(wid, Code.MahjongHuOrZiMoBroadcast, pb.encode_sint32(1, c.userId))
+                send_bin(wid, Code.RoundSettlementBroadcast, Codec.encode_round_settlement(items))
+              end)
+              return
+            end
+          end
+          -- 机器人默认过（偶尔碰）
+          if c.canPeng and math.random(1, 100) <= 25 then
+            apply_peng(c.userId)
+            return
+          end
+          apply_guo(c.userId)
+          return
+        end
+      end
+      return
+    end
+
+    local act = room.actUser
+    if act and skynet.call(room_mgr, "lua", "is_bot", act) then
+      local tile = skynet.call(room_mgr, "lua", "bot_pick_discard", act)
+      if tile then
+        apply_chu(act, tile)
+      end
+    end
+  end)
+end
+
+local function handle_chu(id, body)
+  local uid = clients[id].userId
+  local cmd = Codec.decode_chu_pai_cmd(body)
+  local room = apply_chu(uid, cmd.t)
+  if room then
+    send_bin(id, Code.MahjongChuPaiResult, "")
+  end
+end
+
+local function handle_peng(id)
+  local uid = clients[id].userId
+  apply_peng(uid)
+  send_bin(id, Code.MahjongPengResult, "")
+end
+
+local function handle_guo(id)
+  local uid = clients[id].userId
+  apply_guo(uid)
+  send_bin(id, Code.MahjongGuoResult, "")
 end
 
 local function handle_liang_feng(id, body)
@@ -266,10 +374,12 @@ local function handle_hu(id)
   local uid = clients[id].userId
   local room, items = skynet.call(room_mgr, "lua", "hu", uid)
   if not room then
-    skynet.error("hu fail", items)
+    skynet.error("hu fail", uid, items)
+    -- 告知客户端失败，避免只显示「胡！」却无结算
+    send_bin(id, Code.MahjongHuOrZiMoResult, pb.encode_bool(1, false))
     return
   end
-  send_bin(id, Code.MahjongHuOrZiMoResult, "")
+  send_bin(id, Code.MahjongHuOrZiMoResult, pb.encode_bool(1, true))
   broadcast_room(room, function(wid, _)
     send_bin(wid, Code.MahjongHuOrZiMoBroadcast, pb.encode_sint32(1, uid))
     send_bin(wid, Code.RoundSettlementBroadcast, Codec.encode_round_settlement(items))
@@ -334,6 +444,8 @@ local function dispatch(id, code, body)
   elseif code == Code.GetMyDetailzCmd then
     handle_detail(id)
   elseif code == Code.GetJoinedRoomIdCmd then
+    -- 顺便允许客户端借此「离开房间」回大厅
+    skynet.call(room_mgr, "lua", "leave", clients[id].userId)
     handle_joined(id)
   elseif code == Code.CreateRoomCmd then
     handle_create(id, body)
@@ -346,7 +458,7 @@ local function dispatch(id, code, body)
   elseif code == Code.MahjongPengCmd then
     handle_peng(id)
   elseif code == Code.MahjongGuoCmd then
-    send_bin(id, Code.MahjongGuoResult, "")
+    handle_guo(id)
   elseif code == Code.MahjongHuCmd then
     handle_hu(id)
   elseif code == Code.MahjongLiangFengCmd then
@@ -355,7 +467,13 @@ local function dispatch(id, code, body)
     handle_bu_feng(id)
   elseif code == Code.SyncRoomDataCmd then
     local room = skynet.call(room_mgr, "lua", "room_of_user", clients[id].userId)
-    if room then push_hands(room) end
+    if room then
+      send_bin(id, Code.SyncRoomDataResult, Codec.encode_sync_room_data_result(room, clients[id].userId))
+      push_hands(room)
+      if room.actUser then
+        send_bin(id, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(room.actUser))
+      end
+    end
   elseif code == Code.GetJoinedClubListCmd then
     handle_joined_clubs(id)
   elseif code == Code.CreateClubCmd then
@@ -419,8 +537,10 @@ else
     skynet.uniqueservice("passport")
     skynet.uniqueservice("room_mgr")
     skynet.uniqueservice("club_record")
+    -- 本地联调：单 agent，保证同房间广播能到达两个预览窗口
+    -- （多 agent 时 clients 表隔离，开局/出牌广播会丢给另一边）
     local agents = {}
-    for i = 1, 8 do agents[i] = skynet.newservice(SERVICE_NAME, "agent") end
+    agents[1] = skynet.newservice(SERVICE_NAME, "agent")
     local balance = 1
     local port = tonumber(skynet.getenv("ws_port")) or 20480
     local socket = require "skynet.socket"

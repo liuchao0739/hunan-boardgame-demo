@@ -1,68 +1,455 @@
-import { _decorator, Component, Label, Node } from 'cc';
+import { _decorator, Component, director } from 'cc';
 import { MsgBus, MsgCode } from '../comm/MsgBus';
 import { PbWire } from '../comm/PbWire';
+import { createTileNode } from '../comm/ArtBg';
+import { TableLayout, SeatPlayer } from './TableLayout';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
-/**
- * 威海牌桌控制（展示 + 出牌）。场景里挂此组件即可。
- */
+function countTile(hand: number[], tile: number): number {
+  let n = 0;
+  for (const t of hand) if (t === tile) n++;
+  return n;
+}
+
+/** 极简胡牌判断：对 + 全是刻/顺（万条饼） */
+function canHu(hand: number[]): boolean {
+  const c = new Map<number, number>();
+  for (const t of hand) c.set(t, (c.get(t) || 0) + 1);
+  const keys = [...c.keys()];
+  for (const eye of keys) {
+    if ((c.get(eye) || 0) < 2) continue;
+    const cc = new Map(c);
+    cc.set(eye, (cc.get(eye) || 0) - 2);
+    if (meldOk(cc)) return true;
+  }
+  return false;
+}
+
+function meldOk(c: Map<number, number>): boolean {
+  const keys = [...c.keys()].filter((k) => (c.get(k) || 0) > 0).sort((a, b) => a - b);
+  if (!keys.length) return true;
+  const t = keys[0];
+  const n = c.get(t) || 0;
+  if (n >= 3) {
+    c.set(t, n - 3);
+    if (meldOk(c)) return true;
+    c.set(t, n);
+  }
+  // 顺子：同花色连续（万21-29 条41-49 饼81-89）
+  const suit = t < 30 ? 20 : t < 50 ? 40 : t < 90 ? 80 : 0;
+  if (suit && t % 10 <= 7) {
+    const t2 = t + 1;
+    const t3 = t + 2;
+    if ((c.get(t) || 0) > 0 && (c.get(t2) || 0) > 0 && (c.get(t3) || 0) > 0) {
+      c.set(t, (c.get(t) || 0) - 1);
+      c.set(t2, (c.get(t2) || 0) - 1);
+      c.set(t3, (c.get(t3) || 0) - 1);
+      if (meldOk(c)) return true;
+      c.set(t, (c.get(t) || 0) + 1);
+      c.set(t2, (c.get(t2) || 0) + 1);
+      c.set(t3, (c.get(t3) || 0) + 1);
+    }
+  }
+  return false;
+}
+
 @ccclass('TableScene')
 export class TableScene extends Component {
-  @property(Label)
-  handLabel: Label | null = null;
-
-  @property(Label)
-  tipLabel: Label | null = null;
-
+  private layout!: TableLayout;
   private hand: number[] = [];
+  private moPai = 0;
   private actUser = 0;
   private myId = 0;
+  private roomId = 0;
+  private remain = 0;
+  private round = 1;
+  private players: SeatPlayer[] = [];
+  private selectedIdx = -1;
+  private lastDiscard: { uid: number; tile: number } | null = null;
+  private claimPeng = false;
+  private claimHu = false;
+  private handGen = 0;
 
   onLoad() {
+    const canvas = this.node.parent ?? this.node;
+    for (const name of ['TipLabel', 'HandLabel', 'DiscardBtn', 'PengBtn', 'StatusLabel', 'HuBtn']) {
+      const n = canvas.getChildByName(name) || this.node.getChildByName(name);
+      if (n) n.active = false;
+    }
+
+    this.layout = new TableLayout(canvas);
     const u = (globalThis as any).__WHMJ__ || {};
     this.myId = u.userId || 0;
+    if (Array.isArray(u.hand) && u.hand.length) {
+      this.applyHand(u.hand, u.moPai || 0);
+    }
+
+    this.layout.btnPeng?.node.on('click', this.onClickPeng, this);
+    this.layout.btnHu?.node.on('click', this.onClickHu, this);
+    this.layout.btnGuo?.node.on('click', this.onClickGuo, this);
+    this.layout.exitBtn?.node.on('click', this.backToHall, this);
+
+    MsgBus.ins.on(MsgCode.SyncRoomDataResult, (body) => this.onSyncRoom(body));
     MsgBus.ins.on(MsgCode.MahjongInHandChangedResult, (body) => {
       const f = PbWire.decode(body);
-      const uid = PbWire.getSint32(f, 1, 0);
-      if (uid !== this.myId) return;
-      this.hand = [];
-      for (const e of (f.get(2) || [])) this.hand.push(PbWire.zigzagDecode(e.raw as number));
-      this.refresh();
+      const tiles: number[] = [];
+      for (const e of (f.get(2) || [])) tiles.push(PbWire.zigzagDecode(e.raw as number));
+      const mo = PbWire.getSint32(f, 3, 0);
+      this.applyHand(tiles, mo);
+      this.refreshActions();
     });
     MsgBus.ins.on(MsgCode.RedirectActUserIdBroadcast, (body) => {
       const f = PbWire.decode(body);
       this.actUser = PbWire.getSint32(f, 1, 0);
-      this.tip(`行动玩家 ${this.actUser}`);
+      // 行动权切换 = 抢牌窗口结束
+      this.clearClaim();
+      this.layout.updateSeats(this.players, this.myId, this.actUser);
+      this.refreshTip();
+      this.refreshActions();
+    });
+    MsgBus.ins.on(MsgCode.MahjongMoPaiBroadcast, (body) => {
+      const f = PbWire.decode(body);
+      const left = PbWire.getSint32(f, 1, -1);
+      if (left >= 0) this.setRemain(left);
+      else this.setRemain(this.remain - 1);
+    });
+    MsgBus.ins.on(MsgCode.MahjongMoPaiResult, () => {
+      // 广播可能先到；若还没更新则本地减一
     });
     MsgBus.ins.on(MsgCode.MahjongChuPaiBroadcast, (body) => {
       const f = PbWire.decode(body);
-      this.tip(`出牌 ${PbWire.getSint32(f, 1)} -> ${PbWire.getSint32(f, 2)}`);
+      const uid = PbWire.getSint32(f, 1, 0);
+      const tile = PbWire.getSint32(f, 2, 0);
+      this.lastDiscard = { uid, tile };
+      const p = this.players.find((x) => x.userId === uid);
+      if (p) {
+        p.discard = p.discard || [];
+        p.discard.push(tile);
+        if (uid !== this.myId && (p.handCount || 0) > 0) p.handCount! -= 1;
+        void this.layout.updateDiscards(this.players, this.myId);
+        this.layout.updateSeats(this.players, this.myId, this.actUser);
+      }
+      if (uid === this.myId) {
+        this.clearClaim();
+        this.setTip('已出牌');
+      } else {
+        this.openClaimIfAble(tile);
+      }
+      this.refreshActions();
     });
+    MsgBus.ins.on(MsgCode.MahjongPengBroadcast, (body) => {
+      const f = PbWire.decode(body);
+      const uid = PbWire.getSint32(f, 1, 0);
+      const tile = PbWire.getSint32(f, 2, 0);
+      this.clearClaim();
+      // 从出牌者牌河移除最后一张
+      if (this.lastDiscard) {
+        const from = this.players.find((x) => x.userId === this.lastDiscard!.uid);
+        if (from?.discard?.length) from.discard.pop();
+      }
+      const p = this.players.find((x) => x.userId === uid);
+      if (p) {
+        p.peng = p.peng || [];
+        p.peng.push(tile);
+        if (uid !== this.myId) p.handCount = Math.max(0, (p.handCount || 0) - 2);
+      }
+      void this.layout.updateDiscards(this.players, this.myId);
+      void this.layout.updateMelds(this.players, this.myId);
+      this.setTip(uid === this.myId ? '碰！请出牌' : `玩家 ${uid} 碰了`);
+      this.refreshActions();
+    });
+    MsgBus.ins.on(MsgCode.MahjongGuoResult, () => {
+      this.clearClaim();
+      this.setTip('已过');
+      this.refreshActions();
+    });
+    MsgBus.ins.on(MsgCode.MahjongHuangZhuangBroadcast, () => {
+      this.clearClaim();
+      this.layout.setActionButtons(false, false, false);
+      this.setTip('荒庄（臭了）');
+      this.layout.showResultOverlay('荒庄', '牌墙摸完了，本局流局（臭了）', () => this.backToHall());
+    });
+    MsgBus.ins.on(MsgCode.MahjongHuOrZiMoResult, (body) => {
+      const f = PbWire.decode(body);
+      const ok = Number(f.get(1)?.[0]?.raw) === 1;
+      if (!ok) {
+        this.setTip('胡牌未成功，请继续');
+        return;
+      }
+      // 成功时等 Broadcast / Settlement；若漏报也兜底弹窗
+      this.scheduleOnce(() => {
+        const ui = this.layout.root.getChildByName('__TableUI');
+        if (ui && !ui.getChildByName('__ResultOverlay')) {
+          this.layout.showResultOverlay('胡了！', '本局结束', () => this.backToHall());
+        }
+      }, 0.4);
+    });
+    MsgBus.ins.on(MsgCode.MahjongHuOrZiMoBroadcast, (body) => {
+      const f = PbWire.decode(body);
+      const uid = PbWire.getSint32(f, 1, 0);
+      this.clearClaim();
+      this.layout.setActionButtons(false, false, false);
+      this.pendingHuUid = uid;
+      this.setTip(uid === this.myId ? '胡了！' : `玩家 ${uid} 胡了`);
+    });
+    MsgBus.ins.on(MsgCode.RoundSettlementBroadcast, (body) => {
+      const lines = this.parseSettlement(body);
+      const uid = this.pendingHuUid || 0;
+      const title = uid === this.myId ? '胡了！' : (uid ? `玩家 ${uid} 胡牌` : '本局结算');
+      this.layout.showResultOverlay(title, lines || '本局结束', () => this.backToHall());
+    });
+
     MsgBus.ins.sendEmpty(MsgCode.SyncRoomDataCmd);
+    this.refreshTip();
   }
 
-  refresh() {
-    if (this.handLabel) this.handLabel.string = '手牌: ' + this.hand.join(',');
+  private pendingHuUid = 0;
+
+  private parseSettlement(body: Uint8Array): string {
+    try {
+      const f = PbWire.decode(body);
+      const parts: string[] = [];
+      for (const e of (f.get(1) || [])) {
+        if (e.kind !== 'bytes') continue;
+        const pf = PbWire.decode(e.raw as Uint8Array);
+        const uid = PbWire.getSint32(pf, 1, 0);
+        const curr = PbWire.getSint32(pf, 2, 0);
+        const total = PbWire.getSint32(pf, 3, 0);
+        const hu = Number(pf.get(8)?.[0]?.raw) === 1;
+        const name = this.players.find((p) => p.userId === uid)?.userName || String(uid);
+        parts.push(`${hu ? '★胡 ' : ''}${name} 本局${curr >= 0 ? '+' : ''}${curr} 总分${total}`);
+      }
+      return parts.length ? parts.join('\n') : '本局结束';
+    } catch {
+      return '本局结束';
+    }
   }
 
-  tip(s: string) {
-    if (this.tipLabel) this.tipLabel.string = s;
+  private backToHall() {
+    // 借 GetJoinedRoomId 顺带离开房间（服务端会 leave）
+    MsgBus.ins.sendEmpty(MsgCode.GetJoinedRoomIdCmd);
+    console.log('[Table] back to hall');
+    director.loadScene('Hall');
+  }
+
+  private applyHand(tiles: number[], mo: number) {
+    this.moPai = mo > 0 ? mo : 0;
+    let list = tiles.slice();
+    if (this.moPai > 0) {
+      const i = list.lastIndexOf(this.moPai);
+      if (i >= 0) list.splice(i, 1);
+    } else if (list.length % 3 === 2 && list.length > 0) {
+      // 14/11/8… 张：最右一张当摸牌
+      this.moPai = list[list.length - 1];
+      list = list.slice(0, -1);
+    }
+    list.sort((a, b) => a - b);
+    this.hand = list;
+    const g = (globalThis as any).__WHMJ__ || ((globalThis as any).__WHMJ__ = {});
+    g.hand = [...this.hand, ...(this.moPai ? [this.moPai] : [])];
+    g.moPai = this.moPai;
+    this.selectedIdx = -1;
+    void this.refreshHand();
+  }
+
+  private openClaimIfAble(tile: number) {
+    const handForPeng = this.moPai ? [...this.hand, this.moPai] : this.hand.slice();
+    this.claimPeng = countTile(handForPeng, tile) >= 2;
+    const full = [...handForPeng, tile];
+    this.claimHu = canHu(full);
+    if (!this.claimPeng && !this.claimHu) {
+      this.clearClaim();
+      this.setTip('等待出牌');
+      return;
+    }
+    this.setTip(this.claimHu ? '可以胡 / 碰 / 过' : '可以碰 / 过');
+  }
+
+  private clearClaim() {
+    this.claimPeng = false;
+    this.claimHu = false;
+  }
+
+  private onSyncRoom(body: Uint8Array) {
+    const f = PbWire.decode(body);
+    this.roomId = PbWire.getSint32(f, 1, 0);
+    this.round = PbWire.getSint32(f, 7, 1) || 1;
+    this.actUser = PbWire.getSint32(f, 8, 0);
+    this.remain = PbWire.getSint32(f, 9, 0);
+    this.players = [];
+    let myHandFromSync: number[] = [];
+    for (const e of (f.get(11) || [])) {
+      if (e.kind !== 'bytes') continue;
+      const pf = PbWire.decode(e.raw as Uint8Array);
+      const discard: number[] = [];
+      for (const d of (pf.get(16) || [])) discard.push(PbWire.zigzagDecode(d.raw as number));
+      const handTiles: number[] = [];
+      for (const h of (pf.get(14) || [])) handTiles.push(PbWire.zigzagDecode(h.raw as number));
+      const peng: number[] = [];
+      // chiPengGang nested not fully parsed; keep empty for now
+      const uid = PbWire.getSint32(pf, 1, 0);
+      if (uid === this.myId) myHandFromSync = handTiles.filter((t) => t > 0);
+      this.players.push({
+        userId: uid,
+        userName: PbWire.getString(pf, 2, ''),
+        seatIndex: PbWire.getSint32(pf, 8, 0),
+        totalScore: PbWire.getSint32(pf, 7, 0),
+        piaoX: PbWire.getSint32(pf, 9, 0),
+        zhuang: Number(pf.get(11)?.[0]?.raw) === 1,
+        owner: Number(pf.get(10)?.[0]?.raw) === 1,
+        handCount: handTiles.length,
+        discard,
+        peng,
+      });
+    }
+    if (myHandFromSync.length) this.applyHand(myHandFromSync, 0);
+    if (this.layout.roomLabel) this.layout.roomLabel.string = `房${this.roomId}`;
+    if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${this.remain}`;
+    if (this.layout.roundLabel) this.layout.roundLabel.string = `第 ${this.round} 局`;
+    this.layout.updateSeats(this.players, this.myId, this.actUser);
+    void this.layout.updateDiscards(this.players, this.myId);
+    void this.layout.updateMelds(this.players, this.myId);
+    this.refreshTip();
+    this.refreshActions();
+  }
+
+  private setRemain(n: number) {
+    this.remain = Math.max(0, n | 0);
+    if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${this.remain}`;
+  }
+
+  private refreshActions() {
+    const claiming = this.claimPeng || this.claimHu;
+    this.layout.setChuVisible(false);
+    this.layout.setActionButtons(claiming, this.claimPeng, this.claimHu);
+  }
+
+  private refreshTip() {
+    if (this.claimPeng || this.claimHu) return;
+    if (this.actUser === this.myId) {
+      this.setTip('轮到你：点牌选中后再点一次出牌；或按住上拖');
+    } else if (this.actUser) {
+      this.setTip(`等待玩家 ${this.actUser} 出牌`);
+    } else {
+      this.setTip(`牌桌就绪`);
+    }
+  }
+
+  private setTip(s: string) {
+    if (this.layout.tipLabel) this.layout.tipLabel.string = s;
     console.log('[Table]', s);
   }
 
-  /** UI 按钮：打出手牌第一张（演示） */
-  onClickDiscardFirst() {
+  private async refreshHand() {
+    const gen = ++this.handGen;
+    const root = this.layout.handRoot;
+    root.removeAllChildren();
+    const tw = 56;
+    const gap = 0;
+    const moGap = 18;
+    const closed = this.hand;
+    const hasMo = this.moPai > 0;
+    const n = closed.length + (hasMo ? 1 : 0);
+    const closedW = closed.length * tw + Math.max(0, closed.length - 1) * gap;
+    const totalW = closedW + (hasMo ? moGap + tw : 0);
+    let x = -totalW / 2 + tw / 2;
+
+    const place = async (tile: number, idx: number, isMo: boolean) => {
+      if (gen !== this.handGen) return;
+      const n = await createTileNode(tile, root, tw, 78, {
+        onSelect: () => this.onSelectTile(idx, isMo),
+        onDiscard: () => this.discardAt(idx),
+      });
+      if (gen !== this.handGen || !n.isValid) return;
+      const y = this.selectedIdx === idx ? 20 : 0;
+      n.setPosition(Math.round(x), y, 0);
+      x += tw + gap;
+    };
+
+    for (let i = 0; i < closed.length; i++) {
+      await place(closed[i], i, false);
+    }
+    if (hasMo) {
+      x += moGap;
+      await place(this.moPai, closed.length, true);
+    }
+  }
+
+  private onSelectTile(idx: number, _isMo: boolean) {
     if (this.actUser !== this.myId) {
-      this.tip('未轮到你');
+      this.setTip('还没轮到你');
       return;
     }
-    if (!this.hand.length) return;
-    const t = this.hand[this.hand.length - 1];
+    if (this.claimPeng || this.claimHu) return;
+    // 再点同一张 = 出牌（鼠标最稳；不重建节点，双击/上滑才有效）
+    if (this.selectedIdx === idx) {
+      this.discardAt(idx);
+      return;
+    }
+    this.selectedIdx = idx;
+    this.applyHandLift();
+    this.setTip('已选中：再点一次出牌；或按住往上拖');
+  }
+
+  /** 只抬起选中牌，不要 removeAllChildren（否则双击/上滑状态全丢） */
+  private applyHandLift() {
+    const root = this.layout.handRoot;
+    for (let i = 0; i < root.children.length; i++) {
+      const n = root.children[i];
+      const p = n.position;
+      n.setPosition(p.x, this.selectedIdx === i ? 22 : 0, p.z);
+    }
+  }
+
+  private tileAt(idx: number): number {
+    if (idx < this.hand.length) return this.hand[idx];
+    return this.moPai;
+  }
+
+  private discardAt(idx: number) {
+    if (this.actUser !== this.myId) {
+      this.setTip('未轮到你');
+      return;
+    }
+    if (this.claimPeng || this.claimHu) return;
+    const t = this.tileAt(idx);
+    if (!t) return;
+    console.log('[Table] discard', t);
     MsgBus.ins.sendChuPai(t);
+    this.selectedIdx = -1;
+    this.clearClaim();
+    this.setTip('已出牌');
   }
 
   onClickPeng() {
+    if (!this.claimPeng) return;
     MsgBus.ins.sendPeng();
+    this.clearClaim();
+    this.layout.setActionButtons(false, false, false);
+    this.setTip('碰！');
+  }
+
+  onClickHu() {
+    if (!this.claimHu) return;
+    MsgBus.ins.sendHu();
+    this.clearClaim();
+    this.layout.setActionButtons(false, false, false);
+    this.setTip('胡！结算中…');
+    this.pendingHuUid = this.myId;
+    // 兜底：若服务端广播丢失，1 秒后仍弹结算
+    this.scheduleOnce(() => {
+      const ui = this.layout.root.getChildByName('__TableUI');
+      if (ui && !ui.getChildByName('__ResultOverlay')) {
+        this.layout.showResultOverlay('胡了！', '本局结束（点击回大厅）', () => this.backToHall());
+      }
+    }, 1.0);
+  }
+
+  onClickGuo() {
+    MsgBus.ins.sendEmpty(MsgCode.MahjongGuoCmd);
+    this.clearClaim();
+    this.layout.setActionButtons(false, false, false);
+    this.setTip('过');
   }
 }

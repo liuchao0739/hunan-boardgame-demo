@@ -39,14 +39,46 @@ export class MsgBus {
     this.handlers.set(code, arr);
   }
 
+  isConnected(): boolean {
+    return !!this.ws && this.ws.readyState === WebSocket.OPEN;
+  }
+
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const url = `ws://${this.serverAddr}/websocket`;
+      const addr = (this.serverAddr || '').trim();
+      if (!addr || !addr.includes(':') || addr.endsWith('.')) {
+        reject(new Error('invalid serverAddr: ' + addr));
+        return;
+      }
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        resolve();
+        return;
+      }
+      // 支持 host:port / ws:// / wss://；HTTPS 页面默认走 wss
+      let url: string;
+      if (addr.startsWith('ws://') || addr.startsWith('wss://')) {
+        url = addr.includes('/websocket') ? addr : `${addr.replace(/\/$/, '')}/websocket`;
+      } else {
+        const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
+        url = `${useWss ? 'wss' : 'ws'}://${addr}/websocket`;
+      }
       console.log('[MsgBus] connect', url);
+      let settled = false;
+      const finish = (ok: boolean, err?: unknown) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (ok) resolve();
+        else reject(err ?? new Error('ws connect failed'));
+      };
+      const timer = setTimeout(() => {
+        try { this.ws?.close(); } catch { /* ignore */ }
+        finish(false, new Error('connect timeout'));
+      }, 5000);
       this.ws = new WebSocket(url);
       this.ws.binaryType = 'arraybuffer';
-      this.ws.onopen = () => resolve();
-      this.ws.onerror = (e) => reject(e);
+      this.ws.onopen = () => finish(true);
+      this.ws.onerror = (e) => finish(false, e);
       this.ws.onmessage = (ev) => this.onMessage(ev.data);
     });
   }

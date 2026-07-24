@@ -1,0 +1,481 @@
+import {
+  Node, Label, UITransform, Color, Graphics, Sprite, Button, Layers,
+} from 'cc';
+import { loadSpriteFrame, createTileNode, styleLabel, attachBg } from '../comm/ArtBg';
+
+export type SeatPlayer = {
+  userId: number;
+  userName: string;
+  seatIndex: number;
+  totalScore: number;
+  handCount?: number;
+  piaoX?: number;
+  zhuang?: boolean;
+  owner?: boolean;
+  discard?: number[];
+  peng?: number[];
+};
+
+type SeatSlot = {
+  root: Node;
+  nameLab: Label;
+  scoreLab: Label;
+  avatarG: Graphics;
+  avatarSp: Sprite | null;
+  flagHost: Node;
+  handRoot: Node;
+  meldRoot: Node;
+};
+
+/** 贴近原版截图的牌桌骨架：桌布、四家、罗盘、牌河、操作钮 */
+export class TableLayout {
+  root: Node;
+  tipLabel: Label | null = null;
+  handRoot: Node;
+  discardRoots: Node[] = [];
+  seats: SeatSlot[] = [];
+  compassNode: Node | null = null;
+  lightNode: Node | null = null;
+  btnChu: Button | null = null;
+  btnPeng: Button | null = null;
+  btnHu: Button | null = null;
+  btnGuo: Button | null = null;
+  roomLabel: Label | null = null;
+  remainLabel: Label | null = null;
+  roundLabel: Label | null = null;
+  exitBtn: Button | null = null;
+
+  constructor(canvas: Node) {
+    this.root = canvas;
+    for (const name of ['__AutoBg', '__Felt', '__HandRoot', '__TableUI']) {
+      const n = canvas.getChildByName(name);
+      if (n) n.destroy();
+    }
+    attachBg(canvas, 'weihai/bg/table');
+
+    const ui = new Node('__TableUI');
+    canvas.addChild(ui);
+    ui.layer = canvas.layer || Layers.Enum.UI_2D;
+    ui.addComponent(UITransform).setContentSize(1280, 720);
+
+    this.buildCompass(ui);
+    this.buildSeats(ui);
+    this.buildDiscardAreas(ui);
+    this.buildHud(ui);
+    this.buildActionBtns(ui);
+
+    this.handRoot = new Node('__HandRoot');
+    ui.addChild(this.handRoot);
+    this.handRoot.layer = ui.layer;
+    this.handRoot.addComponent(UITransform);
+    this.handRoot.setPosition(0, -292, 0);
+  }
+
+  private buildHud(parent: Node) {
+    this.tipLabel = this.mkLabel(parent, 'tip', 0, 200, 880, 34, 24);
+    this.roomLabel = this.mkLabel(parent, 'room', 460, 320, 280, 28, 20);
+    this.roundLabel = this.mkLabel(parent, 'round', -160, 50, 120, 28, 20);
+    this.remainLabel = this.mkLabel(parent, 'remain', 160, 50, 140, 28, 20);
+    if (this.roundLabel) this.roundLabel.string = '第 1 局';
+    if (this.remainLabel) this.remainLabel.string = '剩 --';
+
+    // 随时可回大厅
+    this.exitBtn = this.mkTextBtn(parent, 'btnExit', -520, 320, '回大厅');
+    const exitUi = this.exitBtn.node.getComponent(UITransform);
+    if (exitUi) exitUi.setContentSize(120, 48);
+    this.exitBtn.node.setPosition(-520, 320, 0);
+  }
+
+  private buildCompass(parent: Node) {
+    const box = new Node('compass');
+    parent.addChild(box);
+    box.layer = parent.layer;
+    box.addComponent(UITransform).setContentSize(180, 180);
+    box.setPosition(0, 28, 0);
+    this.compassNode = box;
+
+    void loadSpriteFrame('weihai/ui/pointer_base').then((sf) => {
+      if (!sf || !box.isValid) return;
+      const spn = new Node('base');
+      box.addChild(spn);
+      spn.layer = box.layer;
+      spn.addComponent(UITransform).setContentSize(160, 160);
+      const sp = spn.addComponent(Sprite);
+      sp.sizeMode = Sprite.SizeMode.CUSTOM;
+      sp.spriteFrame = sf;
+    });
+    void loadSpriteFrame('weihai/ui/pointer_dir').then((sf) => {
+      if (!sf || !box.isValid) return;
+      const spn = new Node('dir');
+      box.addChild(spn);
+      spn.layer = box.layer;
+      spn.addComponent(UITransform).setContentSize(150, 150);
+      const sp = spn.addComponent(Sprite);
+      sp.sizeMode = Sprite.SizeMode.CUSTOM;
+      sp.spriteFrame = sf;
+    });
+    void loadSpriteFrame('weihai/ui/pointer_light').then((sf) => {
+      if (!sf || !box.isValid) return;
+      const spn = new Node('light');
+      box.addChild(spn);
+      spn.layer = box.layer;
+      spn.addComponent(UITransform).setContentSize(150, 150);
+      const sp = spn.addComponent(Sprite);
+      sp.sizeMode = Sprite.SizeMode.CUSTOM;
+      sp.spriteFrame = sf;
+      this.lightNode = spn;
+      spn.angle = 0;
+    });
+  }
+
+  /** 相对座位：0 自己底、1 右、2 对家、3 左 */
+  private buildSeats(parent: Node) {
+    const layouts = [
+      { x: -480, y: -230, hx: 0, hy: 70, handRot: 0 },
+      { x: 520, y: 40, hx: -90, hy: 0, handRot: 90 },
+      { x: 0, y: 300, hx: 0, hy: -55, handRot: 180 },
+      { x: -540, y: 40, hx: 90, hy: 0, handRot: -90 },
+    ];
+    this.seats = [];
+    for (let i = 0; i < 4; i++) {
+      const L = layouts[i];
+      const root = new Node(`seat${i}`);
+      parent.addChild(root);
+      root.layer = parent.layer;
+      root.addComponent(UITransform).setContentSize(160, 120);
+      root.setPosition(L.x, L.y, 0);
+
+      // 头像底 + 默认头像图
+      const av = new Node('avatar');
+      root.addChild(av);
+      av.layer = parent.layer;
+      av.addComponent(UITransform).setContentSize(72, 72);
+      av.setPosition(0, 28, 0);
+      const ag = av.addComponent(Graphics);
+      ag.fillColor = new Color(30, 30, 30, 220);
+      ag.circle(0, 0, 34);
+      ag.fill();
+      ag.strokeColor = new Color(220, 180, 80, 255);
+      ag.lineWidth = 3;
+      ag.circle(0, 0, 34);
+      ag.stroke();
+      const avImg = new Node('img');
+      av.addChild(avImg);
+      avImg.layer = parent.layer;
+      avImg.addComponent(UITransform).setContentSize(64, 64);
+      const avSp = avImg.addComponent(Sprite);
+      avSp.sizeMode = Sprite.SizeMode.CUSTOM;
+      void loadSpriteFrame('weihai/ui/avatar_default').then((sf) => {
+        if (sf && avImg.isValid) avSp.spriteFrame = sf;
+      });
+
+      // 名字底条
+      const nameBg = new Node('nameBg');
+      root.addChild(nameBg);
+      nameBg.layer = parent.layer;
+      nameBg.addComponent(UITransform).setContentSize(140, 28);
+      nameBg.setPosition(0, -28, 0);
+      const nsp = nameBg.addComponent(Sprite);
+      nsp.sizeMode = Sprite.SizeMode.CUSTOM;
+      void loadSpriteFrame('weihai/ui/name_bg').then((sf) => {
+        if (sf && nameBg.isValid) nsp.spriteFrame = sf;
+      });
+
+      const nameLab = this.mkLabel(root, 'name', 0, -28, 130, 26, 16);
+      nameLab.string = '空位';
+      const scoreLab = this.mkLabel(root, 'score', 0, -52, 100, 22, 16);
+      scoreLab.string = '0';
+      scoreLab.color = new Color(255, 220, 120, 255);
+
+      const flagHost = new Node('flags');
+      root.addChild(flagHost);
+      flagHost.layer = parent.layer;
+      flagHost.addComponent(UITransform);
+      flagHost.setPosition(48, 48, 0);
+
+      const handRoot = new Node('oppHand');
+      parent.addChild(handRoot);
+      handRoot.layer = parent.layer;
+      handRoot.addComponent(UITransform);
+      handRoot.setPosition(L.x + L.hx, L.y + L.hy, 0);
+      handRoot.angle = L.handRot;
+
+      const meldRoot = new Node('meld');
+      parent.addChild(meldRoot);
+      meldRoot.layer = parent.layer;
+      meldRoot.addComponent(UITransform);
+      // 碰杠区：自己手牌左侧，对家下方等
+      const meldPos = [
+        { x: -420, y: -292 },
+        { x: 380, y: -40 },
+        { x: -200, y: 250 },
+        { x: -380, y: -40 },
+      ];
+      meldRoot.setPosition(meldPos[i].x, meldPos[i].y, 0);
+
+      this.seats.push({ root, nameLab, scoreLab, avatarG: ag, avatarSp: avSp, flagHost, handRoot, meldRoot });
+    }
+  }
+
+  private buildDiscardAreas(parent: Node) {
+    const pos = [
+      { x: 0, y: -95 },
+      { x: 200, y: 20 },
+      { x: 0, y: 145 },
+      { x: -200, y: 20 },
+    ];
+    this.discardRoots = [];
+    for (let i = 0; i < 4; i++) {
+      const n = new Node(`discard${i}`);
+      parent.addChild(n);
+      n.layer = parent.layer;
+      n.addComponent(UITransform);
+      n.setPosition(pos[i].x, pos[i].y, 0);
+      this.discardRoots.push(n);
+    }
+  }
+
+  private buildActionBtns(parent: Node) {
+    this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 480, -40, 'weihai/ui/btn_guo');
+    this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
+    this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
+    // 不再做「出牌」按钮：上滑 / 双击手牌即可
+    this.btnChu = null;
+    this.setActionButtons(false, false, false);
+  }
+
+  /** 荒庄 / 结算遮罩（始终盖在最上层） */
+  showResultOverlay(title: string, sub: string, onOk?: () => void) {
+    const parent = this.root.getChildByName('__TableUI') || this.root;
+    let ov = parent.getChildByName('__ResultOverlay');
+    if (ov) ov.destroy();
+    ov = new Node('__ResultOverlay');
+    parent.addChild(ov);
+    ov.setSiblingIndex(parent.children.length - 1);
+    ov.layer = parent.layer;
+    ov.addComponent(UITransform).setContentSize(1280, 720);
+    ov.setPosition(0, 0, 0);
+    const g = ov.addComponent(Graphics);
+    g.fillColor = new Color(0, 0, 0, 190);
+    g.rect(-640, -360, 1280, 720);
+    g.fill();
+    // 面板
+    g.fillColor = new Color(28, 48, 40, 245);
+    g.roundRect(-280, -180, 560, 360, 16);
+    g.fill();
+    g.strokeColor = new Color(220, 180, 80, 255);
+    g.lineWidth = 3;
+    g.roundRect(-280, -180, 560, 360, 16);
+    g.stroke();
+
+    const titleLab = this.mkLabel(ov, 'rt', 0, 100, 500, 60, 44);
+    titleLab.string = title;
+    titleLab.color = new Color(255, 220, 100, 255);
+    const subLab = this.mkLabel(ov, 'rs', 0, 20, 500, 120, 24);
+    subLab.string = sub;
+    subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
+
+    const btn = this.mkTextBtn(ov, 'ok', 0, -120, '回大厅');
+    btn.node.on(Button.EventType.CLICK, () => {
+      onOk?.();
+    });
+  }
+
+  /** 仅显示你真正能用的操作 */
+  setActionButtons(show: boolean, canPeng: boolean, canHu: boolean) {
+    if (this.btnGuo) this.btnGuo.node.active = show;
+    if (this.btnPeng) this.btnPeng.node.active = show && canPeng;
+    if (this.btnHu) this.btnHu.node.active = show && canHu;
+  }
+
+  setActionVisible(showOps: boolean) {
+    this.setActionButtons(showOps, showOps, showOps);
+  }
+
+  setChuVisible(v: boolean) {
+    if (this.btnChu) this.btnChu.node.active = v;
+  }
+
+  private mkLabel(parent: Node, name: string, x: number, y: number, w: number, h: number, size: number): Label {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.addComponent(UITransform).setContentSize(w, h);
+    n.setPosition(x, y, 0);
+    const lab = n.addComponent(Label);
+    styleLabel(lab, size);
+    lab.overflow = Label.Overflow.SHRINK;
+    return lab;
+  }
+
+  private mkActionBtn(parent: Node, name: string, x: number, y: number, path: string): Button {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.addComponent(UITransform).setContentSize(100, 100);
+    n.setPosition(x, y, 0);
+    const sp = n.addComponent(Sprite);
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    const btn = n.addComponent(Button);
+    btn.transition = Button.Transition.SCALE;
+    btn.zoomScale = 0.92;
+    void loadSpriteFrame(path).then((sf) => {
+      if (sf && n.isValid) {
+        sp.spriteFrame = sf;
+        const ui = n.getComponent(UITransform)!;
+        const tw = sf.originalSize?.width || 100;
+        const th = sf.originalSize?.height || 100;
+        const s = Math.min(100 / tw, 100 / th);
+        ui.setContentSize(tw * s, th * s);
+      }
+    });
+    return btn;
+  }
+
+  private mkTextBtn(parent: Node, name: string, x: number, y: number, text: string): Button {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.addComponent(UITransform).setContentSize(130, 52);
+    n.setPosition(x, y, 0);
+    const g = n.addComponent(Graphics);
+    g.fillColor = new Color(190, 55, 40, 255);
+    g.roundRect(-65, -26, 130, 52, 10);
+    g.fill();
+    const lab = this.mkLabel(n, 't', 0, 0, 110, 36, 26);
+    lab.string = text;
+    const btn = n.addComponent(Button);
+    btn.transition = Button.Transition.SCALE;
+    return btn;
+  }
+
+  private async putFlag(host: Node, path: string, x: number, y: number) {
+    const n = new Node(path);
+    host.addChild(n);
+    n.layer = host.layer;
+    n.addComponent(UITransform).setContentSize(36, 36);
+    n.setPosition(x, y, 0);
+    const sp = n.addComponent(Sprite);
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    const sf = await loadSpriteFrame(path);
+    if (sf && n.isValid) sp.spriteFrame = sf;
+  }
+
+  updateSeats(players: SeatPlayer[], myId: number, actUser: number) {
+    const me = players.find((p) => p.userId === myId);
+    const mySeat = me?.seatIndex ?? 0;
+    const byRel: (SeatPlayer | undefined)[] = [undefined, undefined, undefined, undefined];
+    for (const p of players) {
+      byRel[(p.seatIndex - mySeat + 4) % 4] = p;
+    }
+    for (let i = 0; i < 4; i++) {
+      const p = byRel[i];
+      const slot = this.seats[i];
+      if (!slot) continue;
+      slot.flagHost.removeAllChildren();
+      if (!p) {
+        slot.nameLab.string = '空位';
+        slot.scoreLab.string = '';
+        continue;
+      }
+      slot.nameLab.string = p.userName || String(p.userId);
+      slot.scoreLab.string = String(p.totalScore ?? 0);
+      // 行动中高亮描边
+      slot.avatarG.clear();
+      const active = p.userId === actUser;
+      slot.avatarG.fillColor = new Color(30, 30, 30, 220);
+      slot.avatarG.circle(0, 0, 34);
+      slot.avatarG.fill();
+      slot.avatarG.strokeColor = active
+        ? new Color(255, 80, 60, 255)
+        : new Color(220, 180, 80, 255);
+      slot.avatarG.lineWidth = active ? 4 : 3;
+      slot.avatarG.circle(0, 0, 34);
+      slot.avatarG.stroke();
+
+      let fx = 0;
+      if (p.zhuang) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_zhuang', fx, 0); fx += 28; }
+      if (p.owner) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_owner', fx, 0); fx += 28; }
+      void this.putFlag(slot.flagHost, 'weihai/ui/flag_bupiao', fx, 0);
+    }
+    this.updateCompassLight(players, myId, actUser);
+    void this.updateOppHands(byRel);
+  }
+
+  private updateCompassLight(players: SeatPlayer[], myId: number, actUser: number) {
+    if (!this.lightNode) return;
+    const me = players.find((p) => p.userId === myId);
+    const act = players.find((p) => p.userId === actUser);
+    if (!me || !act) {
+      this.lightNode.active = false;
+      return;
+    }
+    this.lightNode.active = true;
+    // 相对座位：0底→东亮角0，1右→90，2上→180，3左→270（贴图方向需微调）
+    const rel = (act.seatIndex - me.seatIndex + 4) % 4;
+    this.lightNode.angle = -rel * 90;
+  }
+
+  private async updateOppHands(byRel: (SeatPlayer | undefined)[]) {
+    for (let i = 0; i < 4; i++) {
+      const slot = this.seats[i];
+      if (!slot) continue;
+      slot.handRoot.removeAllChildren();
+      if (i === 0) continue; // 自己用手牌区
+      const p = byRel[i];
+      const n = Math.min(p?.handCount || 13, 14);
+      const tw = 22;
+      let x = -((n - 1) * (tw + 1)) / 2;
+      for (let k = 0; k < n; k++) {
+        const tile = await createTileNode(-1, slot.handRoot, tw, 32);
+        // createTileNode with -1 may fail face — use back only
+        tile.setPosition(x, 0, 0);
+        x += tw + 1;
+      }
+    }
+  }
+
+  async updateDiscards(players: SeatPlayer[], myId: number) {
+    const me = players.find((p) => p.userId === myId);
+    const mySeat = me?.seatIndex ?? 0;
+    for (let i = 0; i < 4; i++) this.discardRoots[i]?.removeAllChildren();
+    const tw = 28;
+    const th = 40;
+    const cols = 6;
+    for (const p of players) {
+      const rel = (p.seatIndex - mySeat + 4) % 4;
+      const root = this.discardRoots[rel];
+      if (!root || !p.discard?.length) continue;
+      for (let i = 0; i < p.discard.length; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const n = await createTileNode(p.discard[i], root, tw, th);
+        const x = Math.round((col - (cols - 1) / 2) * (tw + 1));
+        const y = Math.round(-row * (th + 2));
+        n.setPosition(x, y, 0);
+      }
+    }
+  }
+
+  async updateMelds(players: SeatPlayer[], myId: number) {
+    const me = players.find((p) => p.userId === myId);
+    const mySeat = me?.seatIndex ?? 0;
+    for (const s of this.seats) s.meldRoot.removeAllChildren();
+    const tw = 26;
+    const th = 36;
+    for (const p of players) {
+      const rel = (p.seatIndex - mySeat + 4) % 4;
+      const root = this.seats[rel]?.meldRoot;
+      if (!root || !p.peng?.length) continue;
+      let x = 0;
+      for (const tile of p.peng) {
+        for (let k = 0; k < 3; k++) {
+          const n = await createTileNode(tile, root, tw, th);
+          n.setPosition(x, 0, 0);
+          x += tw + 1;
+        }
+        x += 10;
+      }
+    }
+  }
+}

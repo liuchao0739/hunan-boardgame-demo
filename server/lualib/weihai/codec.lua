@@ -101,6 +101,58 @@ function M.encode_redirect_act(userId)
   return pb.encode_sint32(1, userId)
 end
 
+function M.encode_sync_room_data_result(room, viewerId)
+  local ownerId = room.ownerId
+    or (room.players and room.players[1] and room.players[1].userId)
+    or 0
+  local parts = {
+    pb.encode_sint32(1, room.roomId or 0),
+    pb.encode_sint32(2, room.gameType0 or 1),
+    pb.encode_sint32(3, room.gameType1 or 1001),
+    pb.encode_int64(4, 0),
+    pb.encode_sint32(5, ownerId),
+    pb.encode_sint32(7, room.round or 0),
+    pb.encode_sint32(8, room.actUser or 0),
+    pb.encode_sint32(9, room.wallLeft or 0),
+    pb.encode_sint32(10, 15),
+  }
+  for _, p in ipairs(room.players or {}) do
+    local isOwner = (p.userId == ownerId)
+    local isZhuang = (p.seatIndex or 0) == 0
+    local pbod = table.concat({
+      pb.encode_sint32(1, p.userId),
+      pb.encode_string(2, p.userName or ""),
+      pb.encode_string(3, ""),
+      pb.encode_sint32(4, 1),
+      pb.encode_string(5, ""),
+      pb.encode_sint32(6, p.currScore or 0),
+      pb.encode_sint32(7, p.totalScore or p.score or 0),
+      pb.encode_sint32(8, p.seatIndex or 0),
+      pb.encode_sint32(9, p.dingPiao or 0),
+      pb.encode_bool(10, isOwner),
+      pb.encode_bool(11, isZhuang),
+      pb.encode_bool(12, p.prepare and true or false),
+      pb.encode_bool(13, p.online == false),
+    })
+    -- 仅本人看到真实手牌；他人发 -1 占位（用于对面牌背数量）
+    local hand = p.hand or {}
+    if viewerId and p.userId == viewerId then
+      for _, t in ipairs(hand) do
+        pbod = pbod .. pb.encode_sint32(14, t)
+      end
+    else
+      for _ = 1, #hand do
+        pbod = pbod .. pb.encode_sint32(14, -1)
+      end
+    end
+    for _, t in ipairs(p.discard or {}) do
+      pbod = pbod .. pb.encode_sint32(16, t)
+    end
+    parts[#parts + 1] = pb.encode_message(11, pbod)
+  end
+  return table.concat(parts)
+end
+
 function M.encode_chu_pai_broadcast(userId, tile)
   return pb.encode_sint32(1, userId) .. pb.encode_sint32(2, tile)
 end

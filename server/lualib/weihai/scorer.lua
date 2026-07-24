@@ -2,9 +2,9 @@
 
 local M = {}
 
--- tile counts for liang feng: 31东 32南 33西 34北 35中 36发 37白
-local FENG = { [31] = "dong", [32] = "nan", [33] = "xi", [34] = "bei" }
-local JIAN = { [35] = "zhong", [36] = "fa", [37] = "bai" }
+-- tile counts for liang feng: 东101 南103 西105 北107 中126 发188 白255
+local FENG = { [101] = "dong", [103] = "nan", [105] = "xi", [107] = "bei" }
+local JIAN = { [126] = "zhong", [188] = "fa", [255] = "bai" }
 
 function M.empty_liang_feng()
   return {
@@ -223,15 +223,15 @@ function M.build_liang_feng_from_tiles(t0, t1, t2, luan_mao)
   for _, t in ipairs(tiles) do
     if FENG[t] then
       all_jian = false
-      if t == 31 then lf.numOfDongFeng = lf.numOfDongFeng + 1
-      elseif t == 32 then lf.numOfNanFeng = lf.numOfNanFeng + 1
-      elseif t == 33 then lf.numOfXiFeng = lf.numOfXiFeng + 1
-      elseif t == 34 then lf.numOfBeiFeng = lf.numOfBeiFeng + 1 end
+      if t == 101 then lf.numOfDongFeng = lf.numOfDongFeng + 1
+      elseif t == 103 then lf.numOfNanFeng = lf.numOfNanFeng + 1
+      elseif t == 105 then lf.numOfXiFeng = lf.numOfXiFeng + 1
+      elseif t == 107 then lf.numOfBeiFeng = lf.numOfBeiFeng + 1 end
     elseif JIAN[t] then
       all_feng = false
-      if t == 35 then lf.numOfHongZhong = lf.numOfHongZhong + 1
-      elseif t == 36 then lf.numOfFaCai = lf.numOfFaCai + 1
-      elseif t == 37 then lf.numOfBaiBan = lf.numOfBaiBan + 1 end
+      if t == 126 then lf.numOfHongZhong = lf.numOfHongZhong + 1
+      elseif t == 188 then lf.numOfFaCai = lf.numOfFaCai + 1
+      elseif t == 255 then lf.numOfBaiBan = lf.numOfBaiBan + 1 end
     else
       return nil, "not feng/jian"
     end
@@ -249,18 +249,18 @@ end
 function M.add_bu_feng(lf, tile)
   if not lf or lf.kind == 0 then return nil, "not liang yet" end
   if lf.kind == 1 or lf.kind == 3 then
-    if tile == 31 then lf.numOfDongFeng = lf.numOfDongFeng + 1
-    elseif tile == 32 then lf.numOfNanFeng = lf.numOfNanFeng + 1
-    elseif tile == 33 then lf.numOfXiFeng = lf.numOfXiFeng + 1
-    elseif tile == 34 then lf.numOfBeiFeng = lf.numOfBeiFeng + 1
-    elseif lf.kind == 3 and tile == 35 then lf.numOfHongZhong = lf.numOfHongZhong + 1
-    elseif lf.kind == 3 and tile == 36 then lf.numOfFaCai = lf.numOfFaCai + 1
-    elseif lf.kind == 3 and tile == 37 then lf.numOfBaiBan = lf.numOfBaiBan + 1
+    if tile == 101 then lf.numOfDongFeng = lf.numOfDongFeng + 1
+    elseif tile == 103 then lf.numOfNanFeng = lf.numOfNanFeng + 1
+    elseif tile == 105 then lf.numOfXiFeng = lf.numOfXiFeng + 1
+    elseif tile == 107 then lf.numOfBeiFeng = lf.numOfBeiFeng + 1
+    elseif lf.kind == 3 and tile == 126 then lf.numOfHongZhong = lf.numOfHongZhong + 1
+    elseif lf.kind == 3 and tile == 188 then lf.numOfFaCai = lf.numOfFaCai + 1
+    elseif lf.kind == 3 and tile == 255 then lf.numOfBaiBan = lf.numOfBaiBan + 1
     else return nil, "tile mismatch" end
   elseif lf.kind == 2 then
-    if tile == 35 then lf.numOfHongZhong = lf.numOfHongZhong + 1
-    elseif tile == 36 then lf.numOfFaCai = lf.numOfFaCai + 1
-    elseif tile == 37 then lf.numOfBaiBan = lf.numOfBaiBan + 1
+    if tile == 126 then lf.numOfHongZhong = lf.numOfHongZhong + 1
+    elseif tile == 188 then lf.numOfFaCai = lf.numOfFaCai + 1
+    elseif tile == 255 then lf.numOfBaiBan = lf.numOfBaiBan + 1
     else return nil, "tile mismatch" end
   end
   return lf

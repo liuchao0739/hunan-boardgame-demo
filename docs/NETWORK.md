@@ -16,9 +16,21 @@ cd docker && docker compose up -d
 
 ## 远程
 
-1. 服务器开放 TCP **20480**（或 Nginx 反代 `wss://domain/websocket` → `127.0.0.1:20480`）
-2. 客户端 `serverAddr=<公网IP或域名>:20480`（WSS 时需改 MsgBus 为 `wss://`）
-3. `docker/docker-compose.yml` 可同机部署 MySQL/Redis；当前登录/房间默认内存实现，Compose 供后续持久化
+1. 服务器开放 TCP **20480**（或 Nginx/Caddy 反代 `wss://domain/websocket` → `127.0.0.1:20480`）
+2. 客户端 `serverAddr=<公网IP或域名>:20480`（HTTPS 页面自动用 `wss://`）
+3. Seafile 同机部署步骤见 [DEPLOY_SEAFILE.md](./DEPLOY_SEAFILE.md)
+
+### 当前公网游戏服（演示）
+
+```
+ws://47.242.242.119:20480/websocket
+```
+
+Creator 预览：
+
+```
+?serverAddr=47.242.242.119:20480
+```
 
 ## 与旧湘桌差异
 

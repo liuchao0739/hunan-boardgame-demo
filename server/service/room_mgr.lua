@@ -17,6 +17,7 @@ local function plain_player(p)
     userName = p.userName,
     seatIndex = p.seatIndex,
     prepare = p.prepare,
+    is_bot = p.is_bot and true or false,
     hand = p.hand,
     discard = p.discard,
     peng = p.peng,
@@ -52,6 +53,8 @@ local function plain_room(room)
     gameType1 = room.gameType1,
     rules = room.rules,
     roomUUId = room.roomUUId,
+    claim_pending = room.claim_pending and true or false,
+    ownerId = room.players[1] and room.players[1].userId or 0,
     players = players,
   }
 end
@@ -59,11 +62,20 @@ end
 local CMD = {}
 
 function CMD.create(userId, userName, rules)
-  if user_room[userId] then return nil, "already in room" end
+  -- 已在房间：直接返回现有房间（避免连点创建显示失败）
+  local exist = user_room[userId]
+  if exist and rooms[exist] then
+    return plain_room(rooms[exist])
+  end
   local rid = alloc_room_id()
   local room = Room.new(rid, { userId = userId, userName = userName }, rules)
+  -- 单人调试：自动坐满 3 个机器人（已准备）
+  room:fill_bots(3)
   rooms[rid] = room
   user_room[userId] = rid
+  for _, p in ipairs(room.players) do
+    if p.is_bot then user_room[p.userId] = rid end
+  end
   return plain_room(room)
 end
 
@@ -71,16 +83,46 @@ function CMD.join(userId, userName, roomId)
   local room = rooms[roomId]
   if not room then return nil, "room not found" end
   if room.state ~= "waiting" then return nil, "already started" end
-  local seat, err = room:add_player(userId, userName)
+  local seat, err = room:add_player(userId, userName, false)
   if err then return nil, err end
   user_room[userId] = roomId
   return plain_room(room)
+end
+
+function CMD.is_bot(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return false end
+  local p = room:player(userId)
+  return p and p.is_bot and true or false
+end
+
+function CMD.bot_pick_discard(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil end
+  local p = room:player(userId)
+  if not p or not p.hand or #p.hand == 0 then return nil end
+  -- 简单策略：优先打孤张字牌，否则打最后一张
+  local Tiles = require "weihai.tiles"
+  for _, t in ipairs(p.hand) do
+    if Tiles.is_feng_jian(t) then
+      local n = 0
+      for _, x in ipairs(p.hand) do if x == t then n = n + 1 end end
+      if n == 1 then return t end
+    end
+  end
+  return p.hand[#p.hand]
 end
 
 function CMD.room_of_user(userId)
   local rid = user_room[userId]
   if not rid then return nil end
   return plain_room(rooms[rid])
+end
+
+function CMD.get_room(roomId)
+  return plain_room(rooms[roomId])
 end
 
 function CMD.prepare(userId, yes)
@@ -115,7 +157,7 @@ function CMD.draw_next(afterUserId)
   local next_uid = room:next_user(afterUserId)
   local mo, err = room:draw(next_uid)
   if not mo then
-    return nil, err or "huangzhuang", plain_room(room), next_uid
+    return nil, "huangzhuang", plain_room(room), next_uid
   end
   return plain_room(room), next_uid, mo
 end
@@ -128,6 +170,33 @@ function CMD.peng(userId)
   local ok, err = room:peng(userId, tile)
   if not ok then return nil, err end
   return plain_room(room), tile
+end
+
+function CMD.guo(userId)
+  local rid = user_room[userId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  local done = room:guo(userId)
+  return plain_room(room), done, room.last_discard_user
+end
+
+function CMD.who_can_claim(discarderId)
+  local rid = user_room[discarderId]
+  local room = rooms[rid]
+  if not room then return {} end
+  return room:who_can_claim()
+end
+
+function CMD.finish_claim_draw(discarderId)
+  local rid = user_room[discarderId]
+  local room = rooms[rid]
+  if not room then return nil, "not in room" end
+  -- 已被碰/胡走：不要再摸牌
+  if not room.last_discard or room.last_discard_user ~= discarderId then
+    return nil, "claimed"
+  end
+  room:clear_claim()
+  return CMD.draw_next(discarderId)
 end
 
 function CMD.liang_feng(userId, t0, t1, t2)
@@ -147,7 +216,10 @@ function CMD.bu_feng(userId, tile)
     local p = room:player(userId)
     if not p then return nil, "no player" end
     for _, t in ipairs(p.hand) do
-      if t >= 31 and t <= 37 then tile = t break end
+      if t == 101 or t == 103 or t == 105 or t == 107
+        or t == 126 or t == 188 or t == 255 then
+        tile = t break
+      end
     end
   end
   if not tile then return nil, "no feng tile" end

@@ -1,6 +1,6 @@
 # 威海麻将（Skynet + Cocos Creator 3.8.8）
 
-完整复刻 [hjj2017/whmj](https://github.com/hjj2017/whmj.cocos2d_client) 玩法与 **MsgBus/Protobuf** 协议，后端用 **Skynet/Lua**，前端 **Cocos Creator 3.8.8**。
+完整复刻 [hjj2017/whmj](https://github.com/hjj2017/whmj.cocos2d_client) 玩法与 **MsgBus/Protobuf** 协议，后端 **Skynet/Lua**，前端 **Cocos Creator 3.8.8**。
 
 对照仓（本地 gitignore）：`_refs/whmj.cocos2d_client`、`_refs/whmj.java_server`。
 
@@ -23,15 +23,25 @@ cd docker && docker compose up -d   # MySQL + Redis
 ### 2. 客户端
 
 1. 安装 **Cocos Creator 3.8.8**
-2. Dashboard 打开本仓库 `client/`（项目名可能仍显示旧备注，不影响）
-3. **按 [client/SCENE_SETUP.md](client/SCENE_SETUP.md) 逐步建 Login / Hall / Table 并绑按钮**（必读）
-4. 预览；地址可加 `?serverAddr=127.0.0.1:20480`
+2. Dashboard 打开本仓库 `client/`
+3. 按 [client/SCENE_SETUP.md](client/SCENE_SETUP.md) 确认 Login / Hall / Table
+4. 预览；本地：`?serverAddr=127.0.0.1:20480`
 
-登录方式：DEV（`loginMethod=0`），名称来自输入框 / `testerName`。
+登录：DEV（`loginMethod=0`）。单机可「创建房间」自动配 3 机器人。
 
-### 3. 远程
+### 3. 远程演示
 
-见 [docs/NETWORK.md](docs/NETWORK.md)。客户端将 `serverAddr` 改为公网地址即可。
+见 [docs/NETWORK.md](docs/NETWORK.md)、[docs/DEPLOY_SEAFILE.md](docs/DEPLOY_SEAFILE.md)。
+
+- 游戏服：`ws://47.242.242.119:20480/websocket`（Seafile 同机 VPS）
+- 预览联机：`?serverAddr=47.242.242.119:20480`
+- 域名页（DNS / 静态构建就绪后）：`https://whmj.xiandan.me/`
+
+## 当前进度（摘要）
+
+- 登录 / 大厅 / 四家牌桌、机器人、碰胡过、荒庄结算、回大厅
+- 手牌：再点同一张出牌；剩余张数随摸牌更新
+- 美术：桌布、牌面、操作钮、Spine 立绘资源（需引擎勾选 Spine）
 
 ## 目录
 
@@ -41,7 +51,7 @@ cd docker && docker compose up -d   # MySQL + Redis
 | `server/protocol/` | 原版 `.proto` |
 | `client/assets/scripts/` | MsgBus / 登录 / 大厅 / 牌桌 |
 | `docs/PROTOCOL_WEIHAI.md` | 协议说明 |
-| `_refs/` | 官方前后端蓝本（不提交） |
+| `docs/DEPLOY_SEAFILE.md` | 与 Seafile VPS 同机部署 |
 
 ## 许可
 
