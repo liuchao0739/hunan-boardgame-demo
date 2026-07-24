@@ -79,13 +79,25 @@ whmj.xiandan.me:20480
 
 | 用途 | 地址 |
 |------|------|
-| 演示落地页 | https://chaoren.xiandan.me/whmj/ |
-| 游戏服 WSS（推荐） | `wss://chaoren.xiandan.me/websocket` |
-| Creator 联机 | `?serverAddr=wss://chaoren.xiandan.me/websocket` |
-| 独立域名（待 DNS） | `https://whmj.xiandan.me/`（容器已部署，加 A 记录后自动出证） |
+| **浏览器游玩** | https://whmj.xiandan.me/ |
+| 游戏服 WSS | `wss://whmj.xiandan.me/websocket` |
+| Creator 联机 | `?serverAddr=wss://whmj.xiandan.me/websocket` |
+| 直连备选 | `ws://47.242.242.119:20480/websocket`（需防火墙 20480） |
 | 源码 | https://github.com/liuchao0739/hunan-boardgame-demo |
 
-> 阿里云轻量默认只放行 22/80/443，**公网直连 `:20480` 不通**；请走上方 WSS。
+### 更新 Web 静态资源
+
+本机构建后上传：
+
+```bash
+# Creator CLI
+/Applications/Cocos/Creator/3.8.8/CocosCreator.app/Contents/MacOS/CocosCreator \
+  --project /path/to/client \
+  --build "platform=web-mobile;debug=false;md5Cache=true;configPath=./build-config-web-mobile.json"
+
+rsync -avz --delete client/build/web-mobile/ seafile:/opt/whmj-site/web/
+```
+
 
 ## 构建 Web 客户端
 

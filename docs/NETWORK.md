@@ -22,16 +22,16 @@ cd docker && docker compose up -d
 
 ### 当前公网游戏服（演示）
 
-```
-wss://chaoren.xiandan.me/websocket
-```
-
-落地页：https://chaoren.xiandan.me/whmj/
-
-Creator 预览（须写完整 `wss://`，预览页是 http 不会自动升级）：
+浏览器：https://whmj.xiandan.me/
 
 ```
-?serverAddr=wss://chaoren.xiandan.me/websocket
+wss://whmj.xiandan.me/websocket
+```
+
+Creator 预览：
+
+```
+?serverAddr=wss://whmj.xiandan.me/websocket
 ```
 
 ## 与旧湘桌差异

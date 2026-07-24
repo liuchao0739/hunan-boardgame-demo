@@ -33,9 +33,9 @@ cd docker && docker compose up -d   # MySQL + Redis
 
 见 [docs/NETWORK.md](docs/NETWORK.md)、[docs/DEPLOY_SEAFILE.md](docs/DEPLOY_SEAFILE.md)。
 
-- 落地页：https://chaoren.xiandan.me/whmj/
-- 游戏服：`wss://chaoren.xiandan.me/websocket`
-- Creator 预览：`?serverAddr=wss://chaoren.xiandan.me/websocket`
+- **浏览器游玩**：https://whmj.xiandan.me/
+- 游戏服：`wss://whmj.xiandan.me/websocket`
+- Creator 预览：`?serverAddr=wss://whmj.xiandan.me/websocket`
 
 ## 当前进度（摘要）
 

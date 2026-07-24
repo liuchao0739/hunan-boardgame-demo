@@ -56,7 +56,7 @@ function meldOk(c: Map<number, number>): boolean {
 
 @ccclass('TableScene')
 export class TableScene extends Component {
-  private layout!: TableLayout;
+  private layout: TableLayout | null = null;
   private hand: number[] = [];
   private moPai = 0;
   private actUser = 0;
@@ -70,8 +70,35 @@ export class TableScene extends Component {
   private claimPeng = false;
   private claimHu = false;
   private handGen = 0;
+  private unsubs: Array<() => void> = [];
+  private pendingHuUid = 0;
+  private leaving = false;
+
+  onDestroy() {
+    this.clearSubs();
+    this.layout = null;
+  }
+
+  private clearSubs() {
+    for (const u of this.unsubs) u();
+    this.unsubs = [];
+  }
+
+  private listen(code: number, fn: (body: Uint8Array) => void) {
+    this.unsubs.push(MsgBus.ins.on(code, (body) => {
+      if (!this.isValid || !this.layout || this.leaving) return;
+      fn(body);
+    }));
+  }
+
+  private ui(): TableLayout | null {
+    return this.isValid && !this.leaving ? this.layout : null;
+  }
 
   onLoad() {
+    // 清掉上一局/大厅残留监听，避免打到已销毁的 TableScene
+    MsgBus.ins.offAll();
+
     const canvas = this.node.parent ?? this.node;
     for (const name of ['TipLabel', 'HandLabel', 'DiscardBtn', 'PengBtn', 'StatusLabel', 'HuBtn']) {
       const n = canvas.getChildByName(name) || this.node.getChildByName(name);
@@ -90,8 +117,8 @@ export class TableScene extends Component {
     this.layout.btnGuo?.node.on('click', this.onClickGuo, this);
     this.layout.exitBtn?.node.on('click', this.backToHall, this);
 
-    MsgBus.ins.on(MsgCode.SyncRoomDataResult, (body) => this.onSyncRoom(body));
-    MsgBus.ins.on(MsgCode.MahjongInHandChangedResult, (body) => {
+    this.listen(MsgCode.SyncRoomDataResult, (body) => this.onSyncRoom(body));
+    this.listen(MsgCode.MahjongInHandChangedResult, (body) => {
       const f = PbWire.decode(body);
       const tiles: number[] = [];
       for (const e of (f.get(2) || [])) tiles.push(PbWire.zigzagDecode(e.raw as number));
@@ -99,25 +126,26 @@ export class TableScene extends Component {
       this.applyHand(tiles, mo);
       this.refreshActions();
     });
-    MsgBus.ins.on(MsgCode.RedirectActUserIdBroadcast, (body) => {
+    this.listen(MsgCode.RedirectActUserIdBroadcast, (body) => {
       const f = PbWire.decode(body);
       this.actUser = PbWire.getSint32(f, 1, 0);
-      // 行动权切换 = 抢牌窗口结束
       this.clearClaim();
-      this.layout.updateSeats(this.players, this.myId, this.actUser);
+      this.ui()?.updateSeats(this.players, this.myId, this.actUser);
       this.refreshTip();
       this.refreshActions();
     });
-    MsgBus.ins.on(MsgCode.MahjongMoPaiBroadcast, (body) => {
+    this.listen(MsgCode.MahjongMoPaiBroadcast, (body) => {
       const f = PbWire.decode(body);
       const left = PbWire.getSint32(f, 1, -1);
       if (left >= 0) this.setRemain(left);
       else this.setRemain(this.remain - 1);
     });
-    MsgBus.ins.on(MsgCode.MahjongMoPaiResult, () => {
+    this.listen(MsgCode.MahjongMoPaiResult, () => {
       // 广播可能先到；若还没更新则本地减一
     });
-    MsgBus.ins.on(MsgCode.MahjongChuPaiBroadcast, (body) => {
+    this.listen(MsgCode.MahjongChuPaiBroadcast, (body) => {
+      const lay = this.ui();
+      if (!lay) return;
       const f = PbWire.decode(body);
       const uid = PbWire.getSint32(f, 1, 0);
       const tile = PbWire.getSint32(f, 2, 0);
@@ -127,8 +155,8 @@ export class TableScene extends Component {
         p.discard = p.discard || [];
         p.discard.push(tile);
         if (uid !== this.myId && (p.handCount || 0) > 0) p.handCount! -= 1;
-        void this.layout.updateDiscards(this.players, this.myId);
-        this.layout.updateSeats(this.players, this.myId, this.actUser);
+        void lay.updateDiscards(this.players, this.myId);
+        lay.updateSeats(this.players, this.myId, this.actUser);
       }
       if (uid === this.myId) {
         this.clearClaim();
@@ -138,12 +166,13 @@ export class TableScene extends Component {
       }
       this.refreshActions();
     });
-    MsgBus.ins.on(MsgCode.MahjongPengBroadcast, (body) => {
+    this.listen(MsgCode.MahjongPengBroadcast, (body) => {
+      const lay = this.ui();
+      if (!lay) return;
       const f = PbWire.decode(body);
       const uid = PbWire.getSint32(f, 1, 0);
       const tile = PbWire.getSint32(f, 2, 0);
       this.clearClaim();
-      // 从出牌者牌河移除最后一张
       if (this.lastDiscard) {
         const from = this.players.find((x) => x.userId === this.lastDiscard!.uid);
         if (from?.discard?.length) from.discard.pop();
@@ -154,57 +183,62 @@ export class TableScene extends Component {
         p.peng.push(tile);
         if (uid !== this.myId) p.handCount = Math.max(0, (p.handCount || 0) - 2);
       }
-      void this.layout.updateDiscards(this.players, this.myId);
-      void this.layout.updateMelds(this.players, this.myId);
+      void lay.updateDiscards(this.players, this.myId);
+      void lay.updateMelds(this.players, this.myId);
       this.setTip(uid === this.myId ? '碰！请出牌' : `玩家 ${uid} 碰了`);
       this.refreshActions();
     });
-    MsgBus.ins.on(MsgCode.MahjongGuoResult, () => {
+    this.listen(MsgCode.MahjongGuoResult, () => {
       this.clearClaim();
       this.setTip('已过');
       this.refreshActions();
     });
-    MsgBus.ins.on(MsgCode.MahjongHuangZhuangBroadcast, () => {
+    this.listen(MsgCode.MahjongHuangZhuangBroadcast, () => {
+      const lay = this.ui();
+      if (!lay) return;
       this.clearClaim();
-      this.layout.setActionButtons(false, false, false);
+      lay.setActionButtons(false, false, false);
       this.setTip('荒庄（臭了）');
-      this.layout.showResultOverlay('荒庄', '牌墙摸完了，本局流局（臭了）', () => this.backToHall());
+      lay.showResultOverlay('荒庄', '牌墙摸完了，本局流局（臭了）', () => this.backToHall());
     });
-    MsgBus.ins.on(MsgCode.MahjongHuOrZiMoResult, (body) => {
+    this.listen(MsgCode.MahjongHuOrZiMoResult, (body) => {
       const f = PbWire.decode(body);
       const ok = Number(f.get(1)?.[0]?.raw) === 1;
       if (!ok) {
         this.setTip('胡牌未成功，请继续');
         return;
       }
-      // 成功时等 Broadcast / Settlement；若漏报也兜底弹窗
       this.scheduleOnce(() => {
-        const ui = this.layout.root.getChildByName('__TableUI');
+        const lay = this.ui();
+        if (!lay) return;
+        const ui = lay.root.getChildByName('__TableUI');
         if (ui && !ui.getChildByName('__ResultOverlay')) {
-          this.layout.showResultOverlay('胡了！', '本局结束', () => this.backToHall());
+          lay.showResultOverlay('胡了！', '本局结束', () => this.backToHall());
         }
       }, 0.4);
     });
-    MsgBus.ins.on(MsgCode.MahjongHuOrZiMoBroadcast, (body) => {
+    this.listen(MsgCode.MahjongHuOrZiMoBroadcast, (body) => {
+      const lay = this.ui();
+      if (!lay) return;
       const f = PbWire.decode(body);
       const uid = PbWire.getSint32(f, 1, 0);
       this.clearClaim();
-      this.layout.setActionButtons(false, false, false);
+      lay.setActionButtons(false, false, false);
       this.pendingHuUid = uid;
       this.setTip(uid === this.myId ? '胡了！' : `玩家 ${uid} 胡了`);
     });
-    MsgBus.ins.on(MsgCode.RoundSettlementBroadcast, (body) => {
+    this.listen(MsgCode.RoundSettlementBroadcast, (body) => {
+      const lay = this.ui();
+      if (!lay) return;
       const lines = this.parseSettlement(body);
       const uid = this.pendingHuUid || 0;
       const title = uid === this.myId ? '胡了！' : (uid ? `玩家 ${uid} 胡牌` : '本局结算');
-      this.layout.showResultOverlay(title, lines || '本局结束', () => this.backToHall());
+      lay.showResultOverlay(title, lines || '本局结束', () => this.backToHall());
     });
 
     MsgBus.ins.sendEmpty(MsgCode.SyncRoomDataCmd);
     this.refreshTip();
   }
-
-  private pendingHuUid = 0;
 
   private parseSettlement(body: Uint8Array): string {
     try {
@@ -227,7 +261,10 @@ export class TableScene extends Component {
   }
 
   private backToHall() {
-    // 借 GetJoinedRoomId 顺带离开房间（服务端会 leave）
+    if (this.leaving) return;
+    this.leaving = true;
+    this.clearSubs();
+    this.layout = null;
     MsgBus.ins.sendEmpty(MsgCode.GetJoinedRoomIdCmd);
     console.log('[Table] back to hall');
     director.loadScene('Hall');
@@ -240,7 +277,6 @@ export class TableScene extends Component {
       const i = list.lastIndexOf(this.moPai);
       if (i >= 0) list.splice(i, 1);
     } else if (list.length % 3 === 2 && list.length > 0) {
-      // 14/11/8… 张：最右一张当摸牌
       this.moPai = list[list.length - 1];
       list = list.slice(0, -1);
     }
@@ -272,6 +308,8 @@ export class TableScene extends Component {
   }
 
   private onSyncRoom(body: Uint8Array) {
+    const lay = this.ui();
+    if (!lay) return;
     const f = PbWire.decode(body);
     this.roomId = PbWire.getSint32(f, 1, 0);
     this.round = PbWire.getSint32(f, 7, 1) || 1;
@@ -287,7 +325,6 @@ export class TableScene extends Component {
       const handTiles: number[] = [];
       for (const h of (pf.get(14) || [])) handTiles.push(PbWire.zigzagDecode(h.raw as number));
       const peng: number[] = [];
-      // chiPengGang nested not fully parsed; keep empty for now
       const uid = PbWire.getSint32(pf, 1, 0);
       if (uid === this.myId) myHandFromSync = handTiles.filter((t) => t > 0);
       this.players.push({
@@ -304,25 +341,28 @@ export class TableScene extends Component {
       });
     }
     if (myHandFromSync.length) this.applyHand(myHandFromSync, 0);
-    if (this.layout.roomLabel) this.layout.roomLabel.string = `房${this.roomId}`;
-    if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${this.remain}`;
-    if (this.layout.roundLabel) this.layout.roundLabel.string = `第 ${this.round} 局`;
-    this.layout.updateSeats(this.players, this.myId, this.actUser);
-    void this.layout.updateDiscards(this.players, this.myId);
-    void this.layout.updateMelds(this.players, this.myId);
+    if (lay.roomLabel) lay.roomLabel.string = `房${this.roomId}`;
+    if (lay.remainLabel) lay.remainLabel.string = `剩 ${this.remain}`;
+    if (lay.roundLabel) lay.roundLabel.string = `第 ${this.round} 局`;
+    lay.updateSeats(this.players, this.myId, this.actUser);
+    void lay.updateDiscards(this.players, this.myId);
+    void lay.updateMelds(this.players, this.myId);
     this.refreshTip();
     this.refreshActions();
   }
 
   private setRemain(n: number) {
     this.remain = Math.max(0, n | 0);
-    if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${this.remain}`;
+    const lay = this.ui();
+    if (lay?.remainLabel) lay.remainLabel.string = `剩 ${this.remain}`;
   }
 
   private refreshActions() {
+    const lay = this.ui();
+    if (!lay) return;
     const claiming = this.claimPeng || this.claimHu;
-    this.layout.setChuVisible(false);
-    this.layout.setActionButtons(claiming, this.claimPeng, this.claimHu);
+    lay.setChuVisible(false);
+    lay.setActionButtons(claiming, this.claimPeng, this.claimHu);
   }
 
   private refreshTip() {
@@ -337,31 +377,33 @@ export class TableScene extends Component {
   }
 
   private setTip(s: string) {
-    if (this.layout.tipLabel) this.layout.tipLabel.string = s;
+    const lay = this.ui();
+    if (lay?.tipLabel) lay.tipLabel.string = s;
     console.log('[Table]', s);
   }
 
   private async refreshHand() {
+    const lay = this.ui();
+    if (!lay?.handRoot) return;
     const gen = ++this.handGen;
-    const root = this.layout.handRoot;
+    const root = lay.handRoot;
     root.removeAllChildren();
     const tw = 56;
     const gap = 0;
     const moGap = 18;
     const closed = this.hand;
     const hasMo = this.moPai > 0;
-    const n = closed.length + (hasMo ? 1 : 0);
     const closedW = closed.length * tw + Math.max(0, closed.length - 1) * gap;
     const totalW = closedW + (hasMo ? moGap + tw : 0);
     let x = -totalW / 2 + tw / 2;
 
     const place = async (tile: number, idx: number, isMo: boolean) => {
-      if (gen !== this.handGen) return;
+      if (gen !== this.handGen || !this.ui()) return;
       const n = await createTileNode(tile, root, tw, 78, {
         onSelect: () => this.onSelectTile(idx, isMo),
         onDiscard: () => this.discardAt(idx),
       });
-      if (gen !== this.handGen || !n.isValid) return;
+      if (gen !== this.handGen || !n.isValid || !this.ui()) return;
       const y = this.selectedIdx === idx ? 20 : 0;
       n.setPosition(Math.round(x), y, 0);
       x += tw + gap;
@@ -382,7 +424,6 @@ export class TableScene extends Component {
       return;
     }
     if (this.claimPeng || this.claimHu) return;
-    // 再点同一张 = 出牌（鼠标最稳；不重建节点，双击/上滑才有效）
     if (this.selectedIdx === idx) {
       this.discardAt(idx);
       return;
@@ -392,9 +433,9 @@ export class TableScene extends Component {
     this.setTip('已选中：再点一次出牌；或按住往上拖');
   }
 
-  /** 只抬起选中牌，不要 removeAllChildren（否则双击/上滑状态全丢） */
   private applyHandLift() {
-    const root = this.layout.handRoot;
+    const root = this.ui()?.handRoot;
+    if (!root) return;
     for (let i = 0; i < root.children.length; i++) {
       const n = root.children[i];
       const p = n.position;
@@ -426,7 +467,7 @@ export class TableScene extends Component {
     if (!this.claimPeng) return;
     MsgBus.ins.sendPeng();
     this.clearClaim();
-    this.layout.setActionButtons(false, false, false);
+    this.ui()?.setActionButtons(false, false, false);
     this.setTip('碰！');
   }
 
@@ -434,14 +475,15 @@ export class TableScene extends Component {
     if (!this.claimHu) return;
     MsgBus.ins.sendHu();
     this.clearClaim();
-    this.layout.setActionButtons(false, false, false);
+    this.ui()?.setActionButtons(false, false, false);
     this.setTip('胡！结算中…');
     this.pendingHuUid = this.myId;
-    // 兜底：若服务端广播丢失，1 秒后仍弹结算
     this.scheduleOnce(() => {
-      const ui = this.layout.root.getChildByName('__TableUI');
+      const lay = this.ui();
+      if (!lay) return;
+      const ui = lay.root.getChildByName('__TableUI');
       if (ui && !ui.getChildByName('__ResultOverlay')) {
-        this.layout.showResultOverlay('胡了！', '本局结束（点击回大厅）', () => this.backToHall());
+        lay.showResultOverlay('胡了！', '本局结束（点击回大厅）', () => this.backToHall());
       }
     }, 1.0);
   }
@@ -449,7 +491,8 @@ export class TableScene extends Component {
   onClickGuo() {
     MsgBus.ins.sendEmpty(MsgCode.MahjongGuoCmd);
     this.clearClaim();
-    this.layout.setActionButtons(false, false, false);
+    this.ui()?.setActionButtons(false, false, false);
     this.setTip('过');
   }
 }
+

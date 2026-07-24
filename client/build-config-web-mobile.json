@@ -1,0 +1,23 @@
+{
+  "name": "web-mobile",
+  "platform": "web-mobile",
+  "buildPath": "project://build",
+  "debug": false,
+  "md5Cache": true,
+  "sourceMaps": false,
+  "replaceSplashScreen": false,
+  "mainBundleCompressionType": "merge_dep",
+  "mainBundleIsRemote": false,
+  "startScene": "efaa4cde-ee9c-48c7-8c5a-7dfa495f6dc9",
+  "scenes": [
+    { "url": "db://assets/scenes/Login.scene", "uuid": "efaa4cde-ee9c-48c7-8c5a-7dfa495f6dc9" },
+    { "url": "db://assets/scenes/Hall.scene", "uuid": "5bf6d8c2-8525-4f71-bb5f-bf925a2ef053" },
+    { "url": "db://assets/scenes/Table.scene", "uuid": "4a3732cf-a46f-4fe8-9367-2c98d5338710" }
+  ],
+  "packages": {
+    "web-mobile": {
+      "orientation": "landscape",
+      "embedWebDebugger": false
+    }
+  }
+}

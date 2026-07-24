@@ -29,6 +29,21 @@ export class HallScene extends Component {
   prepareBtn: Button | null = null;
 
   private roomId = -1;
+  private unsubs: Array<() => void> = [];
+  private enteringTable = false;
+
+  onDestroy() {
+    this.clearSubs();
+  }
+
+  private clearSubs() {
+    for (const u of this.unsubs) u();
+    this.unsubs = [];
+  }
+
+  private listen(code: number, fn: (body: Uint8Array) => void) {
+    this.unsubs.push(MsgBus.ins.on(code, fn));
+  }
 
   async onLoad() {
     this.layoutUi();
@@ -44,12 +59,14 @@ export class HallScene extends Component {
     this.setInfo(`玩家 ${u.userName || '?'} (${u.userId || '?'})`);
     this.setRoom('点「创建房间」自动配 3 机器人，再点「确定」开局');
 
-    MsgBus.ins.on(MsgCode.GetMyDetailzResult, (body) => {
+    this.listen(MsgCode.GetMyDetailzResult, (body) => {
+      if (!this.isValid) return;
       const f = PbWire.decode(body);
       const cards = PbWire.getSint32(f, 5, 0);
       this.setInfo(`${PbWire.getString(f, 2)} 房卡:${cards}`);
     });
-    MsgBus.ins.on(MsgCode.CreateRoomResult, (body) => {
+    this.listen(MsgCode.CreateRoomResult, (body) => {
+      if (!this.isValid) return;
       const f = PbWire.decode(body);
       const id = PbWire.getSint32(f, 1, -1);
       if (id > 0) {
@@ -62,29 +79,39 @@ export class HallScene extends Component {
         this.setRoom('创建房间失败');
       }
     });
-    MsgBus.ins.on(MsgCode.JoinRoomResult, (body) => {
+    this.listen(MsgCode.JoinRoomResult, (body) => {
+      if (!this.isValid) return;
       const f = PbWire.decode(body);
       this.roomId = PbWire.getSint32(f, 1, -1);
       this.setRoom(this.roomId > 0 ? `已加入 ${this.roomId}` : '加入失败');
     });
-    MsgBus.ins.on(MsgCode.PrepareBroadcast, () => this.setRoom(`房间 ${this.roomId} 有人准备`));
-    MsgBus.ins.on(MsgCode.OfficialStartBroadcast, () => {
+    this.listen(MsgCode.PrepareBroadcast, () => {
+      if (!this.isValid) return;
+      this.setRoom(`房间 ${this.roomId} 有人准备`);
+    });
+    this.listen(MsgCode.OfficialStartBroadcast, () => {
+      if (!this.isValid || this.enteringTable) return;
+      this.enteringTable = true;
       this.setRoom(`房间 ${this.roomId} 开局！`);
+      // 立刻卸掉大厅监听，避免开局包打到已销毁/切换中的 Hall
+      this.clearSubs();
       director.loadScene('Table', (err) => {
-        if (err) this.setRoom('开局成功，但还没有 Table 场景');
+        if (err) console.warn('[Hall] load Table failed', err);
       });
     });
-    MsgBus.ins.on(MsgCode.MahjongInHandChangedResult, (body) => {
+    this.listen(MsgCode.MahjongInHandChangedResult, (body) => {
+      // 只缓存，不刷 UI（开局瞬间手牌包常在切场景前到达）
       const f = PbWire.decode(body);
       const tiles: number[] = [];
       for (const e of (f.get(2) || [])) tiles.push(PbWire.zigzagDecode(e.raw as number));
+      const mo = PbWire.getSint32(f, 3, 0);
       const g = (globalThis as any).__WHMJ__ || ((globalThis as any).__WHMJ__ = {});
       g.hand = tiles;
-      this.setRoom(`手牌(${tiles.length}): ${tiles.join(',')}`);
+      g.moPai = mo;
     });
 
     const ok = await this.ensureConnected();
-    if (ok) MsgBus.ins.sendEmpty(MsgCode.GetMyDetailzCmd);
+    if (ok && this.isValid) MsgBus.ins.sendEmpty(MsgCode.GetMyDetailzCmd);
   }
 
   private findNode(name: string): Node | null {

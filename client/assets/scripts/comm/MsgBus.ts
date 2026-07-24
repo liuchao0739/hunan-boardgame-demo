@@ -22,21 +22,45 @@ export class MsgBus {
     return this;
   }
 
-  /** Parse ?serverAddr= from URL (browser preview / build). */
+  /** Parse ?serverAddr= from URL；线上域名默认走同域 WSS。 */
   static readServerAddrFromUrl(fallback = '127.0.0.1:20480'): string {
     try {
       if (typeof window !== 'undefined' && window.location) {
         const u = new URL(window.location.href);
-        return u.searchParams.get('serverAddr') || fallback;
+        const q = u.searchParams.get('serverAddr');
+        if (q) return q;
+        const host = (u.hostname || '').toLowerCase();
+        // 生产站：走同域 /websocket（Caddy→nginx→Skynet）
+        if (host === 'whmj.xiandan.me' || host === 'chaoren.xiandan.me') {
+          return `wss://${host}/websocket`;
+        }
+        if (u.protocol === 'https:' && host && host !== 'localhost' && host !== '127.0.0.1') {
+          return `wss://${host}/websocket`;
+        }
       }
     } catch { /* ignore */ }
     return fallback;
   }
 
-  on(code: number, fn: Handler): void {
+  /** 注册监听；返回取消函数。场景 onDestroy 必须 off，否则会打到已销毁组件。 */
+  on(code: number, fn: Handler): () => void {
     const arr = this.handlers.get(code) || [];
     arr.push(fn);
     this.handlers.set(code, arr);
+    return () => this.off(code, fn);
+  }
+
+  off(code: number, fn: Handler): void {
+    const arr = this.handlers.get(code);
+    if (!arr) return;
+    const next = arr.filter((h) => h !== fn);
+    if (next.length) this.handlers.set(code, next);
+    else this.handlers.delete(code);
+  }
+
+  /** 清空全部监听（切场景时由目标场景 onLoad 开头调用，避免旧场景残留） */
+  offAll(): void {
+    this.handlers.clear();
   }
 
   isConnected(): boolean {

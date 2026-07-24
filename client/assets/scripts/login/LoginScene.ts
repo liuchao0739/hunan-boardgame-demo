@@ -24,7 +24,7 @@ export class LoginScene extends Component {
     attachBg(this.node.parent ?? this.node, 'weihai/bg/hall');
     // EditBox 默认 maxLength=8，会把 127.0.0.1:20480 截成 127.0.0. —— 必须先放开再赋值
     if (this.nameEdit) this.nameEdit.maxLength = 32;
-    if (this.serverEdit) this.serverEdit.maxLength = 64;
+    if (this.serverEdit) this.serverEdit.maxLength = 128;
 
     const addr = MsgBus.readServerAddrFromUrl('127.0.0.1:20480');
     if (this.serverEdit) this.serverEdit.string = addr;
@@ -72,7 +72,10 @@ export class LoginScene extends Component {
 
   private normalizeAddr(raw: string): string {
     const s = (raw || '').trim();
-    if (!s || !s.includes(':') || s.endsWith('.')) return '127.0.0.1:20480';
+    if (!s) return '127.0.0.1:20480';
+    // 完整 ws(s) URL 直接用
+    if (s.startsWith('ws://') || s.startsWith('wss://')) return s;
+    if (!s.includes(':') || s.endsWith('.')) return '127.0.0.1:20480';
     return s;
   }
 
@@ -89,7 +92,8 @@ export class LoginScene extends Component {
       this.setStatus('连接失败：检查地址与 server/run.sh（' + addr + '）');
       return;
     }
-    MsgBus.ins.on(MsgCode.UserLoginResult, (body) => {
+    const unsub = MsgBus.ins.on(MsgCode.UserLoginResult, (body) => {
+      unsub();
       const f = PbWire.decode(body);
       const userId = PbWire.getSint32(f, 1, -1);
       const userName = PbWire.getString(f, 2, '');
@@ -100,6 +104,7 @@ export class LoginScene extends Component {
       }
       (globalThis as any).__WHMJ__ = { userId, userName, ticket, serverAddr: addr };
       this.setStatus(`登录成功 ${userId} ${userName}`);
+      MsgBus.ins.offAll();
       director.loadScene('Hall', (err) => {
         if (err) {
           this.setStatus('登录成功，但还没有 Hall 场景（请按 SCENE_SETUP 再建）');
