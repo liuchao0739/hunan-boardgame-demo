@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 13,
-    "pending": 87,
+    "done": 14,
+    "pending": 86,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T013",
+  "current_task": "T014",
   "tasks": [
     {
       "id": "T001",
@@ -163,12 +163,13 @@
       "id": "T013",
       "phase": "phase1_rules",
       "title": "吃牌合法性服务端校验",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T013.md",
       "acceptance": "chi body.tiles 必须匹配 chi_options",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.125118+00:00"
     },
     {
       "id": "T014",
