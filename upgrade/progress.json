@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 19,
-    "pending": 81,
+    "done": 20,
+    "pending": 80,
     "failed": 0
   },
   "current_phase": "phase1_rules",
@@ -993,12 +993,13 @@
       "id": "T086",
       "phase": "phase1_rules",
       "title": "禁止非法出牌（非手牌）",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T086.md",
       "acceptance": "discard 校验归属",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.548137+00:00"
     },
     {
       "id": "T087",
