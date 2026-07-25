@@ -1,556 +1,219 @@
+-- 平台 WebSocket 网关：JSON 信封
 local skynet = require "skynet"
+local socket = require "skynet.socket"
 local websocket = require "http.websocket"
-local cjson = require "json"
-local Codec = require "weihai.codec"
-local Code = require "weihai.msg_code"
-local pb = require "pb.wire"
+local Protocol = require "platform.protocol"
 
-local room_mgr
 local passport
-local club
-local MODE = ...
+local room_mgr
 
-local handle = {}
-local clients = {}
+local clients = {} -- fd -> { userId, userName }
 
-local function send_bin(id, code, body)
-  local frame = Codec.pack(code, body)
-  local ok, err = pcall(websocket.write, id, frame, "binary")
+local function send_text(fd, text)
+  local ok, err = pcall(websocket.write, fd, text, "text")
   if not ok then
-    skynet.error("ws binary write fail", id, err)
+    skynet.error("ws write fail", fd, err)
   end
 end
 
-local function encode_tile(t)
-  return pb.encode_sint32(1, t or 0)
+local function push(fd, ns, cmd, body)
+  send_text(fd, Protocol.push(ns, cmd, body))
 end
 
-local function users_in_room(room)
-  local set = {}
-  if not room or not room.players then return set end
-  for _, p in ipairs(room.players) do
-    set[p.userId] = true
-  end
-  return set
+local function reply(fd, req, cmd, body)
+  send_text(fd, Protocol.reply(req, cmd, body))
 end
 
-local function broadcast_room(room, fn)
-  local set = users_in_room(room)
-  for id, c in pairs(clients) do
-    if c.userId and set[c.userId] then
-      fn(id, c)
-    end
-  end
+local function push_state(fd, state)
+  push(fd, "platform", "state", state)
 end
 
-local function push_hands(room)
-  broadcast_room(room, function(id, c)
-    for _, p in ipairs(room.players) do
-      if p.userId == c.userId then
-        send_bin(id, Code.MahjongInHandChangedResult, Codec.encode_mahjong_in_hand_changed_result(
-          p.userId, p.hand, nil
-        ))
-      end
-    end
-  end)
-end
-
-local function save_settlement_record(room, items)
-  if not room or not items then return end
-  local players = {}
-  for _, it in ipairs(items) do
-    players[#players + 1] = {
-      userId = it.userId,
-      userName = "",
-      headImg = "",
-      sex = 1,
-      currScore = it.currScore or 0,
-      totalScore = it.totalScore or 0,
-      seatIndex = it.seatIndex or 0,
-      zhuangFlag = it.zhuangJiaFlag,
-      ziMo = it.ziMo,
-      hu = it.hu,
-      dianPao = it.dianPao,
-    }
-    for _, rp in ipairs(room.players or {}) do
-      if rp.userId == it.userId then
-        players[#players].userName = rp.userName or ""
-        break
+local function broadcast_room(roomId, exceptFd)
+  -- 简化：向所有同房用户推 sync 结果
+  for fd, c in pairs(clients) do
+    if c.userId and fd ~= exceptFd then
+      local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
+      if rid == roomId then
+        local st = skynet.call(room_mgr, "lua", "sync", c.userId)
+        if st then push_state(fd, st) end
       end
     end
   end
-  local now = os.time() * 1000
-  local rec = {
-    gameType1 = room.gameType1 or 1001,
-    gameType0 = room.gameType0 or 1,
-    roomId = room.roomId,
-    roomUUId = room.roomUUId,
-    costRoomCard = 1,
-    actualRoundCount = room.round or 1,
-    createTime = now,
-    overTime = now,
-    player = players,
-  }
-  skynet.call(club, "lua", "add_record", rec)
-  local stub = skynet.call(club, "lua", "write_playback", room.roomId, room.round or 1,
-    cjson.encode({ roomId = room.roomId, round = room.round, items = items }))
-  skynet.call(club, "lua", "add_round", room.roomUUId, {
-    roundIndex = (room.round or 1) - 1,
-    createTime = now,
-    player = players,
-    playbackStub = stub or "",
-  })
 end
 
-local function maybe_room_settlement(room, items)
-  if not room or (room.round or 0) < (room.max_rounds or 8) then
-    return false
-  end
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.RoomSettlementBroadcast, Codec.encode_room_settlement(items))
-  end)
-  return true
-end
+local function handle_platform(fd, req)
+  local cmd = req.cmd
+  local body = req.body or {}
+  local c = clients[fd] or {}
 
-local function handle_login(id, body)
-  local cmd = Codec.decode_user_login_cmd(body)
-  local name = "测试用户"
-  local okj, prop = pcall(cjson.decode, cmd.propertyStr or "{}")
-  if okj and type(prop) == "table" then
-    name = prop.testerName or prop.userName or prop.nick or name
-  end
-  local u = skynet.call(passport, "lua", "login", name)
-  clients[id].userId = u.userId
-  send_bin(id, Code.UserLoginResult, Codec.encode_user_login_result(u))
-  skynet.error("login ok", u.userId, u.userName)
-end
-
-local function handle_detail(id)
-  local u = skynet.call(passport, "lua", "get", clients[id].userId)
-  if not u then return end
-  send_bin(id, Code.GetMyDetailzResult, Codec.encode_get_my_detailz_result(u))
-end
-
-local function handle_joined(id)
-  local room = skynet.call(room_mgr, "lua", "room_of_user", clients[id].userId)
-  send_bin(id, Code.GetJoinedRoomIdResult, Codec.encode_get_joined_room_id_result(room and room.roomId or -1))
-end
-
-local function handle_create(id, body)
-  local uid = clients[id].userId
-  local u = skynet.call(passport, "lua", "get", uid)
-  local cmd = Codec.decode_create_room_cmd(body)
-  local room, err = skynet.call(room_mgr, "lua", "create", uid, u.userName, cmd.ruleItem)
-  if not room then
-    skynet.error("create fail", err)
-    send_bin(id, Code.CreateRoomResult, Codec.encode_create_room_result(-1))
+  if cmd == "login" then
+    local name = body.name or body.testerName or "测试用户"
+    local u = skynet.call(passport, "lua", "login", name)
+    clients[fd] = { userId = u.userId, userName = u.userName }
+    reply(fd, req, "loginResult", {
+      ok = true,
+      userId = u.userId,
+      userName = u.userName,
+      ticket = u.ticket,
+      roomCard = u.roomCard,
+    })
     return
   end
-  send_bin(id, Code.CreateRoomResult, Codec.encode_create_room_result(room.roomId))
-end
 
-local function handle_join(id, body)
-  local uid = clients[id].userId
-  local u = skynet.call(passport, "lua", "get", uid)
-  local cmd = Codec.decode_join_room_cmd(body)
-  local room, err = skynet.call(room_mgr, "lua", "join", uid, u.userName, cmd.roomId)
-  if not room then
-    skynet.error("join fail", err)
-    send_bin(id, Code.JoinRoomResult, Codec.encode_join_room_result({ roomId = -1 }))
+  if not c.userId then
+    reply(fd, req, "error", { message = "请先登录" })
     return
   end
-  send_bin(id, Code.JoinRoomResult, Codec.encode_join_room_result(room))
-end
 
-local function handle_prepare(id)
-  local uid = clients[id].userId
-  local room, started, mo = skynet.call(room_mgr, "lua", "prepare", uid, true)
-  if not room then return end
-  send_bin(id, Code.PrepareResult, Codec.encode_prepare_result(true))
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.PrepareBroadcast, Codec.encode_prepare_broadcast(uid, true))
-  end)
-  if started then
-    broadcast_room(room, function(wid, _)
-      send_bin(wid, Code.OfficialStartBroadcast, "")
-      send_bin(wid, Code.RoundStartedBroadcast, "")
-      send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(room.actUser))
-      send_bin(wid, Code.MahjongMoPaiBroadcast, pb.encode_sint32(1, room.wallLeft or 0))
-    end)
-    push_hands(room)
-    for wid, c in pairs(clients) do
-      if c.userId == room.actUser then
-        send_bin(wid, Code.MahjongMoPaiResult, encode_tile(mo))
-      end
-    end
-    schedule_bot_ai(room.roomId)
-  end
-end
-
-local function proceed_after_claim(discarderId)
-  local r2, a, b = skynet.call(room_mgr, "lua", "finish_claim_draw", discarderId)
-  -- finish_claim_draw 成功: room, next_uid, mo
-  -- 失败: nil, err, ...
-  if not r2 then
-    -- 只有真正摸完才荒庄；已被碰走不要弹臭了
-    if a ~= "huangzhuang" then return end
-    local room = skynet.call(room_mgr, "lua", "room_of_user", discarderId)
-    if room then
-      broadcast_room(room, function(wid, _)
-        send_bin(wid, Code.MahjongHuangZhuangBroadcast, "")
-      end)
-    end
+  if cmd == "listGames" then
+    reply(fd, req, "listGamesResult", {
+      games = skynet.call(room_mgr, "lua", "list_games"),
+    })
     return
   end
-  local next_uid, mo = a, b
-  broadcast_room(r2, function(wid, _)
-    send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(next_uid))
-    send_bin(wid, Code.MahjongMoPaiBroadcast, pb.encode_sint32(1, r2.wallLeft or 0))
-  end)
-  for wid, c in pairs(clients) do
-    if c.userId == next_uid then
-      local hand = nil
-      for _, p in ipairs(r2.players) do
-        if p.userId == next_uid then hand = p.hand break end
-      end
-      send_bin(wid, Code.MahjongMoPaiResult, encode_tile(mo))
-      send_bin(wid, Code.MahjongInHandChangedResult, Codec.encode_mahjong_in_hand_changed_result(next_uid, hand, mo))
-    end
-  end
-  schedule_bot_ai(r2.roomId)
-end
 
-local function apply_chu(uid, tile)
-  local room, err = skynet.call(room_mgr, "lua", "chu_pai", uid, tile)
-  if not room then
-    skynet.error("chu fail", uid, err)
-    return nil
-  end
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongChuPaiBroadcast, Codec.encode_chu_pai_broadcast(uid, tile))
-  end)
-  push_hands(room)
-
-  local claimants = skynet.call(room_mgr, "lua", "who_can_claim", uid) or {}
-  if #claimants == 0 then
-    proceed_after_claim(uid)
-  else
-    local discarder = uid
-    local has_human = false
-    for _, c in ipairs(claimants) do
-      if not skynet.call(room_mgr, "lua", "is_bot", c.userId) then
-        has_human = true
-        break
-      end
-    end
-    -- 有真人可碰/胡：给 20 秒；纯机器人：0.8 秒
-    local wait = has_human and 2000 or 80
-    skynet.timeout(wait, function()
-      local r = skynet.call(room_mgr, "lua", "room_of_user", discarder)
-      if r and r.claim_pending and r.lastDiscardUser == discarder then
-        proceed_after_claim(discarder)
-      end
-    end)
-    schedule_bot_ai(room.roomId)
-  end
-  return room
-end
-
-local function apply_peng(uid)
-  local room, tile = skynet.call(room_mgr, "lua", "peng", uid)
-  if not room then
-    skynet.error("peng fail", uid, tile)
-    return
-  end
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongPengBroadcast, Codec.encode_chu_pai_broadcast(uid, tile or 0))
-    send_bin(wid, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(uid))
-  end)
-  push_hands(room)
-  schedule_bot_ai(room.roomId)
-end
-
-local function apply_guo(uid)
-  local room, done, discarder = skynet.call(room_mgr, "lua", "guo", uid)
-  if done and discarder then
-    proceed_after_claim(discarder)
-  elseif room then
-    schedule_bot_ai(room.roomId)
-  end
-end
-
-function schedule_bot_ai(roomId)
-  skynet.timeout(35, function()
-    local room = skynet.call(room_mgr, "lua", "get_room", roomId)
-    if not room or room.state ~= "playing" then return end
-
-    if room.claim_pending and room.lastDiscardUser then
-      local claimants = skynet.call(room_mgr, "lua", "who_can_claim", room.lastDiscardUser) or {}
-      for _, c in ipairs(claimants) do
-        if skynet.call(room_mgr, "lua", "is_bot", c.userId) then
-          if c.canHu then
-            local r2, items = skynet.call(room_mgr, "lua", "hu", c.userId)
-            if r2 then
-              broadcast_room(r2, function(wid, _)
-                send_bin(wid, Code.MahjongHuOrZiMoBroadcast, pb.encode_sint32(1, c.userId))
-                send_bin(wid, Code.RoundSettlementBroadcast, Codec.encode_round_settlement(items))
-              end)
-              return
-            end
-          end
-          -- 机器人默认过（偶尔碰）
-          if c.canPeng and math.random(1, 100) <= 25 then
-            apply_peng(c.userId)
-            return
-          end
-          apply_guo(c.userId)
-          return
-        end
-      end
+  if cmd == "createRoom" then
+    local st, err = skynet.call(room_mgr, "lua", "create", c.userId, c.userName, body.gameId or "changsha_mj", body.rules)
+    if not st then
+      reply(fd, req, "error", { message = err or "创建失败" })
       return
     end
+    reply(fd, req, "createRoomResult", st)
+    push_state(fd, st)
+    return
+  end
 
-    local act = room.actUser
-    if act and skynet.call(room_mgr, "lua", "is_bot", act) then
-      local tile = skynet.call(room_mgr, "lua", "bot_pick_discard", act)
-      if tile then
-        apply_chu(act, tile)
-      end
+  if cmd == "joinRoom" then
+    local st, err = skynet.call(room_mgr, "lua", "join", c.userId, c.userName, tonumber(body.roomId))
+    if not st then
+      reply(fd, req, "error", { message = err or "加入失败" })
+      return
     end
-  end)
-end
-
-local function handle_chu(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_chu_pai_cmd(body)
-  local room = apply_chu(uid, cmd.t)
-  if room then
-    send_bin(id, Code.MahjongChuPaiResult, "")
-  end
-end
-
-local function handle_peng(id)
-  local uid = clients[id].userId
-  apply_peng(uid)
-  send_bin(id, Code.MahjongPengResult, "")
-end
-
-local function handle_guo(id)
-  local uid = clients[id].userId
-  apply_guo(uid)
-  send_bin(id, Code.MahjongGuoResult, "")
-end
-
-local function handle_liang_feng(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_liang_feng_cmd(body)
-  local room, lf = skynet.call(room_mgr, "lua", "liang_feng", uid, cmd.t0, cmd.t1, cmd.t2)
-  if not room then
-    skynet.error("liang_feng fail", lf)
+    reply(fd, req, "joinRoomResult", st)
+    push_state(fd, st)
+    broadcast_room(st.roomId, fd)
     return
   end
-  send_bin(id, Code.MahjongLiangFengResult, Codec.encode_liang_feng_result(lf))
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongLiangFengBroadcast, Codec.encode_liang_feng_broadcast(uid, lf))
-  end)
-  push_hands(room)
-end
 
-local function handle_bu_feng(id)
-  local uid = clients[id].userId
-  local room, lf = skynet.call(room_mgr, "lua", "bu_feng", uid)
-  if not room then
-    skynet.error("bu_feng fail", lf)
-    return
-  end
-  send_bin(id, Code.MahjongBuFengResult, Codec.encode_liang_feng_result(lf))
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongBuFengBroadcast, Codec.encode_liang_feng_broadcast(uid, lf))
-  end)
-  push_hands(room)
-end
-
-local function handle_hu(id)
-  local uid = clients[id].userId
-  local room, items = skynet.call(room_mgr, "lua", "hu", uid)
-  if not room then
-    skynet.error("hu fail", uid, items)
-    -- 告知客户端失败，避免只显示「胡！」却无结算
-    send_bin(id, Code.MahjongHuOrZiMoResult, pb.encode_bool(1, false))
-    return
-  end
-  send_bin(id, Code.MahjongHuOrZiMoResult, pb.encode_bool(1, true))
-  broadcast_room(room, function(wid, _)
-    send_bin(wid, Code.MahjongHuOrZiMoBroadcast, pb.encode_sint32(1, uid))
-    send_bin(wid, Code.RoundSettlementBroadcast, Codec.encode_round_settlement(items))
-  end)
-  save_settlement_record(room, items)
-  maybe_room_settlement(room, items)
-end
-
-local function handle_create_club(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_create_club_cmd(body)
-  local c = skynet.call(club, "lua", "create_club", uid, cmd.clubName)
-  send_bin(id, Code.CreateClubResult, Codec.encode_create_club_result(c.clubId, c.clubName))
-end
-
-local function handle_join_club(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_join_club_cmd(body)
-  local c, ok = skynet.call(club, "lua", "join_club", uid, cmd.clubId)
-  send_bin(id, Code.JoinClubResult, Codec.encode_join_club_result(cmd.clubId, ok and c ~= nil))
-end
-
-local function handle_joined_clubs(id)
-  local uid = clients[id].userId
-  local list = skynet.call(club, "lua", "joined_list", uid)
-  send_bin(id, Code.GetJoinedClubListResult, Codec.encode_get_joined_club_list_result(list))
-end
-
-local function handle_club_detail(id, body)
-  local f = pb.decode(body or "")
-  local clubId = pb.get_sint32(f, 1, 0)
-  local c = skynet.call(club, "lua", "detail", clubId)
-  if not c then
-    send_bin(id, Code.GetClubDetailzResult, "")
-    return
-  end
-  send_bin(id, Code.GetClubDetailzResult, Codec.encode_get_club_detailz_result(c))
-end
-
-local function handle_table_list(id, body)
-  local cmd = Codec.decode_get_table_list_cmd(body)
-  local r = skynet.call(club, "lua", "table_list", cmd.clubId, cmd.pageIndex)
-  send_bin(id, Code.GetTableListResult, Codec.encode_get_table_list_result(r))
-end
-
-local function handle_record_list(id, body)
-  local uid = clients[id].userId
-  local cmd = Codec.decode_get_record_list_cmd(body)
-  local r = skynet.call(club, "lua", "list_records", uid, cmd.clubId, cmd.pageIndex)
-  send_bin(id, Code.GetRecordListResult, Codec.encode_get_record_list_result(r))
-end
-
-local function handle_record_detail(id, body)
-  local cmd = Codec.decode_get_record_detailz_cmd(body)
-  local r = skynet.call(club, "lua", "record_detail", cmd.roomUUId)
-  send_bin(id, Code.GetRecordDetailzResult, Codec.encode_get_record_detailz_result(r))
-end
-
-local function dispatch(id, code, body)
-  if code == Code.UserLoginCmd then
-    handle_login(id, body)
-  elseif code == Code.GetMyDetailzCmd then
-    handle_detail(id)
-  elseif code == Code.GetJoinedRoomIdCmd then
-    -- 顺便允许客户端借此「离开房间」回大厅
-    skynet.call(room_mgr, "lua", "leave", clients[id].userId)
-    handle_joined(id)
-  elseif code == Code.CreateRoomCmd then
-    handle_create(id, body)
-  elseif code == Code.JoinRoomCmd then
-    handle_join(id, body)
-  elseif code == Code.PrepareCmd then
-    handle_prepare(id)
-  elseif code == Code.MahjongChuPaiCmd then
-    handle_chu(id, body)
-  elseif code == Code.MahjongPengCmd then
-    handle_peng(id)
-  elseif code == Code.MahjongGuoCmd then
-    handle_guo(id)
-  elseif code == Code.MahjongHuCmd then
-    handle_hu(id)
-  elseif code == Code.MahjongLiangFengCmd then
-    handle_liang_feng(id, body)
-  elseif code == Code.MahjongBuFengCmd then
-    handle_bu_feng(id)
-  elseif code == Code.SyncRoomDataCmd then
-    local room = skynet.call(room_mgr, "lua", "room_of_user", clients[id].userId)
-    if room then
-      send_bin(id, Code.SyncRoomDataResult, Codec.encode_sync_room_data_result(room, clients[id].userId))
-      push_hands(room)
-      if room.actUser then
-        send_bin(id, Code.RedirectActUserIdBroadcast, Codec.encode_redirect_act(room.actUser))
-      end
+  if cmd == "prepare" then
+    local st, err = skynet.call(room_mgr, "lua", "prepare", c.userId, body.yes ~= false)
+    if not st then
+      reply(fd, req, "error", { message = err or "准备失败" })
+      return
     end
-  elseif code == Code.GetJoinedClubListCmd then
-    handle_joined_clubs(id)
-  elseif code == Code.CreateClubCmd then
-    handle_create_club(id, body)
-  elseif code == Code.JoinClubCmd then
-    handle_join_club(id, body)
-  elseif code == Code.GetClubDetailzCmd then
-    handle_club_detail(id, body)
-  elseif code == Code.GetTableListCmd then
-    handle_table_list(id, body)
-  elseif code == Code.SendChatMsgCmd then
-    send_bin(id, Code.SendChatMsgResult, "")
-    local room = skynet.call(room_mgr, "lua", "room_of_user", clients[id].userId)
-    broadcast_room(room, function(wid, _)
-      send_bin(wid, Code.ChatMsgBroadcast, body or "")
-    end)
-  elseif code == Code.GetRecordListCmd then
-    handle_record_list(id, body)
-  elseif code == Code.GetRecordDetailzCmd then
-    handle_record_detail(id, body)
+    reply(fd, req, "prepareResult", st)
+    push_state(fd, st)
+    broadcast_room(st.roomId, fd)
+    return
+  end
+
+  if cmd == "sync" then
+    local st, err = skynet.call(room_mgr, "lua", "sync", c.userId)
+    if not st then
+      reply(fd, req, "error", { message = err or "同步失败" })
+      return
+    end
+    reply(fd, req, "syncResult", st)
+    push_state(fd, st)
+    return
+  end
+
+  if cmd == "leave" then
+    local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
+    skynet.call(room_mgr, "lua", "leave", c.userId)
+    reply(fd, req, "leaveResult", { ok = true })
+    if rid then broadcast_room(rid, fd) end
+    return
+  end
+
+  reply(fd, req, "error", { message = "未知平台命令 " .. tostring(cmd) })
+end
+
+local function handle_game(fd, req)
+  local c = clients[fd]
+  if not c or not c.userId then
+    reply(fd, req, "error", { message = "请先登录" })
+    return
+  end
+  local st, err = skynet.call(room_mgr, "lua", "action", c.userId, req.ns, req.cmd, req.body)
+  if not st then
+    reply(fd, req, "error", { message = err or "操作失败" })
+    return
+  end
+  reply(fd, req, "actionResult", { ok = true })
+  push_state(fd, st)
+  broadcast_room(st.roomId, fd)
+end
+
+local function on_message(fd, msg, msg_type)
+  if msg_type ~= "text" and msg_type ~= "binary" then return end
+  local text = msg
+  if type(msg) ~= "string" then
+    -- binary as string
+    text = tostring(msg)
+  end
+  local req, err = Protocol.decode(text)
+  if not req then
+    push(fd, "platform", "error", { message = "协议错误: " .. tostring(err) })
+    return
+  end
+  if req.ns == "platform" then
+    local ok, e = pcall(handle_platform, fd, req)
+    if not ok then
+      skynet.error("handle_platform", e)
+      reply(fd, req, "error", { message = "服务器错误" })
+    end
   else
-    skynet.error("unhandled msgCode", code)
+    local ok, e = pcall(handle_game, fd, req)
+    if not ok then
+      skynet.error("handle_game", e)
+      reply(fd, req, "error", { message = "服务器错误" })
+    end
   end
 end
 
-if MODE == "agent" then
-  function handle.connect(id)
-    clients[id] = {}
-  end
-  function handle.handshake(id, header, url)
-    skynet.error("ws handshake", id, url)
-  end
-  function handle.message(id, msg, msg_type)
-    local code, body = Codec.unpack(msg)
-    if not code then skynet.error("bad frame") return end
-    local ok, err = pcall(dispatch, id, code, body or "")
-    if not ok then skynet.error("dispatch err", err) end
-  end
-  function handle.close(id)
-    local c = clients[id]
-    if c and c.userId then skynet.call(room_mgr, "lua", "leave", c.userId) end
-    clients[id] = nil
-  end
-  function handle.error(id) handle.close(id) end
-  skynet.start(function()
-    passport = skynet.uniqueservice("passport")
-    room_mgr = skynet.uniqueservice("room_mgr")
-    club = skynet.uniqueservice("club_record")
-    skynet.dispatch("lua", function(_, _, cmd, ...)
-      if cmd == "accept" then
-        local sid, protocol, addr = ...
-        skynet.fork(function()
-          local ok, err = websocket.accept(sid, handle, protocol, addr)
-          if not ok then skynet.error("ws accept", err) end
-        end)
-      end
-    end)
-  end)
-else
-  skynet.start(function()
-    skynet.uniqueservice("passport")
-    skynet.uniqueservice("room_mgr")
-    skynet.uniqueservice("club_record")
-    -- 本地联调：单 agent，保证同房间广播能到达两个预览窗口
-    -- （多 agent 时 clients 表隔离，开局/出牌广播会丢给另一边）
-    local agents = {}
-    agents[1] = skynet.newservice(SERVICE_NAME, "agent")
-    local balance = 1
-    local port = tonumber(skynet.getenv("ws_port")) or 20480
-    local socket = require "skynet.socket"
-    local listen_id = socket.listen("0.0.0.0", port)
-    skynet.error(string.format("========== 威海麻将 Skynet WS :%d (MsgBus/Protobuf) ==========", port))
-    socket.start(listen_id, function(id, addr)
-      skynet.error("accept", id, addr)
-      skynet.send(agents[balance], "lua", "accept", id, "ws", addr)
-      balance = balance + 1
-      if balance > #agents then balance = 1 end
-    end)
-  end)
+local handle = {}
+
+function handle.connect(fd)
+  clients[fd] = {}
 end
+
+function handle.handshake(fd, header, url)
+  skynet.error("ws handshake", fd, url)
+end
+
+function handle.message(fd, msg, msg_type)
+  on_message(fd, msg, msg_type)
+end
+
+function handle.close(fd)
+  local c = clients[fd]
+  if c and c.userId then
+    skynet.call(room_mgr, "lua", "leave", c.userId)
+  end
+  clients[fd] = nil
+end
+
+function handle.error(fd)
+  handle.close(fd)
+end
+
+-- 给 room_mgr 一个显式 bot tick 入口
+-- 在 prepare 后调用
+
+skynet.start(function()
+  passport = skynet.uniqueservice("passport")
+  room_mgr = skynet.uniqueservice("room_mgr")
+
+  -- monkey: add tickBots CMD usage via action "tickBots" on platform? add to room_mgr
+  local port = tonumber(skynet.getenv("ws_port")) or 20480
+  local listen_id = socket.listen("0.0.0.0", port)
+  skynet.error(string.format("========== 湖南棋牌平台 WS :%d (JSON) ==========", port))
+  socket.start(listen_id, function(id, addr)
+    skynet.error("accept", id, addr)
+    skynet.fork(function()
+      local ok, err = websocket.accept(id, handle, "ws", addr)
+      if not ok then skynet.error("ws accept", err) end
+    end)
+  end)
+end)

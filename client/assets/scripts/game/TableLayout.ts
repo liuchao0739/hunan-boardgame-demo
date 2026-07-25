@@ -40,6 +40,8 @@ export class TableLayout {
   btnPeng: Button | null = null;
   btnHu: Button | null = null;
   btnGuo: Button | null = null;
+  btnChi: Button | null = null;
+  btnContinue: Button | null = null;
   roomLabel: Label | null = null;
   remainLabel: Label | null = null;
   roundLabel: Label | null = null;
@@ -239,9 +241,11 @@ export class TableLayout {
     this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 480, -40, 'weihai/ui/btn_guo');
     this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
     this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
-    // 不再做「出牌」按钮：上滑 / 双击手牌即可
+    this.btnChi = this.mkTextBtn(parent, 'btnChi', 360, -40, '吃');
+    this.btnContinue = this.mkTextBtn(parent, 'btnCont', 0, -80, '继续打牌');
     this.btnChu = null;
-    this.setActionButtons(false, false, false);
+    this.setActionButtons(false, false, false, false);
+    if (this.btnContinue) this.btnContinue.node.active = false;
   }
 
   /** 荒庄 / 结算遮罩（始终盖在最上层） */
@@ -282,14 +286,15 @@ export class TableLayout {
   }
 
   /** 仅显示你真正能用的操作 */
-  setActionButtons(show: boolean, canPeng: boolean, canHu: boolean) {
+  setActionButtons(show: boolean, canPeng: boolean, canHu: boolean, canChi = false) {
     if (this.btnGuo) this.btnGuo.node.active = show;
     if (this.btnPeng) this.btnPeng.node.active = show && canPeng;
     if (this.btnHu) this.btnHu.node.active = show && canHu;
+    if (this.btnChi) this.btnChi.node.active = show && canChi;
   }
 
   setActionVisible(showOps: boolean) {
-    this.setActionButtons(showOps, showOps, showOps);
+    this.setActionButtons(showOps, showOps, showOps, showOps);
   }
 
   setChuVisible(v: boolean) {

@@ -1,6 +1,5 @@
 import { _decorator, Component, Label, Node, EditBox, Button, UITransform, director } from 'cc';
-import { MsgBus, MsgCode } from '../comm/MsgBus';
-import { PbWire } from '../comm/PbWire';
+import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel } from '../comm/ArtBg';
 
 const { ccclass, property } = _decorator;
@@ -22,18 +21,28 @@ export class LoginScene extends Component {
   onLoad() {
     this.layoutUi();
     attachBg(this.node.parent ?? this.node, 'weihai/bg/hall');
-    // EditBox 默认 maxLength=8，会把 127.0.0.1:20480 截成 127.0.0. —— 必须先放开再赋值
     if (this.nameEdit) this.nameEdit.maxLength = 32;
     if (this.serverEdit) this.serverEdit.maxLength = 128;
 
-    const addr = MsgBus.readServerAddrFromUrl('127.0.0.1:20480');
+    const addr = NetBus.readServerAddrFromUrl('127.0.0.1:20480');
     if (this.serverEdit) this.serverEdit.string = addr;
     if (this.nameEdit) this.nameEdit.string = this.nameEdit.string || '测试用户';
-    MsgBus.ins.putServerAddr(addr);
-    this.setStatus('就绪：点登录连接 ' + addr);
+    NetBus.ins.putServerAddr(addr);
+    this.setStatus('湖南棋牌 · 点登录连接 ' + addr);
+
+    const btnNode =
+      this.loginBtn?.node
+      ?? this.node.getChildByName('LoginBtn')
+      ?? this.node.parent?.getChildByName('LoginBtn')
+      ?? null;
+    const btn = this.loginBtn ?? btnNode?.getComponent(Button);
+    if (btn) {
+      btn.clickEvents.length = 0;
+      btn.node.off(Button.EventType.CLICK);
+      btn.node.on(Button.EventType.CLICK, this.onClickLogin, this);
+    }
   }
 
-  /** 把叠在中心的控件拉开排成一列 */
   private layoutUi() {
     const btnNode =
       this.loginBtn?.node
@@ -56,7 +65,6 @@ export class LoginScene extends Component {
     if (this.statusLabel) this.statusLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
     const btn = this.loginBtn ?? btnNode?.getComponent(Button);
     skinButton(btn, 'weihai/ui/btn_login', true, 320);
-    // 强制清掉默认 Label（场景里可能残留「准备」等字）
     if (btnNode) {
       for (const lab of btnNode.getComponentsInChildren(Label)) {
         lab.string = '';
@@ -73,7 +81,6 @@ export class LoginScene extends Component {
   private normalizeAddr(raw: string): string {
     const s = (raw || '').trim();
     if (!s) return '127.0.0.1:20480';
-    // 完整 ws(s) URL 直接用
     if (s.startsWith('ws://') || s.startsWith('wss://')) return s;
     if (!s.includes(':') || s.endsWith('.')) return '127.0.0.1:20480';
     return s;
@@ -83,35 +90,35 @@ export class LoginScene extends Component {
     const name = this.nameEdit?.string || '测试用户';
     const addr = this.normalizeAddr(this.serverEdit?.string || '');
     if (this.serverEdit) this.serverEdit.string = addr;
-    MsgBus.ins.putServerAddr(addr);
+    NetBus.ins.putServerAddr(addr);
     this.setStatus('连接中… ' + addr);
     try {
-      await MsgBus.ins.connect();
+      await NetBus.ins.connect();
     } catch (e) {
       console.warn('[Login] connect fail', e);
-      this.setStatus('连接失败：检查地址与 server/run.sh（' + addr + '）');
+      this.setStatus('连接失败：检查地址与 server/run.sh');
       return;
     }
-    const unsub = MsgBus.ins.on(MsgCode.UserLoginResult, (body) => {
-      unsub();
-      const f = PbWire.decode(body);
-      const userId = PbWire.getSint32(f, 1, -1);
-      const userName = PbWire.getString(f, 2, '');
-      const ticket = PbWire.getString(f, 3, '');
-      if (userId < 0) {
-        this.setStatus('登录失败');
+    try {
+      const msg = await NetBus.ins.login(name);
+      if (msg.cmd === 'error') {
+        this.setStatus(msg.body?.message || '登录失败');
         return;
       }
-      (globalThis as any).__WHMJ__ = { userId, userName, ticket, serverAddr: addr };
-      this.setStatus(`登录成功 ${userId} ${userName}`);
-      MsgBus.ins.offAll();
+      const b = msg.body || {};
+      (globalThis as any).__HNQP__ = {
+        userId: b.userId,
+        userName: b.userName,
+        ticket: b.ticket,
+        serverAddr: addr,
+      };
+      this.setStatus(`登录成功 ${b.userId} ${b.userName}`);
+      NetBus.ins.offAll();
       director.loadScene('Hall', (err) => {
-        if (err) {
-          this.setStatus('登录成功，但还没有 Hall 场景（请按 SCENE_SETUP 再建）');
-          console.warn('Hall scene missing', err);
-        }
+        if (err) this.setStatus('缺少 Hall 场景');
       });
-    });
-    MsgBus.ins.sendUserLogin(0, { testerName: name });
+    } catch (e) {
+      this.setStatus('登录超时');
+    }
   }
 }

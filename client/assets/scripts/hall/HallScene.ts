@@ -1,8 +1,7 @@
 import {
-  _decorator, Component, Label, EditBox, Button, Node, UITransform, director, Sprite, Layers,
+  _decorator, Component, Label, EditBox, Button, Node, UITransform, director, Sprite, Layers, Color,
 } from 'cc';
-import { MsgBus, MsgCode } from '../comm/MsgBus';
-import { PbWire } from '../comm/PbWire';
+import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg';
 import { attachHallMeiNv } from './HallMeiNv';
 
@@ -29,8 +28,10 @@ export class HallScene extends Component {
   prepareBtn: Button | null = null;
 
   private roomId = -1;
+  private gameId = 'changsha_mj';
   private unsubs: Array<() => void> = [];
   private enteringTable = false;
+  private creating = false;
 
   onDestroy() {
     this.clearSubs();
@@ -39,10 +40,6 @@ export class HallScene extends Component {
   private clearSubs() {
     for (const u of this.unsubs) u();
     this.unsubs = [];
-  }
-
-  private listen(code: number, fn: (body: Uint8Array) => void) {
-    this.unsubs.push(MsgBus.ins.on(code, fn));
   }
 
   async onLoad() {
@@ -55,63 +52,33 @@ export class HallScene extends Component {
       this.joinEdit.placeholder = '输入房间号';
     }
 
-    const u = (globalThis as any).__WHMJ__ || {};
+    const u = (globalThis as any).__HNQP__ || (globalThis as any).__WHMJ__ || {};
     this.setInfo(`玩家 ${u.userName || '?'} (${u.userId || '?'})`);
-    this.setRoom('点「创建房间」自动配 3 机器人，再点「确定」开局');
+    this.setRoom('长沙麻将 · 点「创建房间」配 3 机器人，再点「确定」开局（跑胡子即将开放）');
 
-    this.listen(MsgCode.GetMyDetailzResult, (body) => {
-      if (!this.isValid) return;
-      const f = PbWire.decode(body);
-      const cards = PbWire.getSint32(f, 5, 0);
-      this.setInfo(`${PbWire.getString(f, 2)} 房卡:${cards}`);
-    });
-    this.listen(MsgCode.CreateRoomResult, (body) => {
-      if (!this.isValid) return;
-      const f = PbWire.decode(body);
-      const id = PbWire.getSint32(f, 1, -1);
-      if (id > 0) {
-        this.roomId = id;
-        if (this.joinEdit) this.joinEdit.string = String(id);
-        this.setRoom(`房间 ${id} 已配 3 机器人，点「确定」开局`);
-      } else if (this.roomId > 0) {
-        this.setRoom(`已在房间 ${this.roomId}（需 4 人准备）`);
-      } else {
-        this.setRoom('创建房间失败');
-      }
-    });
-    this.listen(MsgCode.JoinRoomResult, (body) => {
-      if (!this.isValid) return;
-      const f = PbWire.decode(body);
-      this.roomId = PbWire.getSint32(f, 1, -1);
-      this.setRoom(this.roomId > 0 ? `已加入 ${this.roomId}` : '加入失败');
-    });
-    this.listen(MsgCode.PrepareBroadcast, () => {
-      if (!this.isValid) return;
-      this.setRoom(`房间 ${this.roomId} 有人准备`);
-    });
-    this.listen(MsgCode.OfficialStartBroadcast, () => {
-      if (!this.isValid || this.enteringTable) return;
-      this.enteringTable = true;
-      this.setRoom(`房间 ${this.roomId} 开局！`);
-      // 立刻卸掉大厅监听，避免开局包打到已销毁/切换中的 Hall
-      this.clearSubs();
-      director.loadScene('Table', (err) => {
-        if (err) console.warn('[Hall] load Table failed', err);
-      });
-    });
-    this.listen(MsgCode.MahjongInHandChangedResult, (body) => {
-      // 只缓存，不刷 UI（开局瞬间手牌包常在切场景前到达）
-      const f = PbWire.decode(body);
-      const tiles: number[] = [];
-      for (const e of (f.get(2) || [])) tiles.push(PbWire.zigzagDecode(e.raw as number));
-      const mo = PbWire.getSint32(f, 3, 0);
-      const g = (globalThis as any).__WHMJ__ || ((globalThis as any).__WHMJ__ = {});
-      g.hand = tiles;
-      g.moPai = mo;
-    });
+    this.unsubs.push(NetBus.ins.on('platform', 'state', (body) => this.onState(body)));
+    this.unsubs.push(NetBus.ins.on('platform', 'error', (body) => {
+      this.setRoom(body?.message || '错误');
+    }));
 
     const ok = await this.ensureConnected();
-    if (ok && this.isValid) MsgBus.ins.sendEmpty(MsgCode.GetMyDetailzCmd);
+    if (!ok) return;
+  }
+
+  private onState(body: any) {
+    if (!body) return;
+    if (body.roomId) this.roomId = body.roomId;
+    if (body.state === 'playing' && !this.enteringTable) {
+      this.enteringTable = true;
+      this.setRoom(`房间 ${this.roomId} 开局！`);
+      (globalThis as any).__HNQP_ROOM__ = body;
+      this.clearSubs();
+      director.loadScene('Table', (err) => {
+        if (err) console.warn('[Hall] load Table', err);
+      });
+    } else if (body.state === 'waiting') {
+      this.setRoom(`房间 ${body.roomId} · ${body.gameId === 'changsha_mj' ? '长沙麻将' : body.gameId} · 点确定开局`);
+    }
   }
 
   private findNode(name: string): Node | null {
@@ -128,7 +95,6 @@ export class HallScene extends Component {
     const joinN = this.joinBtn?.node ?? this.findNode('JoinBtn');
     const prepN = this.prepareBtn?.node ?? this.findNode('PrepareBtn');
     const clubN = this.findNode('ClubBtn') ?? canvas.getChildByName('ClubBtn');
-    // 右列：创建 / 加入 / 确定；老友圈放到底栏左侧，避免盖住确定
     const rows: Array<{ node: Node | null; x: number; y: number; w: number; h: number }> = [
       { node: this.infoLabel?.node ?? null, x: -320, y: 300, w: 480, h: 40 },
       { node: this.roomLabel?.node ?? null, x: 40, y: 240, w: 760, h: 40 },
@@ -159,13 +125,10 @@ export class HallScene extends Component {
     this.hideBtnLabels(clubN);
   }
 
-  /** 底栏 + 亲友圈 + Spine 立绘 */
   private decorateHall(canvas: Node) {
     const old = canvas.getChildByName('__HallHero');
     if (old) old.destroy();
-
     void attachHallMeiNv(canvas, -300, -60);
-
     if (!canvas.getChildByName('__HallBottom')) {
       const bar = new Node('__HallBottom');
       canvas.addChild(bar);
@@ -181,6 +144,18 @@ export class HallScene extends Component {
         }
       });
     }
+    // 玩法标签
+    if (!canvas.getChildByName('__GamePick')) {
+      const n = new Node('__GamePick');
+      canvas.addChild(n);
+      n.layer = canvas.layer || Layers.Enum.UI_2D;
+      n.setPosition(-280, 180, 0);
+      n.addComponent(UITransform).setContentSize(400, 36);
+      const lab = n.addComponent(Label);
+      lab.string = '玩法：长沙麻将（可玩） / 邵阳跑胡子（即将开放）';
+      lab.fontSize = 20;
+      lab.color = new Color(240, 230, 200, 255);
+    }
     if (!this.findNode('ClubBtn') && !canvas.getChildByName('ClubBtn')) {
       const n = new Node('ClubBtn');
       canvas.addChild(n);
@@ -191,7 +166,7 @@ export class HallScene extends Component {
       const btn = n.addComponent(Button);
       btn.transition = Button.Transition.SCALE;
       n.on(Button.EventType.CLICK, () => {
-        this.setRoom('亲友圈十桌：下轮接列表');
+        this.setRoom('亲友圈：后续开放');
       }, this);
     }
   }
@@ -205,7 +180,6 @@ export class HallScene extends Component {
     }
   }
 
-  /** 代码绑点击；清空编辑器 Click Events，避免点一次触发两次 */
   private wireButtons() {
     const create = this.createBtn ?? this.findNode('CreateBtn')?.getComponent(Button);
     const join = this.joinBtn ?? this.findNode('JoinBtn')?.getComponent(Button);
@@ -221,21 +195,17 @@ export class HallScene extends Component {
   }
 
   private async ensureConnected(): Promise<boolean> {
-    if (MsgBus.ins.isConnected()) return true;
-    const u = (globalThis as any).__WHMJ__ || {};
-    const addr = u.serverAddr || MsgBus.ins.serverAddr || '127.0.0.1:20480';
-    MsgBus.ins.putServerAddr(addr);
+    if (NetBus.ins.isConnected()) return true;
+    const u = (globalThis as any).__HNQP__ || {};
+    const addr = u.serverAddr || NetBus.ins.serverAddr || '127.0.0.1:20480';
+    NetBus.ins.putServerAddr(addr);
     try {
-      await MsgBus.ins.connect();
-      if (u.userId) {
-        // 直进 Hall 时补一次登录，保证后续协议可用
-        MsgBus.ins.sendUserLogin(0, { testerName: u.userName || '测试用户' });
-      }
+      await NetBus.ins.connect();
+      if (u.userName) await NetBus.ins.login(u.userName);
       this.setRoom('已重连 ' + addr);
       return true;
     } catch (e) {
-      console.warn('[Hall] reconnect fail', e);
-      this.setRoom('未连接服务器：请先从 Login 登录，或启动 server/run.sh');
+      this.setRoom('未连接：请先从 Login 登录，或启动 server/run.sh');
       return false;
     }
   }
@@ -243,38 +213,50 @@ export class HallScene extends Component {
   setInfo(s: string) { if (this.infoLabel) this.infoLabel.string = s; }
   setRoom(s: string) { if (this.roomLabel) this.roomLabel.string = s; console.log('[Hall]', s); }
 
-  private creating = false;
-
   async onClickCreate() {
-    console.log('[Hall] click create');
     if (this.creating) return;
     if (this.roomId > 0) {
-      this.setRoom(`已在房间 ${this.roomId}（需 4 人准备）`);
+      this.setRoom(`已在房间 ${this.roomId}`);
       return;
     }
     if (!(await this.ensureConnected())) return;
     this.creating = true;
-    this.setRoom('正在创建房间…');
-    MsgBus.ins.sendCreateRoom(1, 1001);
-    setTimeout(() => { this.creating = false; }, 800);
+    this.setRoom('正在创建长沙麻将房间…');
+    try {
+      const msg = await NetBus.ins.createRoom(this.gameId);
+      if (msg.cmd === 'error') {
+        this.setRoom(msg.body?.message || '创建失败');
+      } else {
+        const st = msg.body;
+        this.roomId = st.roomId;
+        if (this.joinEdit) this.joinEdit.string = String(st.roomId);
+        this.setRoom(`房间 ${st.roomId} 已配机器人，点「确定」开局`);
+      }
+    } finally {
+      setTimeout(() => { this.creating = false; }, 500);
+    }
   }
 
   async onClickJoin() {
     const id = parseInt(this.joinEdit?.string || '0', 10);
-    console.log('[Hall] click join', id);
     if (!(await this.ensureConnected())) return;
     if (!id) {
       this.setRoom('请先输入房间号');
       return;
     }
-    MsgBus.ins.sendJoinRoom(id);
-    this.setRoom('正在加入 ' + id);
+    const msg = await NetBus.ins.joinRoom(id);
+    if (msg.cmd === 'error') this.setRoom(msg.body?.message || '加入失败');
+    else {
+      this.roomId = msg.body.roomId;
+      this.setRoom(`已加入 ${this.roomId}`);
+    }
   }
 
   async onClickPrepare() {
-    console.log('[Hall] click prepare');
     if (!(await this.ensureConnected())) return;
-    MsgBus.ins.sendPrepare();
-    this.setRoom('已点确定（机器人已就绪，开局中）…');
+    this.setRoom('开局中…');
+    const msg = await NetBus.ins.prepare(true);
+    if (msg.cmd === 'error') this.setRoom(msg.body?.message || '准备失败');
+    else if (msg.body) this.onState(msg.body);
   }
 }

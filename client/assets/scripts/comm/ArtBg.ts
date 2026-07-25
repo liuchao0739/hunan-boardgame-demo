@@ -108,6 +108,17 @@ export type TileGesture = {
   onDiscard?: (tile: number, node: Node) => void;
 };
 
+/** 长沙编码 0-26 → 现有 weihai 贴图 万21-29/条41-49/饼81-89 */
+export function changshaToArtId(tile: number): number {
+  if (tile >= 21) return tile; // 已是旧编码
+  if (tile < 0 || tile > 26) return 0;
+  const suit = Math.floor(tile / 9);
+  const rank = (tile % 9) + 1;
+  if (suit === 0) return 20 + rank;
+  if (suit === 1) return 40 + rank;
+  return 80 + rank;
+}
+
 /**
  * 手牌交互（只走 TOUCH，避免和 MOUSE 双触发把逻辑打坏）：
  * - 单击 → onSelect（外层再点同一张 = 出牌）
@@ -120,6 +131,7 @@ export async function createTileNode(
   h = 72,
   gesture?: TileGesture | ((tile: number, node: Node) => void),
 ): Promise<Node> {
+  const artId = changshaToArtId(tile);
   const n = new Node(`T_${tile}`);
   parent.addChild(n);
   n.layer = parent.layer;
@@ -138,8 +150,8 @@ export async function createTileNode(
   face.setPosition(0, 3, 0);
   const fsp = face.addComponent(Sprite);
   fsp.sizeMode = Sprite.SizeMode.CUSTOM;
-  if (tile > 0) {
-    const faceSf = await loadSpriteFrame(`weihai/tiles/${tile}`);
+  if (artId > 0) {
+    const faceSf = await loadSpriteFrame(`weihai/tiles/${artId}`);
     if (faceSf) fsp.spriteFrame = faceSf;
   } else {
     face.active = false;
@@ -167,7 +179,6 @@ export async function createTileNode(
       if (dy > 0) {
         n.setPosition(n.position.x, baseY + dy, n.position.z);
       }
-      // 上滑足够：立刻出牌（不要等 END，否则拖出节点就丢事件）
       if (g.onDiscard && dy > 24) {
         fired = true;
         g.onDiscard(tile, n);
@@ -182,7 +193,6 @@ export async function createTileNode(
         g.onDiscard(tile, n);
         return;
       }
-      // 单击选中（再点同一张由 TableScene 出牌）
       n.setPosition(n.position.x, baseY, n.position.z);
       g.onSelect?.(tile, n);
     }, n);

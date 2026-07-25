@@ -1,9 +1,12 @@
+-- 平台房间管理：座位壳 + 游戏插件
 local skynet = require "skynet"
-local Room = require "weihai.room"
+local Registry = require "game.registry"
 
 local rooms = {}
 local user_room = {}
 local next_room_id = 100000
+
+local CMD = {}
 
 local function alloc_room_id()
   next_room_id = next_room_id + 1
@@ -11,258 +14,239 @@ local function alloc_room_id()
   return next_room_id
 end
 
-local function plain_player(p)
-  return {
-    userId = p.userId,
-    userName = p.userName,
-    seatIndex = p.seatIndex,
-    prepare = p.prepare,
-    is_bot = p.is_bot and true or false,
-    hand = p.hand,
-    discard = p.discard,
-    peng = p.peng,
-    gang = p.gang,
-    score = p.score,
-    currScore = p.currScore,
-    totalScore = p.totalScore or 0,
-    dingPiao = p.dingPiao,
-    liangFeng = p.liangFeng,
-    zuoZhuangTimez = p.zuoZhuangTimez or 0,
-    ziMoTimez = p.ziMoTimez or 0,
-    dianPaoTimez = p.dianPaoTimez or 0,
-    huPaiTimez = p.huPaiTimez or 0,
-  }
+local function seat_of(room, userId)
+  for i, p in ipairs(room.players) do
+    if p.userId == userId then return i - 1, p end
+  end
+  return nil
 end
 
-local function plain_room(room)
-  if not room then return nil end
-  local players = {}
-  for _, p in ipairs(room.players) do
-    players[#players + 1] = plain_player(p)
+local function broadcast_fn(room)
+  return function(payload)
+    -- payload already encoded string; gate will send to fds
+    room._pending_broadcast = room._pending_broadcast or {}
+    room._pending_broadcast[#room._pending_broadcast + 1] = payload
+  end
+end
+
+local function take_broadcasts(room)
+  local list = room._pending_broadcast or {}
+  room._pending_broadcast = {}
+  return list
+end
+
+local function build_platform_state(room, for_userId)
+  local seat = select(1, seat_of(room, for_userId))
+  local gameSnap = nil
+  if room.engine and room.state == "playing" then
+    gameSnap = room.engine:snapshot(seat or 0)
+  end
+  local seats = {}
+  for i, p in ipairs(room.players) do
+    seats[#seats + 1] = {
+      seat = i - 1,
+      userId = p.userId,
+      userName = p.userName,
+      isBot = p.isBot and true or false,
+      ready = p.ready and true or false,
+    }
   end
   return {
     roomId = room.roomId,
+    gameId = room.gameId,
     state = room.state,
-    actUser = room.act_user,
-    lastDiscard = room.last_discard,
-    lastDiscardUser = room.last_discard_user,
-    round = room.round,
-    max_rounds = room.max_rounds,
-    wallLeft = math.max(0, #room.wall - room.wall_idx + 1),
-    gameType0 = room.gameType0,
-    gameType1 = room.gameType1,
-    rules = room.rules,
-    roomUUId = room.roomUUId,
-    claim_pending = room.claim_pending and true or false,
-    ownerId = room.players[1] and room.players[1].userId or 0,
-    players = players,
+    seats = seats,
+    ownerId = room.ownerId,
+    game = gameSnap,
   }
 end
 
-local CMD = {}
+function CMD.create(userId, userName, gameId, rules)
+  gameId = gameId or "changsha_mj"
+  if gameId == "shaoyang_phz" then
+    return nil, "邵阳跑胡子尚未开放"
+  end
+  if user_room[userId] then
+    return nil, "已在房间中"
+  end
+  local engine, err = Registry.create(gameId, rules or {})
+  if not engine then return nil, err end
 
-function CMD.create(userId, userName, rules)
-  -- 已在房间：直接返回现有房间（避免连点创建显示失败）
-  local exist = user_room[userId]
-  if exist and rooms[exist] then
-    return plain_room(rooms[exist])
+  local roomId = alloc_room_id()
+  local room = {
+    roomId = roomId,
+    gameId = gameId,
+    state = "waiting",
+    ownerId = userId,
+    players = {
+      { userId = userId, userName = userName or ("玩家" .. userId), isBot = false, ready = false },
+    },
+    engine = engine,
+    rules = rules or {},
+  }
+  -- 自动补机器人到 4 人
+  while #room.players < 4 do
+    local bi = #room.players
+    room.players[#room.players + 1] = {
+      userId = -1000 - bi,
+      userName = "机器人" .. bi,
+      isBot = true,
+      ready = true,
+    }
   end
-  local rid = alloc_room_id()
-  local room = Room.new(rid, { userId = userId, userName = userName }, rules)
-  -- 单人调试：自动坐满 3 个机器人（已准备）
-  room:fill_bots(3)
-  rooms[rid] = room
-  user_room[userId] = rid
-  for _, p in ipairs(room.players) do
-    if p.is_bot then user_room[p.userId] = rid end
-  end
-  return plain_room(room)
+  rooms[roomId] = room
+  user_room[userId] = roomId
+  return build_platform_state(room, userId)
 end
 
 function CMD.join(userId, userName, roomId)
   local room = rooms[roomId]
-  if not room then return nil, "room not found" end
-  if room.state ~= "waiting" then return nil, "already started" end
-  local seat, err = room:add_player(userId, userName, false)
-  if err then return nil, err end
-  user_room[userId] = roomId
-  return plain_room(room)
-end
-
-function CMD.is_bot(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return false end
-  local p = room:player(userId)
-  return p and p.is_bot and true or false
-end
-
-function CMD.bot_pick_discard(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil end
-  local p = room:player(userId)
-  if not p or not p.hand or #p.hand == 0 then return nil end
-  -- 简单策略：优先打孤张字牌，否则打最后一张
-  local Tiles = require "weihai.tiles"
-  for _, t in ipairs(p.hand) do
-    if Tiles.is_feng_jian(t) then
-      local n = 0
-      for _, x in ipairs(p.hand) do if x == t then n = n + 1 end end
-      if n == 1 then return t end
+  if not room then return nil, "房间不存在" end
+  if room.state ~= "waiting" then return nil, "已开局" end
+  if user_room[userId] then return nil, "已在房间" end
+  -- 替换一个机器人
+  local replaced = false
+  for i, p in ipairs(room.players) do
+    if p.isBot then
+      room.players[i] = {
+        userId = userId,
+        userName = userName or ("玩家" .. userId),
+        isBot = false,
+        ready = false,
+      }
+      replaced = true
+      break
     end
   end
-  return p.hand[#p.hand]
-end
-
-function CMD.room_of_user(userId)
-  local rid = user_room[userId]
-  if not rid then return nil end
-  return plain_room(rooms[rid])
-end
-
-function CMD.get_room(roomId)
-  return plain_room(rooms[roomId])
+  if not replaced then
+    if #room.players >= 4 then return nil, "房间已满" end
+    room.players[#room.players + 1] = {
+      userId = userId,
+      userName = userName or ("玩家" .. userId),
+      isBot = false,
+      ready = false,
+    }
+  end
+  user_room[userId] = roomId
+  return build_platform_state(room, userId)
 end
 
 function CMD.prepare(userId, yes)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local p = room:player(userId)
-  if not p then return nil, "no player" end
-  p.prepare = yes ~= false
-  local started = false
-  local mo = nil
-  if room:all_prepared() then
-    mo = room:deal()
-    started = true
+  local roomId = user_room[userId]
+  local room = roomId and rooms[roomId]
+  if not room then return nil, "不在房间" end
+  local _, p = seat_of(room, userId)
+  if not p then return nil, "无座位" end
+  p.ready = yes ~= false
+  local all = true
+  for _, pl in ipairs(room.players) do
+    if not pl.isBot and not pl.ready then all = false break end
   end
-  return plain_room(room), started, mo
+  if all and #room.players >= 4 and room.state == "waiting" then
+    room.state = "playing"
+    local seats = {}
+    for i, pl in ipairs(room.players) do
+      seats[i] = { userId = pl.userId, userName = pl.userName, isBot = pl.isBot }
+    end
+    room.engine:on_start(seats)
+    CMD.tick_bots(room.roomId)
+  end
+  return build_platform_state(room, userId)
 end
 
-function CMD.chu_pai(userId, tile)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local ok, err = room:chu_pai(userId, tile)
+function CMD.tick_bots(roomId)
+  local room = rooms[roomId]
+  if not room or not room.engine then return end
+  CMD._run_bots(room)
+end
+
+function CMD.sync(userId)
+  local roomId = user_room[userId]
+  local room = roomId and rooms[roomId]
+  if not room then return nil, "不在房间" end
+  return build_platform_state(room, userId)
+end
+
+function CMD.action(userId, ns, cmd, body)
+  local roomId = user_room[userId]
+  local room = roomId and rooms[roomId]
+  if not room then return nil, "不在房间" end
+  if room.state ~= "playing" then return nil, "未开局" end
+  local seat = select(1, seat_of(room, userId))
+  if seat == nil then return nil, "无座位" end
+  -- 平台 continue / 玩法命令
+  local ok, err = room.engine:on_action(seat, cmd, body or {})
   if not ok then return nil, err end
-  return plain_room(room)
+  -- 机器人回合
+  CMD._run_bots(room)
+  return build_platform_state(room, userId)
 end
 
-function CMD.draw_next(afterUserId)
-  local rid = user_room[afterUserId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local next_uid = room:next_user(afterUserId)
-  local mo, err = room:draw(next_uid)
-  if not mo then
-    return nil, "huangzhuang", plain_room(room), next_uid
-  end
-  return plain_room(room), next_uid, mo
-end
-
-function CMD.peng(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room or not room.last_discard then return nil, "no discard" end
-  local tile = room.last_discard
-  local ok, err = room:peng(userId, tile)
-  if not ok then return nil, err end
-  return plain_room(room), tile
-end
-
-function CMD.guo(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local done = room:guo(userId)
-  return plain_room(room), done, room.last_discard_user
-end
-
-function CMD.who_can_claim(discarderId)
-  local rid = user_room[discarderId]
-  local room = rooms[rid]
-  if not room then return {} end
-  return room:who_can_claim()
-end
-
-function CMD.finish_claim_draw(discarderId)
-  local rid = user_room[discarderId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  -- 已被碰/胡走：不要再摸牌
-  if not room.last_discard or room.last_discard_user ~= discarderId then
-    return nil, "claimed"
-  end
-  room:clear_claim()
-  return CMD.draw_next(discarderId)
-end
-
-function CMD.liang_feng(userId, t0, t1, t2)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local lf, err = room:liang_feng(userId, t0, t1, t2)
-  if not lf then return nil, err end
-  return plain_room(room), lf
-end
-
-function CMD.bu_feng(userId, tile)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  if not tile then
-    local p = room:player(userId)
-    if not p then return nil, "no player" end
-    for _, t in ipairs(p.hand) do
-      if t == 101 or t == 103 or t == 105 or t == 107
-        or t == 126 or t == 188 or t == 255 then
-        tile = t break
+function CMD._run_bots(room)
+  if not room.engine then return end
+  for _ = 1, 32 do
+    if not room.engine:needs_bot_tick() then break end
+    local acted = false
+    for s = 0, 3 do
+      if room.engine:bot_tick(s) then
+        acted = true
+        break
       end
     end
+    if not acted then break end
   end
-  if not tile then return nil, "no feng tile" end
-  local lf, err = room:bu_feng(userId, tile)
-  if not lf then return nil, err end
-  return plain_room(room), lf
-end
-
-function CMD.hu(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil, "not in room" end
-  local items, err
-  if room.act_user == userId then
-    items, err = room:hu_zi_mo(userId)
-  else
-    items, err = room:hu_dian_pao(userId)
-  end
-  if not items then return nil, err end
-  return plain_room(room), items
-end
-
-function CMD.hand_of(userId)
-  local rid = user_room[userId]
-  local room = rooms[rid]
-  if not room then return nil end
-  local p = room:player(userId)
-  return p and p.hand or nil, room.act_user, room.roomId
 end
 
 function CMD.leave(userId)
+  local roomId = user_room[userId]
+  local room = roomId and rooms[roomId]
+  if not room then
+    user_room[userId] = nil
+    return true
+  end
   user_room[userId] = nil
+  for i, p in ipairs(room.players) do
+    if p.userId == userId then
+      room.players[i] = {
+        userId = -2000 - i,
+        userName = "空位" .. i,
+        isBot = true,
+        ready = true,
+      }
+      break
+    end
+  end
+  -- 若无人则删房
+  local human = false
+  for _, p in ipairs(room.players) do
+    if not p.isBot and p.userId > 0 then human = true break end
+  end
+  if not human then
+    rooms[roomId] = nil
+  end
+  return true
+end
+
+function CMD.get_room_id(userId)
+  return user_room[userId]
+end
+
+function CMD.list_games()
+  return {
+    { gameId = "changsha_mj", name = "长沙麻将", enabled = true },
+    { gameId = "shaoyang_phz", name = "邵阳跑胡子", enabled = false },
+  }
 end
 
 skynet.start(function()
+  Registry.bootstrap()
   skynet.dispatch("lua", function(_, _, cmd, ...)
     local f = CMD[cmd]
     if f then
       skynet.ret(skynet.pack(f(...)))
     else
-      skynet.error("room_mgr unknown", cmd)
-      skynet.ret(skynet.pack(nil, "unknown"))
+      skynet.ret(skynet.pack(nil, "unknown " .. tostring(cmd)))
     end
   end)
-  skynet.error("weihai room_mgr ready")
+  skynet.error("platform room_mgr ready, games=", table.concat(Registry.list(), ","))
 end)
