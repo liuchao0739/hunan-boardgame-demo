@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 4,
-    "pending": 96,
+    "done": 5,
+    "pending": 95,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
@@ -64,13 +64,14 @@
       "id": "T005",
       "phase": "phase0_foundation",
       "title": "Redis 会话 ticket",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T005.md",
       "acceptance": "ticket 存 Redis TTL，校验接口可用",
       "touch_files": [
         "server/lualib/platform/redis.lua",
         "server/service/passport.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:38.997266+00:00"
     },
     {
       "id": "T006",
