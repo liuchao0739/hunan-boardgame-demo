@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 12,
-    "pending": 88,
+    "done": 13,
+    "pending": 87,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T012",
+  "current_task": "T013",
   "tasks": [
     {
       "id": "T001",
@@ -151,12 +151,13 @@
       "id": "T012",
       "phase": "phase1_rules",
       "title": "一炮多响策略可配置",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T012.md",
       "acceptance": "rules.multiHu=all|first 生效",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.057265+00:00"
     },
     {
       "id": "T013",
