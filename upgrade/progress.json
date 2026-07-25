@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 26,
-    "pending": 74,
+    "done": 27,
+    "pending": 73,
     "failed": 0
   },
   "current_phase": "phase2_session",
-  "current_task": "T023",
+  "current_task": "T024",
   "tasks": [
     {
       "id": "T001",
@@ -286,13 +286,14 @@
       "id": "T023",
       "phase": "phase2_session",
       "title": "断线保留座位不立即 leave",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T023.md",
       "acceptance": "ws close 进入 disconnected 态",
       "touch_files": [
         "server/service/ws_gate.lua",
         "server/service/room_mgr.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:44.856053+00:00"
     },
     {
       "id": "T024",
