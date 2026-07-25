@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 8,
-    "pending": 92,
+    "done": 9,
+    "pending": 91,
     "failed": 0
   },
   "current_phase": "phase1_rules",
@@ -1104,12 +1104,13 @@
       "id": "T097",
       "phase": "phase0_foundation",
       "title": "json 安全编码工具",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T097.md",
       "acceptance": "0-based table 转数组 helper",
       "touch_files": [
         "server/lualib/platform/jsonutil.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:53.750572+00:00"
     },
     {
       "id": "T098",
