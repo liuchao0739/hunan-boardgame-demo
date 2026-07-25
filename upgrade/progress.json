@@ -1,0 +1,1143 @@
+{
+  "version": "1.0.0",
+  "repo": "/Users/liuchao/xiangzhuo",
+  "demo": "https://xiangzhuo.xiandan.me/",
+  "generated_at": "2026-07-25T16:18:53.562652+00:00",
+  "stats": {
+    "total": 100,
+    "done": 1,
+    "pending": 99,
+    "failed": 0
+  },
+  "current_phase": "phase0_foundation",
+  "current_task": "T002",
+  "tasks": [
+    {
+      "id": "T001",
+      "phase": "phase0_foundation",
+      "title": "落盘 upgrade/ 骨架与 REFERENCE",
+      "status": "done",
+      "spec": "upgrade/specs/T001.md",
+      "acceptance": "upgrade/ 含 ARCHITECTURE LOOP REFERENCE progress specs",
+      "touch_files": [
+        "upgrade/"
+      ],
+      "completed_at": "2026-07-25T16:18:53.562345+00:00"
+    },
+    {
+      "id": "T002",
+      "phase": "phase0_foundation",
+      "title": "MySQL schema：用户与战绩表",
+      "status": "pending",
+      "spec": "upgrade/specs/T002.md",
+      "acceptance": "mysql-init 含 users/game_records DDL 可启动",
+      "touch_files": [
+        "docker/mysql-init/"
+      ]
+    },
+    {
+      "id": "T003",
+      "phase": "phase0_foundation",
+      "title": "Lua DB 客户端封装",
+      "status": "pending",
+      "spec": "upgrade/specs/T003.md",
+      "acceptance": "server 可 query MySQL（skynet mysql 或 luasql 方案落地）",
+      "touch_files": [
+        "server/lualib/platform/db.lua",
+        "server/service/"
+      ]
+    },
+    {
+      "id": "T004",
+      "phase": "phase0_foundation",
+      "title": "passport 持久化用户",
+      "status": "pending",
+      "spec": "upgrade/specs/T004.md",
+      "acceptance": "登录写入/读取 MySQL，重启 userId 稳定",
+      "touch_files": [
+        "server/service/passport.lua"
+      ]
+    },
+    {
+      "id": "T005",
+      "phase": "phase0_foundation",
+      "title": "Redis 会话 ticket",
+      "status": "pending",
+      "spec": "upgrade/specs/T005.md",
+      "acceptance": "ticket 存 Redis TTL，校验接口可用",
+      "touch_files": [
+        "server/lualib/platform/redis.lua",
+        "server/service/passport.lua"
+      ]
+    },
+    {
+      "id": "T006",
+      "phase": "phase0_foundation",
+      "title": "服务配置 config.lua",
+      "status": "pending",
+      "spec": "upgrade/specs/T006.md",
+      "acceptance": "DB/Redis/端口从配置文件读取",
+      "touch_files": [
+        "server/lualib/platform/config.lua",
+        "server/config"
+      ]
+    },
+    {
+      "id": "T007",
+      "phase": "phase0_foundation",
+      "title": "协议版本字段文档化",
+      "status": "pending",
+      "spec": "upgrade/specs/T007.md",
+      "acceptance": "PROTOCOL 标明 v=1 兼容策略",
+      "touch_files": [
+        "docs/PROTOCOL_PLATFORM.md"
+      ]
+    },
+    {
+      "id": "T008",
+      "phase": "phase0_foundation",
+      "title": "健康检查 HTTP/WS ping",
+      "status": "pending",
+      "spec": "upgrade/specs/T008.md",
+      "acceptance": "ping 命令返回 ok+uptime",
+      "touch_files": [
+        "server/service/ws_gate.lua"
+      ]
+    },
+    {
+      "id": "T009",
+      "phase": "phase1_rules",
+      "title": "番型表数据结构",
+      "status": "pending",
+      "spec": "upgrade/specs/T009.md",
+      "acceptance": "fan_table.lua 可查询番型",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/fan.lua"
+      ]
+    },
+    {
+      "id": "T010",
+      "phase": "phase1_rules",
+      "title": "杠分结算（明/暗/补）",
+      "status": "pending",
+      "spec": "upgrade/specs/T010.md",
+      "acceptance": "杠后即时计分写入 snapshot",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T011",
+      "phase": "phase1_rules",
+      "title": "抢杠胡检测",
+      "status": "pending",
+      "spec": "upgrade/specs/T011.md",
+      "acceptance": "补杠时可被抢并胡",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T012",
+      "phase": "phase1_rules",
+      "title": "一炮多响策略可配置",
+      "status": "pending",
+      "spec": "upgrade/specs/T012.md",
+      "acceptance": "rules.multiHu=all|first 生效",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T013",
+      "phase": "phase1_rules",
+      "title": "吃牌合法性服务端校验",
+      "status": "pending",
+      "spec": "upgrade/specs/T013.md",
+      "acceptance": "chi body.tiles 必须匹配 chi_options",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T014",
+      "phase": "phase1_rules",
+      "title": "将将胡与平胡互斥/叠加规则明确",
+      "status": "pending",
+      "spec": "upgrade/specs/T014.md",
+      "acceptance": "文档+代码一致",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/",
+        "docs/RULES_CHANGSHA.md"
+      ]
+    },
+    {
+      "id": "T015",
+      "phase": "phase1_rules",
+      "title": "起手胡 fan 计入结算明细",
+      "status": "pending",
+      "spec": "upgrade/specs/T015.md",
+      "acceptance": "settle.detail 含起手条目",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/"
+      ]
+    },
+    {
+      "id": "T016",
+      "phase": "phase1_rules",
+      "title": "中途四喜/六六顺即时分",
+      "status": "pending",
+      "spec": "upgrade/specs/T016.md",
+      "acceptance": "触发后分数变化可测",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/"
+      ]
+    },
+    {
+      "id": "T017",
+      "phase": "phase1_rules",
+      "title": "抓鸟规则与文档对齐",
+      "status": "pending",
+      "spec": "upgrade/specs/T017.md",
+      "acceptance": "niao 座位映射单测通过",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/niao.lua",
+        "docs/RULES_CHANGSHA.md"
+      ]
+    },
+    {
+      "id": "T018",
+      "phase": "phase1_rules",
+      "title": "牌墙余牌与荒庄边界",
+      "status": "pending",
+      "spec": "upgrade/specs/T018.md",
+      "acceptance": "wall=0 荒庄无异常",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T019",
+      "phase": "phase1_rules",
+      "title": "Lua 规则单测 runner",
+      "status": "pending",
+      "spec": "upgrade/specs/T019.md",
+      "acceptance": "server/test 可跑 tiles/qishou/niao",
+      "touch_files": [
+        "server/test/",
+        "server/lualib/game/changsha_mj/"
+      ]
+    },
+    {
+      "id": "T020",
+      "phase": "phase1_rules",
+      "title": "胡牌用例集 ≥20",
+      "status": "pending",
+      "spec": "upgrade/specs/T020.md",
+      "acceptance": "can_hu 正反例覆盖",
+      "touch_files": [
+        "server/test/test_hu.lua"
+      ]
+    },
+    {
+      "id": "T021",
+      "phase": "phase1_rules",
+      "title": "吃碰杠用例集",
+      "status": "pending",
+      "spec": "upgrade/specs/T021.md",
+      "acceptance": "chi/peng/gang 用例通过",
+      "touch_files": [
+        "server/test/test_meld.lua"
+      ]
+    },
+    {
+      "id": "T022",
+      "phase": "phase1_rules",
+      "title": "起手胡用例集",
+      "status": "pending",
+      "spec": "upgrade/specs/T022.md",
+      "acceptance": "qishou detect 用例通过",
+      "touch_files": [
+        "server/test/test_qishou.lua"
+      ]
+    },
+    {
+      "id": "T023",
+      "phase": "phase2_session",
+      "title": "断线保留座位不立即 leave",
+      "status": "pending",
+      "spec": "upgrade/specs/T023.md",
+      "acceptance": "ws close 进入 disconnected 态",
+      "touch_files": [
+        "server/service/ws_gate.lua",
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T024",
+      "phase": "phase2_session",
+      "title": "重连 bind ticket→原房间",
+      "status": "pending",
+      "spec": "upgrade/specs/T024.md",
+      "acceptance": "reconnect 协议恢复座位与 snapshot",
+      "touch_files": [
+        "server/service/",
+        "client/assets/scripts/comm/NetBus.ts"
+      ]
+    },
+    {
+      "id": "T025",
+      "phase": "phase2_session",
+      "title": "断线宽限 60s 超时踢出",
+      "status": "pending",
+      "spec": "upgrade/specs/T025.md",
+      "acceptance": "超时后机器人或空位策略",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T026",
+      "phase": "phase2_session",
+      "title": "操作倒计时服务端驱动",
+      "status": "pending",
+      "spec": "upgrade/specs/T026.md",
+      "acceptance": "state 含 deadlineMs",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T027",
+      "phase": "phase2_session",
+      "title": "超时自动出牌/过",
+      "status": "pending",
+      "spec": "upgrade/specs/T027.md",
+      "acceptance": "超时触发 discard/guo",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T028",
+      "phase": "phase2_session",
+      "title": "托管 autoPlay 开关",
+      "status": "pending",
+      "spec": "upgrade/specs/T028.md",
+      "acceptance": "玩家可进托管，自动行牌",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T029",
+      "phase": "phase2_session",
+      "title": "房间解散投票",
+      "status": "pending",
+      "spec": "upgrade/specs/T029.md",
+      "acceptance": "发起/同意/拒绝满票解散",
+      "touch_files": [
+        "server/service/room_mgr.lua",
+        "client/"
+      ]
+    },
+    {
+      "id": "T030",
+      "phase": "phase2_session",
+      "title": "局间续桌 ready",
+      "status": "pending",
+      "spec": "upgrade/specs/T030.md",
+      "acceptance": "settle 后准备开下一局",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T031",
+      "phase": "phase2_session",
+      "title": "客户端断线提示与重连中 UI",
+      "status": "pending",
+      "spec": "upgrade/specs/T031.md",
+      "acceptance": "Table/Hall 显示重连状态",
+      "touch_files": [
+        "client/assets/scripts/"
+      ]
+    },
+    {
+      "id": "T032",
+      "phase": "phase2_session",
+      "title": "心跳 keepalive",
+      "status": "pending",
+      "spec": "upgrade/specs/T032.md",
+      "acceptance": "客户端定时 ping，超时判离线",
+      "touch_files": [
+        "client/assets/scripts/comm/NetBus.ts",
+        "server/service/ws_gate.lua"
+      ]
+    },
+    {
+      "id": "T033",
+      "phase": "phase3_account",
+      "title": "注册/登录口令哈希",
+      "status": "pending",
+      "spec": "upgrade/specs/T033.md",
+      "acceptance": "password 哈希入库",
+      "touch_files": [
+        "server/service/passport.lua"
+      ]
+    },
+    {
+      "id": "T034",
+      "phase": "phase3_account",
+      "title": "设备 guest 一键登录",
+      "status": "pending",
+      "spec": "upgrade/specs/T034.md",
+      "acceptance": "deviceId 创建游客",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T035",
+      "phase": "phase3_account",
+      "title": "ticket 刷新与过期",
+      "status": "pending",
+      "spec": "upgrade/specs/T035.md",
+      "acceptance": "过期拒绝并提示重登",
+      "touch_files": [
+        "server/service/passport.lua"
+      ]
+    },
+    {
+      "id": "T036",
+      "phase": "phase3_account",
+      "title": "战绩写入 game_records",
+      "status": "pending",
+      "spec": "upgrade/specs/T036.md",
+      "acceptance": "每局 settle 落库",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T037",
+      "phase": "phase3_account",
+      "title": "战绩查询协议",
+      "status": "pending",
+      "spec": "upgrade/specs/T037.md",
+      "acceptance": "platform.getRecords 分页",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T038",
+      "phase": "phase3_account",
+      "title": "个人资料改名头像",
+      "status": "pending",
+      "spec": "upgrade/specs/T038.md",
+      "acceptance": "updateProfile",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T039",
+      "phase": "phase3_account",
+      "title": "登录页账号模式 UI",
+      "status": "pending",
+      "spec": "upgrade/specs/T039.md",
+      "acceptance": "支持用户名密码/游客",
+      "touch_files": [
+        "client/assets/scripts/login/"
+      ]
+    },
+    {
+      "id": "T040",
+      "phase": "phase3_account",
+      "title": "大厅显示战绩入口",
+      "status": "pending",
+      "spec": "upgrade/specs/T040.md",
+      "acceptance": "可打开最近对局",
+      "touch_files": [
+        "client/assets/scripts/hall/"
+      ]
+    },
+    {
+      "id": "T041",
+      "phase": "phase4_table_fx",
+      "title": "出牌飞牌动画",
+      "status": "pending",
+      "spec": "upgrade/specs/T041.md",
+      "acceptance": "discard 有位移动画",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T042",
+      "phase": "phase4_table_fx",
+      "title": "摸牌插入动画",
+      "status": "pending",
+      "spec": "upgrade/specs/T042.md",
+      "acceptance": "draw 后手牌补位动画",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T043",
+      "phase": "phase4_table_fx",
+      "title": "吃碰杠展示动画",
+      "status": "pending",
+      "spec": "upgrade/specs/T043.md",
+      "acceptance": "meld 区有过渡",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T044",
+      "phase": "phase4_table_fx",
+      "title": "胡牌特效层",
+      "status": "pending",
+      "spec": "upgrade/specs/T044.md",
+      "acceptance": "hu/zimo 全屏特效节点",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T045",
+      "phase": "phase4_table_fx",
+      "title": "音效管理器 AudioBus",
+      "status": "pending",
+      "spec": "upgrade/specs/T045.md",
+      "acceptance": "出牌/胡/按钮有声",
+      "touch_files": [
+        "client/assets/scripts/comm/AudioBus.ts"
+      ]
+    },
+    {
+      "id": "T046",
+      "phase": "phase4_table_fx",
+      "title": "方言/普通话语音钩子",
+      "status": "pending",
+      "spec": "upgrade/specs/T046.md",
+      "acceptance": "关键事件播 voice",
+      "touch_files": [
+        "client/assets/scripts/",
+        "client/assets/resources/"
+      ]
+    },
+    {
+      "id": "T047",
+      "phase": "phase4_table_fx",
+      "title": "发牌动画开局",
+      "status": "pending",
+      "spec": "upgrade/specs/T047.md",
+      "acceptance": "开局发牌序列",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T048",
+      "phase": "phase4_table_fx",
+      "title": "结算面板动效",
+      "status": "pending",
+      "spec": "upgrade/specs/T048.md",
+      "acceptance": "分数滚动/亮牌",
+      "touch_files": [
+        "client/assets/scripts/game/TableLayout.ts"
+      ]
+    },
+    {
+      "id": "T049",
+      "phase": "phase4_table_fx",
+      "title": "倒计时环 UI",
+      "status": "pending",
+      "spec": "upgrade/specs/T049.md",
+      "acceptance": "客户端显示剩余秒",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T050",
+      "phase": "phase4_table_fx",
+      "title": "操作按钮动效统一",
+      "status": "pending",
+      "spec": "upgrade/specs/T050.md",
+      "acceptance": "吃碰杠胡过同风格出现",
+      "touch_files": [
+        "client/assets/scripts/game/TableLayout.ts"
+      ]
+    },
+    {
+      "id": "T051",
+      "phase": "phase5_match_social",
+      "title": "快速匹配队列",
+      "status": "pending",
+      "spec": "upgrade/specs/T051.md",
+      "acceptance": "matchmaking 服务入队成桌",
+      "touch_files": [
+        "server/service/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T052",
+      "phase": "phase5_match_social",
+      "title": "取消匹配",
+      "status": "pending",
+      "spec": "upgrade/specs/T052.md",
+      "acceptance": "离开队列",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T053",
+      "phase": "phase5_match_social",
+      "title": "好友房密码可选",
+      "status": "pending",
+      "spec": "upgrade/specs/T053.md",
+      "acceptance": "join 校验 password",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T054",
+      "phase": "phase5_match_social",
+      "title": "桌面表情协议",
+      "status": "pending",
+      "spec": "upgrade/specs/T054.md",
+      "acceptance": "emoji 广播",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T055",
+      "phase": "phase5_match_social",
+      "title": "快捷短语",
+      "status": "pending",
+      "spec": "upgrade/specs/T055.md",
+      "acceptance": "短语广播",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T056",
+      "phase": "phase5_match_social",
+      "title": "俱乐部表结构",
+      "status": "pending",
+      "spec": "upgrade/specs/T056.md",
+      "acceptance": "clubs/members DDL",
+      "touch_files": [
+        "docker/mysql-init/"
+      ]
+    },
+    {
+      "id": "T057",
+      "phase": "phase5_match_social",
+      "title": "俱乐部创建/加入 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T057.md",
+      "acceptance": "协议可通返回 ok",
+      "touch_files": [
+        "server/service/club_record.lua"
+      ]
+    },
+    {
+      "id": "T058",
+      "phase": "phase5_match_social",
+      "title": "大厅玩法卡片 UI",
+      "status": "pending",
+      "spec": "upgrade/specs/T058.md",
+      "acceptance": "长沙可点、跑胡子灰显说明",
+      "touch_files": [
+        "client/assets/scripts/hall/"
+      ]
+    },
+    {
+      "id": "T059",
+      "phase": "phase5_match_social",
+      "title": "房间列表旁观禁止默认",
+      "status": "pending",
+      "spec": "upgrade/specs/T059.md",
+      "acceptance": "非成员不可 sync 他人房",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T060",
+      "phase": "phase5_match_social",
+      "title": "踢人（房主）",
+      "status": "pending",
+      "spec": "upgrade/specs/T060.md",
+      "acceptance": "owner kick",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T061",
+      "phase": "phase6_economy",
+      "title": "房卡账本表",
+      "status": "pending",
+      "spec": "upgrade/specs/T061.md",
+      "acceptance": "ledger DDL",
+      "touch_files": [
+        "docker/mysql-init/"
+      ]
+    },
+    {
+      "id": "T062",
+      "phase": "phase6_economy",
+      "title": "创房扣房卡",
+      "status": "pending",
+      "spec": "upgrade/specs/T062.md",
+      "acceptance": "余额不足拒绝",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T063",
+      "phase": "phase6_economy",
+      "title": "局结返还/消耗策略配置",
+      "status": "pending",
+      "spec": "upgrade/specs/T063.md",
+      "acceptance": "rules.cost 生效",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T064",
+      "phase": "phase6_economy",
+      "title": "钻石字段与兑换 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T064.md",
+      "acceptance": "协议占位",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T065",
+      "phase": "phase6_economy",
+      "title": "商城列表 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T065.md",
+      "acceptance": "返回商品 JSON",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T066",
+      "phase": "phase6_economy",
+      "title": "流水查询",
+      "status": "pending",
+      "spec": "upgrade/specs/T066.md",
+      "acceptance": "getLedger",
+      "touch_files": [
+        "server/",
+        "client/"
+      ]
+    },
+    {
+      "id": "T067",
+      "phase": "phase6_economy",
+      "title": "防重入扣费",
+      "status": "pending",
+      "spec": "upgrade/specs/T067.md",
+      "acceptance": "同 roomId 不重复扣",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T068",
+      "phase": "phase6_economy",
+      "title": "大厅显示房卡余额",
+      "status": "pending",
+      "spec": "upgrade/specs/T068.md",
+      "acceptance": "登录后刷新",
+      "touch_files": [
+        "client/assets/scripts/hall/"
+      ]
+    },
+    {
+      "id": "T069",
+      "phase": "phase7_multigame",
+      "title": "跑胡子牌张模型",
+      "status": "pending",
+      "spec": "upgrade/specs/T069.md",
+      "acceptance": "phz tiles 模块",
+      "touch_files": [
+        "server/lualib/game/shaoyang_phz/"
+      ]
+    },
+    {
+      "id": "T070",
+      "phase": "phase7_multigame",
+      "title": "跑胡子发牌与出牌骨架",
+      "status": "pending",
+      "spec": "upgrade/specs/T070.md",
+      "acceptance": "可开局出一张",
+      "touch_files": [
+        "server/lualib/game/shaoyang_phz/"
+      ]
+    },
+    {
+      "id": "T071",
+      "phase": "phase7_multigame",
+      "title": "跑胡子吃碰提跑占位 ops",
+      "status": "pending",
+      "spec": "upgrade/specs/T071.md",
+      "acceptance": "availableOps stub",
+      "touch_files": [
+        "server/lualib/game/shaoyang_phz/"
+      ]
+    },
+    {
+      "id": "T072",
+      "phase": "phase7_multigame",
+      "title": "大厅启用跑胡子入口",
+      "status": "pending",
+      "spec": "upgrade/specs/T072.md",
+      "acceptance": "可 createRoom shaoyang_phz",
+      "touch_files": [
+        "client/assets/scripts/hall/"
+      ]
+    },
+    {
+      "id": "T073",
+      "phase": "phase7_multigame",
+      "title": "象棋 gameId 注册占位",
+      "status": "pending",
+      "spec": "upgrade/specs/T073.md",
+      "acceptance": "registry 有 chess stub",
+      "touch_files": [
+        "server/lualib/game/"
+      ]
+    },
+    {
+      "id": "T074",
+      "phase": "phase7_multigame",
+      "title": "围棋 gameId 注册占位",
+      "status": "pending",
+      "spec": "upgrade/specs/T074.md",
+      "acceptance": "registry 有 go stub",
+      "touch_files": [
+        "server/lualib/game/"
+      ]
+    },
+    {
+      "id": "T075",
+      "phase": "phase7_multigame",
+      "title": "客户端按 gameId 加载牌桌",
+      "status": "pending",
+      "spec": "upgrade/specs/T075.md",
+      "acceptance": "路由 Table 或占位场景",
+      "touch_files": [
+        "client/assets/scripts/"
+      ]
+    },
+    {
+      "id": "T076",
+      "phase": "phase7_multigame",
+      "title": "协议 game 命名空间校验",
+      "status": "pending",
+      "spec": "upgrade/specs/T076.md",
+      "acceptance": "未知 gameId 明确错误",
+      "touch_files": [
+        "server/service/"
+      ]
+    },
+    {
+      "id": "T077",
+      "phase": "phase8_ops",
+      "title": "structured 日志字段",
+      "status": "pending",
+      "spec": "upgrade/specs/T077.md",
+      "acceptance": "roomId/userId 入日志",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T078",
+      "phase": "phase8_ops",
+      "title": "metrics 计数器 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T078.md",
+      "acceptance": "局数/在线人数",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T079",
+      "phase": "phase8_ops",
+      "title": "systemd 与文档对齐 xiangzhuo",
+      "status": "pending",
+      "spec": "upgrade/specs/T079.md",
+      "acceptance": "DEPLOY 文档无 whmj 残留",
+      "touch_files": [
+        "docs/",
+        "Seafile 可选"
+      ]
+    },
+    {
+      "id": "T080",
+      "phase": "phase8_ops",
+      "title": "备份脚本 MySQL dump",
+      "status": "pending",
+      "spec": "upgrade/specs/T080.md",
+      "acceptance": "scripts/backup_mysql.sh",
+      "touch_files": [
+        "scripts/"
+      ]
+    },
+    {
+      "id": "T081",
+      "phase": "phase8_ops",
+      "title": "CI：Lua 单测",
+      "status": "pending",
+      "spec": "upgrade/specs/T081.md",
+      "acceptance": "GitHub Action 跑 test",
+      "touch_files": [
+        ".github/workflows/"
+      ]
+    },
+    {
+      "id": "T082",
+      "phase": "phase8_ops",
+      "title": "压测脚本 WS login+create",
+      "status": "pending",
+      "spec": "upgrade/specs/T082.md",
+      "acceptance": "scripts/bench_ws.py",
+      "touch_files": [
+        "scripts/"
+      ]
+    },
+    {
+      "id": "T083",
+      "phase": "phase8_ops",
+      "title": "错误码表",
+      "status": "pending",
+      "spec": "upgrade/specs/T083.md",
+      "acceptance": "docs/ERROR_CODES.md",
+      "touch_files": [
+        "docs/"
+      ]
+    },
+    {
+      "id": "T084",
+      "phase": "phase8_ops",
+      "title": "灰度配置开关",
+      "status": "pending",
+      "spec": "upgrade/specs/T084.md",
+      "acceptance": "feature flags 文件",
+      "touch_files": [
+        "server/lualib/platform/"
+      ]
+    },
+    {
+      "id": "T085",
+      "phase": "phase8_ops",
+      "title": "演示站部署检查清单",
+      "status": "pending",
+      "spec": "upgrade/specs/T085.md",
+      "acceptance": "升级 checklist 进 DEPLOY",
+      "touch_files": [
+        "docs/DEPLOY_SEAFILE.md"
+      ]
+    },
+    {
+      "id": "T086",
+      "phase": "phase1_rules",
+      "title": "禁止非法出牌（非手牌）",
+      "status": "pending",
+      "spec": "upgrade/specs/T086.md",
+      "acceptance": "discard 校验归属",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/init.lua"
+      ]
+    },
+    {
+      "id": "T087",
+      "phase": "phase1_rules",
+      "title": "碰后可选开杠提示",
+      "status": "pending",
+      "spec": "upgrade/specs/T087.md",
+      "acceptance": "ops 含 ming_gang/bu_gang",
+      "touch_files": [
+        "server/lualib/game/changsha_mj/"
+      ]
+    },
+    {
+      "id": "T088",
+      "phase": "phase2_session",
+      "title": "暂停/网络差提示",
+      "status": "pending",
+      "spec": "upgrade/specs/T088.md",
+      "acceptance": "连续丢包 UI",
+      "touch_files": [
+        "client/"
+      ]
+    },
+    {
+      "id": "T089",
+      "phase": "phase2_session",
+      "title": "同账号顶号踢旧连接",
+      "status": "pending",
+      "spec": "upgrade/specs/T089.md",
+      "acceptance": "单点登录策略",
+      "touch_files": [
+        "server/service/ws_gate.lua"
+      ]
+    },
+    {
+      "id": "T090",
+      "phase": "phase3_account",
+      "title": "管理员只读接口 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T090.md",
+      "acceptance": "listOnline",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T091",
+      "phase": "phase4_table_fx",
+      "title": "罗盘转向动画",
+      "status": "pending",
+      "spec": "upgrade/specs/T091.md",
+      "acceptance": "currentSeat 变化平滑转",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T092",
+      "phase": "phase4_table_fx",
+      "title": "余牌数滚动更新",
+      "status": "pending",
+      "spec": "upgrade/specs/T092.md",
+      "acceptance": "remain 变化动画可选",
+      "touch_files": [
+        "client/assets/scripts/game/"
+      ]
+    },
+    {
+      "id": "T093",
+      "phase": "phase5_match_social",
+      "title": "分享房间号到剪贴板",
+      "status": "pending",
+      "spec": "upgrade/specs/T093.md",
+      "acceptance": "大厅一键复制",
+      "touch_files": [
+        "client/assets/scripts/hall/"
+      ]
+    },
+    {
+      "id": "T094",
+      "phase": "phase6_economy",
+      "title": "每日登录赠房卡 stub",
+      "status": "pending",
+      "spec": "upgrade/specs/T094.md",
+      "acceptance": "可配置赠送",
+      "touch_files": [
+        "server/"
+      ]
+    },
+    {
+      "id": "T095",
+      "phase": "phase7_multigame",
+      "title": "RULES_SHAOYANG.md 初稿",
+      "status": "pending",
+      "spec": "upgrade/specs/T095.md",
+      "acceptance": "规则文档占位",
+      "touch_files": [
+        "docs/RULES_SHAOYANG.md"
+      ]
+    },
+    {
+      "id": "T096",
+      "phase": "phase8_ops",
+      "title": "README 升级循环说明",
+      "status": "pending",
+      "spec": "upgrade/specs/T096.md",
+      "acceptance": "链到 upgrade/LOOP.md",
+      "touch_files": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "T097",
+      "phase": "phase0_foundation",
+      "title": "json 安全编码工具",
+      "status": "pending",
+      "spec": "upgrade/specs/T097.md",
+      "acceptance": "0-based table 转数组 helper",
+      "touch_files": [
+        "server/lualib/platform/jsonutil.lua"
+      ]
+    },
+    {
+      "id": "T098",
+      "phase": "phase0_foundation",
+      "title": "room snapshot JSON 回归",
+      "status": "pending",
+      "spec": "upgrade/specs/T098.md",
+      "acceptance": "settle/birdHits 永可 encode",
+      "touch_files": [
+        "server/test/",
+        "server/lualib/game/changsha_mj/"
+      ]
+    },
+    {
+      "id": "T099",
+      "phase": "phase2_session",
+      "title": "机器人填充策略可关",
+      "status": "pending",
+      "spec": "upgrade/specs/T099.md",
+      "acceptance": "rules.fillBots=false",
+      "touch_files": [
+        "server/service/room_mgr.lua"
+      ]
+    },
+    {
+      "id": "T100",
+      "phase": "phase8_ops",
+      "title": "升级完成验收脚本",
+      "status": "pending",
+      "spec": "upgrade/specs/T100.md",
+      "acceptance": "scripts/verify_upgrade.sh 检查关键项",
+      "touch_files": [
+        "scripts/verify_upgrade.sh"
+      ]
+    }
+  ],
+  "notes": "对标商业级欢乐麻将能力；按 upgrade/LOOP.md 循环执行。"
+}
