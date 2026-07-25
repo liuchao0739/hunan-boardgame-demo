@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 34,
-    "pending": 66,
+    "done": 35,
+    "pending": 65,
     "failed": 0
   },
   "current_phase": "phase2_session",
@@ -1040,12 +1040,13 @@
       "id": "T089",
       "phase": "phase2_session",
       "title": "同账号顶号踢旧连接",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T089.md",
       "acceptance": "单点登录策略",
       "touch_files": [
         "server/service/ws_gate.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:45.429107+00:00"
     },
     {
       "id": "T090",
