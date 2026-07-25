@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 31,
-    "pending": 69,
+    "done": 32,
+    "pending": 68,
     "failed": 0
   },
   "current_phase": "phase2_session",
-  "current_task": "T028",
+  "current_task": "T029",
   "tasks": [
     {
       "id": "T001",
@@ -348,13 +348,14 @@
       "id": "T028",
       "phase": "phase2_session",
       "title": "托管 autoPlay 开关",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T028.md",
       "acceptance": "玩家可进托管，自动行牌",
       "touch_files": [
         "server/",
         "client/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:45.225105+00:00"
     },
     {
       "id": "T029",
