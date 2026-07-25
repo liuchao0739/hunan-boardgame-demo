@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 1,
-    "pending": 99,
+    "done": 2,
+    "pending": 98,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
-  "current_task": "T002",
+  "current_task": "T003",
   "tasks": [
     {
       "id": "T001",
@@ -28,12 +28,13 @@
       "id": "T002",
       "phase": "phase0_foundation",
       "title": "MySQL schema：用户与战绩表",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T002.md",
       "acceptance": "mysql-init 含 users/game_records DDL 可启动",
       "touch_files": [
         "docker/mysql-init/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:27.758487+00:00"
     },
     {
       "id": "T003",
