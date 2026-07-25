@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 3,
-    "pending": 97,
+    "done": 4,
+    "pending": 96,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
@@ -76,13 +76,14 @@
       "id": "T006",
       "phase": "phase0_foundation",
       "title": "服务配置 config.lua",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T006.md",
       "acceptance": "DB/Redis/端口从配置文件读取",
       "touch_files": [
         "server/lualib/platform/config.lua",
         "server/config"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:38.920882+00:00"
     },
     {
       "id": "T007",
