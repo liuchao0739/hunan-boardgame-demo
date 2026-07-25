@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 27,
-    "pending": 73,
+    "done": 28,
+    "pending": 72,
     "failed": 0
   },
   "current_phase": "phase2_session",
-  "current_task": "T024",
+  "current_task": "T025",
   "tasks": [
     {
       "id": "T001",
@@ -299,13 +299,14 @@
       "id": "T024",
       "phase": "phase2_session",
       "title": "重连 bind ticket→原房间",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T024.md",
       "acceptance": "reconnect 协议恢复座位与 snapshot",
       "touch_files": [
         "server/service/",
         "client/assets/scripts/comm/NetBus.ts"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:44.926876+00:00"
     },
     {
       "id": "T025",

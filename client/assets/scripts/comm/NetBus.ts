@@ -8,6 +8,10 @@ export type PlatformMsg = {
   body?: any;
 };
 
+export type ConnState = 'connected' | 'disconnected' | 'reconnecting' | 'network_poor';
+
+type ConnListener = (state: ConnState, detail?: string) => void;
+
 /**
  * 湘桌平台 NetBus — JSON 信封 WebSocket
  */
@@ -24,9 +28,37 @@ export class NetBus {
   private pending = new Map<number, { resolve: (m: PlatformMsg) => void; reject: (e: Error) => void }>();
   serverAddr = '127.0.0.1:20480';
 
+  private connState: ConnState = 'disconnected';
+  private connListeners = new Set<ConnListener>();
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private pongTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private intentionalClose = false;
+  private missedPongs = 0;
+
+  /** T032 心跳间隔（毫秒） */
+  pingIntervalMs = 15000;
+  pongTimeoutMs = 5000;
+
   putServerAddr(addr: string): this {
     this.serverAddr = addr;
     return this;
+  }
+
+  getConnState(): ConnState {
+    return this.connState;
+  }
+
+  onConnState(fn: ConnListener): () => void {
+    this.connListeners.add(fn);
+    fn(this.connState);
+    return () => this.connListeners.delete(fn);
+  }
+
+  private setConnState(state: ConnState, detail?: string) {
+    if (this.connState === state && !detail) return;
+    this.connState = state;
+    for (const fn of this.connListeners) fn(state, detail);
   }
 
   static readServerAddrFromUrl(fallback = '127.0.0.1:20480'): string {
@@ -81,6 +113,28 @@ export class NetBus {
     return !!this.ws && this.ws.readyState === WebSocket.OPEN;
   }
 
+  private buildUrl(): string {
+    const addr = (this.serverAddr || '').trim();
+    if (addr.startsWith('ws://') || addr.startsWith('wss://')) {
+      return addr.includes('/websocket') ? addr : `${addr.replace(/\/$/, '')}/websocket`;
+    }
+    if (addr.includes('/websocket')) {
+      const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
+      return `${useWss ? 'wss' : 'ws'}://${addr}`;
+    }
+    const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
+    let url = `${useWss ? 'wss' : 'ws'}://${addr}/websocket`;
+    try {
+      if (typeof location !== 'undefined' && location.protocol === 'https:' && location.hostname) {
+        const host = location.hostname.toLowerCase();
+        if (host.endsWith('xiandan.me')) {
+          url = `wss://${location.host}/websocket`;
+        }
+      }
+    } catch { /* */ }
+    return url;
+  }
+
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const addr = (this.serverAddr || '').trim();
@@ -92,7 +146,6 @@ export class NetBus {
         resolve();
         return;
       }
-      // 上次卡在 CONNECTING：先关掉再连
       if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.CLOSING)) {
         try {
           this.ws.onopen = null;
@@ -103,33 +156,20 @@ export class NetBus {
         } catch { /* */ }
         this.ws = null;
       }
-      let url: string;
-      if (addr.startsWith('ws://') || addr.startsWith('wss://')) {
-        url = addr.includes('/websocket') ? addr : `${addr.replace(/\/$/, '')}/websocket`;
-      } else if (addr.includes('/websocket')) {
-        const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
-        url = `${useWss ? 'wss' : 'ws'}://${addr}`;
-      } else {
-        const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
-        url = `${useWss ? 'wss' : 'ws'}://${addr}/websocket`;
-      }
-      // HTTPS 同域优先走当前 host，避免 Clash fake-ip 把域名指歪
-      try {
-        if (typeof location !== 'undefined' && location.protocol === 'https:' && location.hostname) {
-          const host = location.hostname.toLowerCase();
-          if (host.endsWith('xiandan.me')) {
-            url = `wss://${location.host}/websocket`;
-          }
-        }
-      } catch { /* */ }
+      const url = this.buildUrl();
       console.log('[NetBus] connect', url);
       let settled = false;
       const finish = (ok: boolean, err?: unknown) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        if (ok) resolve();
-        else reject(err ?? new Error('ws connect failed'));
+        if (ok) {
+          this.setConnState('connected');
+          this.startKeepalive();
+          resolve();
+        } else {
+          reject(err ?? new Error('ws connect failed'));
+        }
       };
       const timer = setTimeout(() => {
         try { this.ws?.close(); } catch { /* */ }
@@ -145,10 +185,114 @@ export class NetBus {
       this.ws.onopen = () => finish(true);
       this.ws.onerror = () => finish(false, new Error('ws error'));
       this.ws.onclose = () => {
+        this.stopKeepalive();
         if (!settled) finish(false, new Error('ws closed'));
+        else this.handleDisconnect();
       };
       this.ws.onmessage = (ev) => this.onMessage(ev.data);
     });
+  }
+
+  /** T024：ticket 重连并恢复房间 snapshot */
+  async reconnectWithTicket(ticket?: string): Promise<boolean> {
+    const u = (globalThis as any).__HNQP__ || {};
+    const t = ticket || u.ticket;
+    if (!t) return false;
+    this.intentionalClose = false;
+    this.setConnState('reconnecting', '正在重连…');
+    try {
+      if (!this.isConnected()) {
+        await this.connect();
+      }
+      const msg = await this.request('platform', 'reconnect', { ticket: t });
+      if (msg.cmd === 'error') {
+        this.setConnState('disconnected', msg.body?.message);
+        return false;
+      }
+      const b = msg.body || {};
+      u.userId = b.userId ?? u.userId;
+      u.userName = b.userName ?? u.userName;
+      u.ticket = t;
+      (globalThis as any).__HNQP__ = u;
+      this.missedPongs = 0;
+      this.setConnState('connected');
+      return true;
+    } catch (e) {
+      console.warn('[NetBus] reconnect fail', e);
+      this.setConnState('disconnected', '重连失败');
+      return false;
+    }
+  }
+
+  private handleDisconnect() {
+    if (this.intentionalClose) {
+      this.setConnState('disconnected');
+      return;
+    }
+    this.setConnState('reconnecting', '连接已断开');
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      void this.reconnectWithTicket().then((ok) => {
+        if (!ok) {
+          this.setConnState('network_poor', '网络不稳定，稍后重试…');
+          this.reconnectTimer = setTimeout(() => void this.reconnectWithTicket(), 5000);
+        }
+      });
+    }, 1500);
+  }
+
+  private stopKeepalive() {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
+    if (this.pongTimer) {
+      clearTimeout(this.pongTimer);
+      this.pongTimer = null;
+    }
+  }
+
+  /** T032 客户端定时 ping，超时判网络差 */
+  startKeepalive() {
+    this.stopKeepalive();
+    this.missedPongs = 0;
+    this.pingTimer = setInterval(() => void this.sendPing(), this.pingIntervalMs);
+  }
+
+  private async sendPing() {
+    if (!this.isConnected()) return;
+    try {
+      if (this.pongTimer) clearTimeout(this.pongTimer);
+      this.pongTimer = setTimeout(() => {
+        this.missedPongs += 1;
+        if (this.missedPongs >= 2) {
+          this.setConnState('network_poor', '网络延迟较高');
+        }
+      }, this.pongTimeoutMs);
+      const msg = await this.request('platform', 'ping', {});
+      if (msg.cmd === 'pong' || msg.body?.ok) {
+        this.missedPongs = 0;
+        if (this.connState === 'network_poor') this.setConnState('connected');
+        if (this.pongTimer) {
+          clearTimeout(this.pongTimer);
+          this.pongTimer = null;
+        }
+      }
+    } catch {
+      this.missedPongs += 1;
+    }
+  }
+
+  disconnect() {
+    this.intentionalClose = true;
+    this.stopKeepalive();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    try { this.ws?.close(); } catch { /* */ }
+    this.ws = null;
+    this.setConnState('disconnected');
   }
 
   private onMessage(data: any) {
@@ -165,6 +309,11 @@ export class NetBus {
     } catch {
       console.warn('[NetBus] bad json', text.slice(0, 80));
       return;
+    }
+    if (msg.ns === 'platform' && msg.cmd === 'kicked') {
+      this.intentionalClose = true;
+      this.setConnState('disconnected', msg.body?.message || '已在其他设备登录');
+      try { this.ws?.close(); } catch { /* */ }
     }
     const rid = msg.reqId != null ? Number(msg.reqId) : null;
     if (rid != null && !Number.isNaN(rid) && this.pending.has(rid)) {
@@ -219,6 +368,14 @@ export class NetBus {
 
   prepare(yes = true) {
     return this.request('platform', 'prepare', { yes });
+  }
+
+  setAutoPlay(yes: boolean) {
+    return this.request('platform', 'autoPlay', { yes });
+  }
+
+  dissolveVote(agree: boolean, cancel = false) {
+    return this.request('platform', 'dissolveVote', { agree, cancel });
   }
 
   sync() {
