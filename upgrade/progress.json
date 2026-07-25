@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 25,
-    "pending": 75,
+    "done": 26,
+    "pending": 74,
     "failed": 0
   },
   "current_phase": "phase2_session",
@@ -1132,13 +1132,14 @@
       "id": "T098",
       "phase": "phase0_foundation",
       "title": "room snapshot JSON 回归",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T098.md",
       "acceptance": "settle/birdHits 永可 encode",
       "touch_files": [
         "server/test/",
         "server/lualib/game/changsha_mj/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:38.005222+00:00"
     },
     {
       "id": "T099",
