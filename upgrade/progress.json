@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 15,
-    "pending": 85,
+    "done": 16,
+    "pending": 84,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T015",
+  "current_task": "T016",
   "tasks": [
     {
       "id": "T001",
@@ -188,12 +188,13 @@
       "id": "T015",
       "phase": "phase1_rules",
       "title": "起手胡 fan 计入结算明细",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T015.md",
       "acceptance": "settle.detail 含起手条目",
       "touch_files": [
         "server/lualib/game/changsha_mj/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.262537+00:00"
     },
     {
       "id": "T016",
