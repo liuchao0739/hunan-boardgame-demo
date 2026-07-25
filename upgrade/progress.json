@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 38,
-    "pending": 62,
+    "done": 39,
+    "pending": 61,
     "failed": 0
   },
   "current_phase": "phase3_account",
@@ -1031,12 +1031,13 @@
       "id": "T088",
       "phase": "phase2_session",
       "title": "暂停/网络差提示",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T088.md",
       "acceptance": "连续丢包 UI",
       "touch_files": [
         "client/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:45.728891+00:00"
     },
     {
       "id": "T089",
