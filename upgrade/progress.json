@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 23,
-    "pending": 77,
+    "done": 24,
+    "pending": 76,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T021",
+  "current_task": "T022",
   "tasks": [
     {
       "id": "T001",
@@ -262,12 +262,13 @@
       "id": "T021",
       "phase": "phase1_rules",
       "title": "吃碰杠用例集",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T021.md",
       "acceptance": "chi/peng/gang 用例通过",
       "touch_files": [
         "server/test/test_meld.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.858163+00:00"
     },
     {
       "id": "T022",
