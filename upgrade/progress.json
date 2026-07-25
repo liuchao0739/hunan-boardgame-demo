@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 2,
-    "pending": 98,
+    "done": 3,
+    "pending": 97,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
-  "current_task": "T003",
+  "current_task": "T004",
   "tasks": [
     {
       "id": "T001",
@@ -40,13 +40,14 @@
       "id": "T003",
       "phase": "phase0_foundation",
       "title": "Lua DB 客户端封装",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T003.md",
       "acceptance": "server 可 query MySQL（skynet mysql 或 luasql 方案落地）",
       "touch_files": [
         "server/lualib/platform/db.lua",
         "server/service/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:38.836108+00:00"
     },
     {
       "id": "T004",
