@@ -137,6 +137,7 @@ export class LoginScene extends Component {
       };
       this.setStatus(`登录成功 ${b.userId} ${b.userName}`);
       NetBus.ins.offAll();
+      NetBus.ins.startKeepalive();
       director.loadScene('Hall', (err) => {
         this.loggingIn = false;
         if (err) this.setStatus('缺少 Hall 场景');

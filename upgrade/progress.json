@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 37,
-    "pending": 63,
+    "done": 38,
+    "pending": 62,
     "failed": 0
   },
-  "current_phase": "phase2_session",
-  "current_task": "T032",
+  "current_phase": "phase3_account",
+  "current_task": "T033",
   "tasks": [
     {
       "id": "T001",
@@ -399,13 +399,14 @@
       "id": "T032",
       "phase": "phase2_session",
       "title": "心跳 keepalive",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T032.md",
       "acceptance": "客户端定时 ping，超时判离线",
       "touch_files": [
         "client/assets/scripts/comm/NetBus.ts",
         "server/service/ws_gate.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:45.651497+00:00"
     },
     {
       "id": "T033",
