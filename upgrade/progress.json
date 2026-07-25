@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 17,
-    "pending": 83,
+    "done": 18,
+    "pending": 82,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T017",
+  "current_task": "T018",
   "tasks": [
     {
       "id": "T001",
@@ -212,13 +212,14 @@
       "id": "T017",
       "phase": "phase1_rules",
       "title": "抓鸟规则与文档对齐",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T017.md",
       "acceptance": "niao 座位映射单测通过",
       "touch_files": [
         "server/lualib/game/changsha_mj/niao.lua",
         "docs/RULES_CHANGSHA.md"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.399385+00:00"
     },
     {
       "id": "T018",
