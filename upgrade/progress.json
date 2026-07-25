@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 9,
-    "pending": 91,
+    "done": 10,
+    "pending": 90,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T009",
+  "current_task": "T010",
   "tasks": [
     {
       "id": "T001",
@@ -115,12 +115,13 @@
       "id": "T009",
       "phase": "phase1_rules",
       "title": "番型表数据结构",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T009.md",
       "acceptance": "fan_table.lua 可查询番型",
       "touch_files": [
         "server/lualib/game/changsha_mj/fan.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:36.821032+00:00"
     },
     {
       "id": "T010",
