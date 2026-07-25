@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 11,
-    "pending": 89,
+    "done": 12,
+    "pending": 88,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T011",
+  "current_task": "T012",
   "tasks": [
     {
       "id": "T001",
@@ -139,12 +139,13 @@
       "id": "T011",
       "phase": "phase1_rules",
       "title": "抢杠胡检测",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T011.md",
       "acceptance": "补杠时可被抢并胡",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:36.990764+00:00"
     },
     {
       "id": "T012",
