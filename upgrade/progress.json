@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 18,
-    "pending": 82,
+    "done": 19,
+    "pending": 81,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T018",
+  "current_task": "T019",
   "tasks": [
     {
       "id": "T001",
@@ -225,12 +225,13 @@
       "id": "T018",
       "phase": "phase1_rules",
       "title": "牌墙余牌与荒庄边界",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T018.md",
       "acceptance": "wall=0 荒庄无异常",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.473802+00:00"
     },
     {
       "id": "T019",
