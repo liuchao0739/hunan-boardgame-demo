@@ -5,8 +5,8 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 20,
-    "pending": 80,
+    "done": 21,
+    "pending": 79,
     "failed": 0
   },
   "current_phase": "phase1_rules",
@@ -1005,12 +1005,13 @@
       "id": "T087",
       "phase": "phase1_rules",
       "title": "碰后可选开杠提示",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T087.md",
       "acceptance": "ops 含 ming_gang/bu_gang",
       "touch_files": [
         "server/lualib/game/changsha_mj/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.622825+00:00"
     },
     {
       "id": "T088",
