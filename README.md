@@ -1,6 +1,6 @@
-# 湖南棋牌平台（Skynet + Cocos Creator 3.8.8）
+# 湘桌 · XiangZhuo（Skynet + Cocos Creator 3.8.8）
 
-多玩法棋牌平台：**长沙麻将**已上线，邵阳跑胡子预留；后续可接象棋/围棋等。
+湖南多玩法棋牌平台：**长沙麻将**已上线，邵阳跑胡子预留；后续可接象棋/围棋等。
 
 技术栈：后端 **Skynet/Lua**，前端 **Cocos Creator 3.8.8**，WebSocket JSON 协议 `:20480`。
 
@@ -22,8 +22,9 @@ cd server
 
 ### 3. 远程演示
 
-- 浏览器：https://whmj.xiandan.me/
-- WSS：`wss://whmj.xiandan.me/websocket`
+- 浏览器：https://xiangzhuo.xiandan.me/
+- WSS：`wss://xiangzhuo.xiandan.me/websocket`
+- 旧域名 `whmj.xiandan.me` 仍可访问（过渡期）
 - 文档：[docs/NETWORK.md](docs/NETWORK.md)、[docs/DEPLOY_SEAFILE.md](docs/DEPLOY_SEAFILE.md)
 
 ## 目录

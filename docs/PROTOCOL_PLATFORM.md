@@ -1,4 +1,5 @@
-# 湖南棋牌平台协议（JSON Envelope）
+# 湘桌平台协议（JSON Envelope）
+
 
 WebSocket：文本帧，路径 `/websocket`，端口 **20480**。
 

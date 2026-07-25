@@ -308,11 +308,13 @@ function Engine:_do_hu(winner, is_zimo, pao_seat)
     self.players[pao_seat].score = self.players[pao_seat].score - gain * 2
     self.players[winner].score = self.players[winner].score + gain * 2
   end
-  -- 抓鸟
+  -- 抓鸟（birdHits 必须是 1-based 数组，否则 json 编码 sparse array 崩溃）
   local birds = Niao.draw_birds(self.wall, self.cfg.birdCount)
   local hits = Niao.count_hits(birds, winner, self.cfg.playerCount)
+  local birdHitsArr = {}
   for s = 0, self.cfg.playerCount - 1 do
     local h = hits[s] or 0
+    birdHitsArr[s + 1] = h
     if h > 0 and s ~= winner then
       local add = h * base
       self.players[s].score = self.players[s].score - add
@@ -334,7 +336,7 @@ function Engine:_do_hu(winner, is_zimo, pao_seat)
     detail = string.format("%s 座位%d；鸟：%s", is_zimo and "自摸" or "点炮", winner, Niao.describe(birds)),
     scores = self:_score_list(),
     birds = birds,
-    birdHits = hits,
+    birdHits = birdHitsArr,
   }
   self.message = self.settle.detail
   self.dealer = winner -- 赢家坐庄
@@ -470,8 +472,15 @@ function Engine:on_action(seat, cmd, body)
   end
   if cmd == "hu" then
     if self.phase ~= "wait_claim" then return false, "非抢牌" end
+    if not self.lastDiscard then return false, "无牌可胡" end
     local tile = self.lastDiscard.tile
     local from = self.lastDiscard.seat
+    local try = {}
+    for _, t in ipairs(self.players[seat].hand) do try[#try + 1] = t end
+    try[#try + 1] = tile
+    if not (T.can_hu(try) or T.can_jiang_jiang_hu(try)) then
+      return false, "未胡牌"
+    end
     self.players[seat].hand[#self.players[seat].hand + 1] = tile
     local d = self.players[from].discards
     if d[#d] == tile then table.remove(d) end

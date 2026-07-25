@@ -9,5 +9,5 @@ if [[ ! -x ./skynet/skynet ]]; then
     *)      echo "不支持的系统: $(uname -s)"; exit 1 ;;
   esac
 fi
-echo "启动湖南棋牌平台 Skynet → ws://0.0.0.0:20480 (JSON)"
+echo "启动湘桌 Skynet → ws://0.0.0.0:20480 (JSON)"
 exec ./skynet/skynet config

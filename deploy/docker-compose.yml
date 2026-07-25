@@ -1,7 +1,7 @@
 services:
-  whmj-web:
+  xiangzhuo-web:
     image: nginx:1.27-alpine
-    container_name: whmj-web
+    container_name: xiangzhuo-web
     restart: unless-stopped
     mem_limit: 32m
     volumes:
@@ -12,9 +12,9 @@ services:
     networks:
       - seafile-net
     labels:
-      caddy: https://whmj.xiandan.me
+      # 主域名湘桌；whmj 过渡期同站
+      caddy: xiangzhuo.xiandan.me, whmj.xiandan.me
       caddy.reverse_proxy: "{{upstreams 80}}"
-      caddy.encode: gzip
 
 networks:
   seafile-net:

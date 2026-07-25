@@ -1,6 +1,6 @@
-import { _decorator, Component, director } from 'cc';
+import { _decorator, Component, director, Node, UITransform } from 'cc';
 import { NetBus } from '../comm/NetBus';
-import { createTileNode } from '../comm/ArtBg';
+import { createTileNode, sortHandTiles } from '../comm/ArtBg';
 import { TableLayout, SeatPlayer } from './TableLayout';
 
 const { ccclass } = _decorator;
@@ -65,11 +65,17 @@ export class TableScene extends Component {
       this.setTip('等待牌局…');
       return;
     }
-    // my seat
+    // my seat + 强制整理手牌（万→条→筒）
     for (const s of game.seats || []) {
       if (s.userId === this.myId) {
         this.mySeat = s.seat;
-        if (Array.isArray(s.hand)) this.hand = s.hand.slice();
+        const raw = s.hand;
+        if (Array.isArray(raw)) {
+          this.hand = sortHandTiles(raw);
+        } else if (raw && typeof raw === 'object') {
+          // 兼容 Lua/JSON 把数组编成对象
+          this.hand = sortHandTiles(Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map((k) => raw[k]));
+        }
       }
     }
     if (this.layout.roomLabel) this.layout.roomLabel.string = `房${body.roomId}`;
@@ -96,13 +102,17 @@ export class TableScene extends Component {
     this.lastOps = game.availableOps || [];
     this.refreshOps(game);
 
-    if (game.qishou) {
+    // 仅起手阶段展示起手胡；继续后不再盖住出牌提示
+    if (game.phase === 'qishou' && game.qishou) {
       const lines: string[] = ['起手胡'];
       for (const [seat, hits] of Object.entries(game.qishou)) {
         const names = (hits as any[]).map((h) => h.name).join('、');
         lines.push(`座位${seat}: ${names}`);
       }
       this.setTip(lines.join(' | '));
+      // 自动继续，避免卡在起手提示
+      this.unschedule(this.autoContinueQishou);
+      this.scheduleOnce(this.autoContinueQishou, 1.2);
     }
 
     if (game.phase === 'settle' && game.settle) {
@@ -163,28 +173,71 @@ export class TableScene extends Component {
     await this.act('chi', { tiles: this.lastChi });
   }
 
+  private autoContinueQishou = () => {
+    void this.act('continue');
+  };
+
   private async refreshHand() {
     const lay = this.layout;
     if (!lay?.handRoot) return;
     const gen = ++this.handGen;
     const root = lay.handRoot;
-    root.removeAllChildren();
-    const tw = 56;
-    const closed = this.hand;
-    const totalW = closed.length * tw;
-    let x = -totalW / 2 + tw / 2;
-    for (let i = 0; i < closed.length; i++) {
-      if (gen !== this.handGen) return;
-      const tile = closed[i];
+    const tiles = sortHandTiles(this.hand);
+    this.hand = tiles;
+
+    const tw = 52;
+    const gap = 2;
+    const suitGap = 16;
+    const positions: number[] = [];
+    let xCursor = 0;
+    for (let i = 0; i < tiles.length; i++) {
+      if (i > 0) {
+        const prevSuit = Math.floor(tiles[i - 1] / 9);
+        const suit = Math.floor(tiles[i] / 9);
+        xCursor += tw + (prevSuit !== suit ? suitGap : gap);
+      }
+      positions.push(xCursor);
+    }
+    const totalW = tiles.length ? (positions[positions.length - 1] + tw) : 0;
+    const origin = -totalW / 2 + tw / 2;
+
+    // 离屏容器建齐后再一次性替换，杜绝半成品/过期节点混进手牌区
+    const stage = new Node('__HandStaging');
+    stage.layer = root.layer;
+    stage.addComponent(UITransform);
+
+    const built: Node[] = [];
+    for (let i = 0; i < tiles.length; i++) {
+      if (gen !== this.handGen) {
+        if (stage.isValid) stage.destroy();
+        return;
+      }
+      const tile = tiles[i];
       const idx = i;
-      const n = await createTileNode(tile, root, tw, 78, {
+      const n = await createTileNode(tile, stage, tw, 74, {
         onSelect: () => this.onSelectTile(idx),
         onDiscard: () => void this.discardAt(idx),
       });
-      if (gen !== this.handGen || !n.isValid) return;
-      n.setPosition(Math.round(x), this.selectedIdx === idx ? 20 : 0, 0);
-      x += tw;
+      if (gen !== this.handGen) {
+        if (stage.isValid) stage.destroy();
+        return;
+      }
+      if (!n?.isValid) continue;
+      n.setPosition(Math.round(origin + positions[i]), this.selectedIdx === idx ? 20 : 0, 0);
+      built.push(n);
     }
+
+    if (gen !== this.handGen) {
+      if (stage.isValid) stage.destroy();
+      return;
+    }
+    root.removeAllChildren();
+    for (const n of built) {
+      if (!n.isValid) continue;
+      n.removeFromParent();
+      root.addChild(n);
+    }
+    if (stage.isValid) stage.destroy();
   }
 
   private onSelectTile(idx: number) {

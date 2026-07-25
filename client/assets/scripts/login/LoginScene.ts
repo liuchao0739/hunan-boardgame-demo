@@ -18,6 +18,8 @@ export class LoginScene extends Component {
   @property(Button)
   loginBtn: Button | null = null;
 
+  private loggingIn = false;
+
   onLoad() {
     this.layoutUi();
     attachBg(this.node.parent ?? this.node, 'weihai/bg/hall');
@@ -28,7 +30,7 @@ export class LoginScene extends Component {
     if (this.serverEdit) this.serverEdit.string = addr;
     if (this.nameEdit) this.nameEdit.string = this.nameEdit.string || '测试用户';
     NetBus.ins.putServerAddr(addr);
-    this.setStatus('湖南棋牌 · 点登录连接 ' + addr);
+    this.setStatus('湘桌 · 点登录连接 ' + addr);
 
     const btnNode =
       this.loginBtn?.node
@@ -87,22 +89,43 @@ export class LoginScene extends Component {
   }
 
   async onClickLogin() {
+    if (this.loggingIn) return;
+    this.loggingIn = true;
     const name = this.nameEdit?.string || '测试用户';
-    const addr = this.normalizeAddr(this.serverEdit?.string || '');
+    let addr = this.normalizeAddr(this.serverEdit?.string || '');
+    try {
+      if (typeof location !== 'undefined' && location.protocol === 'https:' && location.hostname) {
+        addr = `wss://${location.host}/websocket`;
+        if (this.serverEdit) this.serverEdit.string = addr;
+      }
+    } catch { /* */ }
     if (this.serverEdit) this.serverEdit.string = addr;
     NetBus.ins.putServerAddr(addr);
-    this.setStatus('连接中… ' + addr);
+
+    // 倒计时，避免一直停在「连接中」看不出有没有超时
+    let left = 12;
+    this.setStatus(`连接中(${left}s)… ${addr}`);
+    const tick = setInterval(() => {
+      left -= 1;
+      if (left >= 0) this.setStatus(`连接中(${left}s)… ${addr}`);
+    }, 1000);
+
     try {
       await NetBus.ins.connect();
+      clearInterval(tick);
+      this.setStatus('已连接，登录中…');
     } catch (e) {
+      clearInterval(tick);
       console.warn('[Login] connect fail', e);
-      this.setStatus('连接失败：检查地址与 server/run.sh');
+      this.setStatus('连接失败：请关 Clash/代理 后强制刷新(Cmd+Shift+R)，或打开 /ws-test.html 自检');
+      this.loggingIn = false;
       return;
     }
     try {
       const msg = await NetBus.ins.login(name);
       if (msg.cmd === 'error') {
         this.setStatus(msg.body?.message || '登录失败');
+        this.loggingIn = false;
         return;
       }
       const b = msg.body || {};
@@ -115,10 +138,13 @@ export class LoginScene extends Component {
       this.setStatus(`登录成功 ${b.userId} ${b.userName}`);
       NetBus.ins.offAll();
       director.loadScene('Hall', (err) => {
+        this.loggingIn = false;
         if (err) this.setStatus('缺少 Hall 场景');
       });
     } catch (e) {
-      this.setStatus('登录超时');
+      console.warn('[Login] login fail', e);
+      this.setStatus('登录超时：WebSocket 已连上但服务器无响应');
+      this.loggingIn = false;
     }
   }
 }

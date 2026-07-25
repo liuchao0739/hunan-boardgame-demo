@@ -9,7 +9,7 @@ export type PlatformMsg = {
 };
 
 /**
- * 湖南棋牌平台 NetBus — JSON 信封 WebSocket
+ * 湘桌平台 NetBus — JSON 信封 WebSocket
  */
 export class NetBus {
   private static _ins: NetBus;
@@ -36,7 +36,11 @@ export class NetBus {
         const q = u.searchParams.get('serverAddr');
         if (q) return q;
         const host = (u.hostname || '').toLowerCase();
-        if (host === 'whmj.xiandan.me' || host === 'chaoren.xiandan.me') {
+        if (
+          host === 'xiangzhuo.xiandan.me'
+          || host === 'whmj.xiandan.me'
+          || host === 'chaoren.xiandan.me'
+        ) {
           return `wss://${host}/websocket`;
         }
         if (u.protocol === 'https:' && host && host !== 'localhost' && host !== '127.0.0.1') {
@@ -88,13 +92,36 @@ export class NetBus {
         resolve();
         return;
       }
+      // 上次卡在 CONNECTING：先关掉再连
+      if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.CLOSING)) {
+        try {
+          this.ws.onopen = null;
+          this.ws.onerror = null;
+          this.ws.onclose = null;
+          this.ws.onmessage = null;
+          this.ws.close();
+        } catch { /* */ }
+        this.ws = null;
+      }
       let url: string;
       if (addr.startsWith('ws://') || addr.startsWith('wss://')) {
         url = addr.includes('/websocket') ? addr : `${addr.replace(/\/$/, '')}/websocket`;
+      } else if (addr.includes('/websocket')) {
+        const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
+        url = `${useWss ? 'wss' : 'ws'}://${addr}`;
       } else {
         const useWss = typeof location !== 'undefined' && location.protocol === 'https:';
         url = `${useWss ? 'wss' : 'ws'}://${addr}/websocket`;
       }
+      // HTTPS 同域优先走当前 host，避免 Clash fake-ip 把域名指歪
+      try {
+        if (typeof location !== 'undefined' && location.protocol === 'https:' && location.hostname) {
+          const host = location.hostname.toLowerCase();
+          if (host.endsWith('xiandan.me')) {
+            url = `wss://${location.host}/websocket`;
+          }
+        }
+      } catch { /* */ }
       console.log('[NetBus] connect', url);
       let settled = false;
       const finish = (ok: boolean, err?: unknown) => {
@@ -107,11 +134,19 @@ export class NetBus {
       const timer = setTimeout(() => {
         try { this.ws?.close(); } catch { /* */ }
         finish(false, new Error('connect timeout'));
-      }, 5000);
-      this.ws = new WebSocket(url);
+      }, 12000);
+      try {
+        this.ws = new WebSocket(url);
+      } catch (e) {
+        finish(false, e);
+        return;
+      }
       this.ws.binaryType = 'arraybuffer';
       this.ws.onopen = () => finish(true);
-      this.ws.onerror = (e) => finish(false, e);
+      this.ws.onerror = () => finish(false, new Error('ws error'));
+      this.ws.onclose = () => {
+        if (!settled) finish(false, new Error('ws closed'));
+      };
       this.ws.onmessage = (ev) => this.onMessage(ev.data);
     });
   }
@@ -120,7 +155,10 @@ export class NetBus {
     let text: string;
     if (typeof data === 'string') text = data;
     else if (data instanceof ArrayBuffer) text = new TextDecoder().decode(data);
-    else return;
+    else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      void data.text().then((t) => this.onMessage(t));
+      return;
+    } else return;
     let msg: PlatformMsg;
     try {
       msg = JSON.parse(text);
@@ -128,14 +166,14 @@ export class NetBus {
       console.warn('[NetBus] bad json', text.slice(0, 80));
       return;
     }
-    if (msg.reqId != null && this.pending.has(msg.reqId)) {
-      const p = this.pending.get(msg.reqId)!;
-      this.pending.delete(msg.reqId);
+    const rid = msg.reqId != null ? Number(msg.reqId) : null;
+    if (rid != null && !Number.isNaN(rid) && this.pending.has(rid)) {
+      const p = this.pending.get(rid)!;
+      this.pending.delete(rid);
       p.resolve(msg);
     }
     const list = this.handlers.get(this.key(msg.ns, msg.cmd)) || [];
     for (const h of list) h(msg.body, msg);
-    // wildcard state
     if (msg.cmd === 'state') {
       const any = this.handlers.get(this.key(msg.ns, '*')) || [];
       for (const h of any) h(msg.body, msg);

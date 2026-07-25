@@ -54,7 +54,7 @@ export class HallScene extends Component {
 
     const u = (globalThis as any).__HNQP__ || (globalThis as any).__WHMJ__ || {};
     this.setInfo(`玩家 ${u.userName || '?'} (${u.userId || '?'})`);
-    this.setRoom('长沙麻将 · 点「创建房间」配 3 机器人，再点「确定」开局（跑胡子即将开放）');
+    this.setRoom('湘桌 · 长沙麻将 · 点「创建房间」配 3 机器人，再点「确定」开局（跑胡子即将开放）');
 
     this.unsubs.push(NetBus.ins.on('platform', 'state', (body) => this.onState(body)));
     this.unsubs.push(NetBus.ins.on('platform', 'error', (body) => {

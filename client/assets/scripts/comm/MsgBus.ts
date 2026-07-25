@@ -31,7 +31,7 @@ export class MsgBus {
         if (q) return q;
         const host = (u.hostname || '').toLowerCase();
         // 生产站：走同域 /websocket（Caddy→nginx→Skynet）
-        if (host === 'whmj.xiandan.me' || host === 'chaoren.xiandan.me') {
+        if (host === 'xiangzhuo.xiandan.me' || host === 'whmj.xiandan.me' || host === 'chaoren.xiandan.me') {
           return `wss://${host}/websocket`;
         }
         if (u.protocol === 'https:' && host && host !== 'localhost' && host !== '127.0.0.1') {

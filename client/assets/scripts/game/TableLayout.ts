@@ -239,9 +239,9 @@ export class TableLayout {
 
   private buildActionBtns(parent: Node) {
     this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 480, -40, 'weihai/ui/btn_guo');
+    this.btnChi = this.mkActionBtn(parent, 'btnChi', 360, -40, 'weihai/ui/btn_chi');
     this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
     this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
-    this.btnChi = this.mkTextBtn(parent, 'btnChi', 360, -40, '吃');
     this.btnContinue = this.mkTextBtn(parent, 'btnCont', 0, -80, '继续打牌');
     this.btnChu = null;
     this.setActionButtons(false, false, false, false);

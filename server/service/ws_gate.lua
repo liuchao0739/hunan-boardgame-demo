@@ -167,7 +167,7 @@ local function on_message(fd, msg, msg_type)
     local ok, e = pcall(handle_game, fd, req)
     if not ok then
       skynet.error("handle_game", e)
-      reply(fd, req, "error", { message = "服务器错误" })
+      reply(fd, req, "error", { message = "服务器错误: " .. tostring(e) })
     end
   end
 end
@@ -208,7 +208,7 @@ skynet.start(function()
   -- monkey: add tickBots CMD usage via action "tickBots" on platform? add to room_mgr
   local port = tonumber(skynet.getenv("ws_port")) or 20480
   local listen_id = socket.listen("0.0.0.0", port)
-  skynet.error(string.format("========== 湖南棋牌平台 WS :%d (JSON) ==========", port))
+  skynet.error(string.format("========== 湘桌 WS :%d (JSON) ==========", port))
   socket.start(listen_id, function(id, addr)
     skynet.error("accept", id, addr)
     skynet.fork(function()

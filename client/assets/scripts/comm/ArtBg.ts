@@ -108,21 +108,41 @@ export type TileGesture = {
   onDiscard?: (tile: number, node: Node) => void;
 };
 
+/** 统一成长沙 0–26；兼容误传的威海贴图编号 */
+export function normalizeTileId(tile: number): number {
+  const t = Number(tile);
+  if (Number.isNaN(t)) return -1;
+  if (t >= 0 && t <= 26) return t;
+  if (t >= 21 && t <= 29) return t - 21; // 万
+  if (t >= 41 && t <= 49) return 9 + (t - 41); // 条
+  if (t >= 81 && t <= 89) return 18 + (t - 81); // 筒
+  return -1;
+}
+
 /** 长沙编码 0-26 → 现有 weihai 贴图 万21-29/条41-49/饼81-89 */
 export function changshaToArtId(tile: number): number {
-  if (tile >= 21) return tile; // 已是旧编码
-  if (tile < 0 || tile > 26) return 0;
-  const suit = Math.floor(tile / 9);
-  const rank = (tile % 9) + 1;
+  const id = normalizeTileId(tile);
+  if (id < 0) return 0;
+  const suit = Math.floor(id / 9);
+  const rank = (id % 9) + 1;
   if (suit === 0) return 20 + rank;
   if (suit === 1) return 40 + rank;
   return 80 + rank;
+}
+
+export function sortHandTiles(tiles: number[]): number[] {
+  return tiles
+    .map((t) => normalizeTileId(t))
+    .filter((t) => t >= 0)
+    .sort((a, b) => a - b);
 }
 
 /**
  * 手牌交互（只走 TOUCH，避免和 MOUSE 双触发把逻辑打坏）：
  * - 单击 → onSelect（外层再点同一张 = 出牌）
  * - 上滑超过阈值 → onDiscard（滑动中途就出，不等松手）
+ *
+ * 重要：先加载贴图，再挂到 parent，避免并发 refresh 时半成品子节点残留。
  */
 export async function createTileNode(
   tile: number,
@@ -132,16 +152,17 @@ export async function createTileNode(
   gesture?: TileGesture | ((tile: number, node: Node) => void),
 ): Promise<Node> {
   const artId = changshaToArtId(tile);
-  const n = new Node(`T_${tile}`);
-  parent.addChild(n);
+  const backSf = await loadSpriteFrame('weihai/tiles/back');
+  const faceSf = artId > 0 ? await loadSpriteFrame(`weihai/tiles/${artId}`) : null;
+
+  const n = new Node(`T_${normalizeTileId(tile)}`);
   n.layer = parent.layer;
   const ui = n.addComponent(UITransform);
   ui.setContentSize(w, h);
   const back = n.addComponent(Sprite);
   back.sizeMode = Sprite.SizeMode.CUSTOM;
-  const backSf = await loadSpriteFrame('weihai/tiles/back');
   if (backSf) back.spriteFrame = backSf;
-  ui.setContentSize(w, h);
+
   const face = new Node('face');
   n.addChild(face);
   face.layer = parent.layer;
@@ -150,13 +171,8 @@ export async function createTileNode(
   face.setPosition(0, 3, 0);
   const fsp = face.addComponent(Sprite);
   fsp.sizeMode = Sprite.SizeMode.CUSTOM;
-  if (artId > 0) {
-    const faceSf = await loadSpriteFrame(`weihai/tiles/${artId}`);
-    if (faceSf) fsp.spriteFrame = faceSf;
-  } else {
-    face.active = false;
-  }
-  fui.setContentSize(w * 0.88, h * 0.78);
+  if (faceSf) fsp.spriteFrame = faceSf;
+  else face.active = false;
 
   const g: TileGesture = typeof gesture === 'function'
     ? { onSelect: gesture }
@@ -202,5 +218,11 @@ export async function createTileNode(
       if (n.isValid) n.setPosition(n.position.x, baseY, n.position.z);
     }, n);
   }
+
+  if (!parent.isValid) {
+    n.destroy();
+    return n;
+  }
+  parent.addChild(n);
   return n;
 }
