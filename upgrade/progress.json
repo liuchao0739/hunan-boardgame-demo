@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 21,
-    "pending": 79,
+    "done": 22,
+    "pending": 78,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T019",
+  "current_task": "T020",
   "tasks": [
     {
       "id": "T001",
@@ -237,13 +237,14 @@
       "id": "T019",
       "phase": "phase1_rules",
       "title": "Lua 规则单测 runner",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T019.md",
       "acceptance": "server/test 可跑 tiles/qishou/niao",
       "touch_files": [
         "server/test/",
         "server/lualib/game/changsha_mj/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.707758+00:00"
     },
     {
       "id": "T020",
