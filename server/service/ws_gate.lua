@@ -49,7 +49,7 @@ local function handle_platform(fd, req)
   if cmd == "login" then
     local name = body.name or body.testerName or "测试用户"
     local u = skynet.call(passport, "lua", "login", name)
-    clients[fd] = { userId = u.userId, userName = u.userName }
+    clients[fd] = { userId = u.userId, userName = u.userName, ticket = u.ticket }
     reply(fd, req, "loginResult", {
       ok = true,
       userId = u.userId,
@@ -57,6 +57,37 @@ local function handle_platform(fd, req)
       ticket = u.ticket,
       roomCard = u.roomCard,
     })
+    return
+  end
+
+  if cmd == "ping" then
+    reply(fd, req, "pong", {
+      ok = true,
+      ts = os.time(),
+      uptime = skynet.now() / 100,
+      userId = c.userId,
+    })
+    return
+  end
+
+  -- ticket 恢复登录（重连）
+  if cmd == "reconnect" or cmd == "loginTicket" then
+    local ticket = body.ticket
+    local u = skynet.call(passport, "lua", "by_ticket", ticket)
+    if not u then
+      reply(fd, req, "error", { message = "ticket 无效或过期" })
+      return
+    end
+    clients[fd] = { userId = u.userId, userName = u.userName, ticket = ticket }
+    local st = skynet.call(room_mgr, "lua", "reconnect", u.userId, u.userName)
+    reply(fd, req, "reconnectResult", {
+      ok = true,
+      userId = u.userId,
+      userName = u.userName,
+      roomCard = u.roomCard,
+      inRoom = st ~= nil,
+    })
+    if st then push_state(fd, st) end
     return
   end
 

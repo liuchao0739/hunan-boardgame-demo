@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 7,
-    "pending": 93,
+    "done": 8,
+    "pending": 92,
     "failed": 0
   },
-  "current_phase": "phase0_foundation",
-  "current_task": "T008",
+  "current_phase": "phase1_rules",
+  "current_task": "T009",
   "tasks": [
     {
       "id": "T001",
@@ -103,12 +103,13 @@
       "id": "T008",
       "phase": "phase0_foundation",
       "title": "健康检查 HTTP/WS ping",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T008.md",
       "acceptance": "ping 命令返回 ok+uptime",
       "touch_files": [
         "server/service/ws_gate.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:53.627512+00:00"
     },
     {
       "id": "T009",
