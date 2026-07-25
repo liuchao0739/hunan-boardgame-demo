@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 10,
-    "pending": 90,
+    "done": 11,
+    "pending": 89,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T010",
+  "current_task": "T011",
   "tasks": [
     {
       "id": "T001",
@@ -127,12 +127,13 @@
       "id": "T010",
       "phase": "phase1_rules",
       "title": "杠分结算（明/暗/补）",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T010.md",
       "acceptance": "杠后即时计分写入 snapshot",
       "touch_files": [
         "server/lualib/game/changsha_mj/init.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:36.909202+00:00"
     },
     {
       "id": "T011",
