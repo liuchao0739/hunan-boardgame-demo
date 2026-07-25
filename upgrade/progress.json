@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 22,
-    "pending": 78,
+    "done": 23,
+    "pending": 77,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T020",
+  "current_task": "T021",
   "tasks": [
     {
       "id": "T001",
@@ -250,12 +250,13 @@
       "id": "T020",
       "phase": "phase1_rules",
       "title": "胡牌用例集 ≥20",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T020.md",
       "acceptance": "can_hu 正反例覆盖",
       "touch_files": [
         "server/test/test_hu.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.784337+00:00"
     },
     {
       "id": "T021",
