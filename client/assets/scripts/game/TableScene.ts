@@ -1,5 +1,5 @@
-import { _decorator, Component, director, Node, UITransform } from 'cc';
-import { NetBus } from '../comm/NetBus';
+import { _decorator, Component, director, Node, UITransform, Label } from 'cc';
+import { NetBus, ConnState } from '../comm/NetBus';
 import { createTileNode, sortHandTiles } from '../comm/ArtBg';
 import { TableLayout, SeatPlayer } from './TableLayout';
 
@@ -17,6 +17,9 @@ export class TableScene extends Component {
   private leaving = false;
   private lastOps: any[] = [];
   private lastChi: number[] | null = null;
+  private autoPlay = false;
+  private roomState = 'playing';
+  private resultShown = false;
 
   onDestroy() {
     this.clearSubs();
@@ -44,11 +47,17 @@ export class TableScene extends Component {
     this.layout.btnGuo?.node.on('click', () => void this.act('guo'), this);
     this.layout.btnChi?.node.on('click', () => void this.actChi(), this);
     this.layout.btnContinue?.node.on('click', () => void this.act('continue'), this);
+    this.layout.btnAutoPlay?.node.on('click', () => void this.toggleAutoPlay(), this);
+    this.layout.btnDissolve?.node.on('click', () => void this.voteDissolve(true), this);
     this.layout.exitBtn?.node.on('click', () => void this.backToHall(), this);
 
+    this.unsubs.push(NetBus.ins.onConnState((state, detail) => this.onConnState(state, detail)));
     this.unsubs.push(NetBus.ins.on('platform', 'state', (body) => this.applyState(body)));
     this.unsubs.push(NetBus.ins.on('platform', 'error', (body) => {
       this.setTip(body?.message || '错误');
+    }));
+    this.unsubs.push(NetBus.ins.on('platform', 'dissolveResult', (body) => {
+      if (body?.dissolved) void this.backToHall();
     }));
 
     const cached = (globalThis as any).__HNQP_ROOM__;
@@ -58,8 +67,32 @@ export class TableScene extends Component {
     });
   }
 
+  private onConnState(state: ConnState, detail?: string) {
+    if (!this.layout) return;
+    if (state === 'connected') {
+      this.layout.setNetBanner(null);
+      return;
+    }
+    if (state === 'reconnecting') {
+      this.layout.setNetBanner(detail || '重连中…');
+      return;
+    }
+    if (state === 'network_poor') {
+      this.layout.setNetBanner(detail || '网络不稳定，请稍候…');
+      return;
+    }
+    if (state === 'disconnected') {
+      this.layout.setNetBanner(detail || '已断开连接');
+    }
+  }
+
   private applyState(body: any) {
     if (!this.isValid || !this.layout || this.leaving || !body) return;
+    this.roomState = body.state || this.roomState;
+    if (body.state === 'waiting' && !body.game) {
+      void this.backToHall();
+      return;
+    }
     const game = body.game;
     if (!game) {
       this.setTip('等待牌局…');
@@ -69,6 +102,7 @@ export class TableScene extends Component {
     for (const s of game.seats || []) {
       if (s.userId === this.myId) {
         this.mySeat = s.seat;
+        this.autoPlay = !!s.autoPlay;
         const raw = s.hand;
         if (Array.isArray(raw)) {
           this.hand = sortHandTiles(raw);
@@ -81,7 +115,13 @@ export class TableScene extends Component {
     if (this.layout.roomLabel) this.layout.roomLabel.string = `房${body.roomId}`;
     if (this.layout.roundLabel) this.layout.roundLabel.string = `第 ${game.round || 1} 局`;
     if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${game.wallCount ?? '--'}`;
-    this.setTip(game.message || '');
+    const sec = game.deadlineMs != null ? Math.ceil(game.deadlineMs / 1000) : null;
+    const baseTip = game.message || '';
+    this.setTip(sec != null && sec > 0 ? `${baseTip} (${sec}s)` : baseTip);
+    if (this.layout.btnAutoPlay) {
+      const lab = this.layout.btnAutoPlay.node.getChildByName('t')?.getComponent(Label);
+      if (lab) lab.string = this.autoPlay ? '取消托管' : '托管';
+    }
 
     const players: SeatPlayer[] = (game.seats || []).map((s: any) => ({
       userId: s.userId,
@@ -115,10 +155,55 @@ export class TableScene extends Component {
       this.scheduleOnce(this.autoContinueQishou, 1.2);
     }
 
-    if (game.phase === 'settle' && game.settle) {
+    if (game.phase === 'settle' && game.settle && !this.resultShown) {
+      this.resultShown = true;
       const s = game.settle;
       const title = s.reason === 'huangzhuang' ? '荒庄' : (s.reason === 'zimo' ? '自摸！' : '胡牌！');
-      this.layout.showResultOverlay(title, s.detail || '本局结束', () => void this.backToHall());
+      const between = this.roomState === 'between_round';
+      this.layout.showResultOverlay(
+        title,
+        s.detail || '本局结束',
+        between ? '准备下一局' : '回大厅',
+        () => {
+          if (between) void this.prepareNextRound();
+          else void this.backToHall();
+        },
+        between ? '回大厅' : undefined,
+        between ? () => void this.backToHall() : undefined,
+      );
+    }
+  }
+
+  private async prepareNextRound() {
+    this.resultShown = false;
+    try {
+      const msg = await NetBus.ins.prepare(true);
+      if (msg.cmd === 'error') this.setTip(msg.body?.message || '准备失败');
+    } catch {
+      this.setTip('准备超时');
+    }
+  }
+
+  private async toggleAutoPlay() {
+    try {
+      const msg = await NetBus.ins.setAutoPlay(!this.autoPlay);
+      if (msg.cmd === 'error') this.setTip(msg.body?.message || '托管失败');
+    } catch {
+      this.setTip('托管超时');
+    }
+  }
+
+  private async voteDissolve(agree: boolean) {
+    try {
+      const msg = await NetBus.ins.dissolveVote(agree);
+      if (msg.body?.dissolved) {
+        void this.backToHall();
+        return;
+      }
+      if (msg.cmd === 'error') this.setTip(msg.body?.message || '解散失败');
+      else this.setTip(agree ? '已同意解散，等待其他玩家' : '已拒绝解散');
+    } catch {
+      this.setTip('操作超时');
     }
   }
 

@@ -60,6 +60,12 @@ export class HallScene extends Component {
     this.unsubs.push(NetBus.ins.on('platform', 'error', (body) => {
       this.setRoom(body?.message || '错误');
     }));
+    this.unsubs.push(NetBus.ins.onConnState((state, detail) => {
+      if (state === 'connected') return;
+      if (state === 'reconnecting') this.setRoom(detail || '重连中…');
+      else if (state === 'network_poor') this.setRoom(detail || '网络不稳定…');
+      else if (state === 'disconnected') this.setRoom(detail || '已断开');
+    }));
 
     const ok = await this.ensureConnected();
     if (!ok) return;

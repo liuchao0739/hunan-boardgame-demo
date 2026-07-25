@@ -42,6 +42,9 @@ export class TableLayout {
   btnGuo: Button | null = null;
   btnChi: Button | null = null;
   btnContinue: Button | null = null;
+  btnAutoPlay: Button | null = null;
+  btnDissolve: Button | null = null;
+  netBanner: Label | null = null;
   roomLabel: Label | null = null;
   remainLabel: Label | null = null;
   roundLabel: Label | null = null;
@@ -75,6 +78,11 @@ export class TableLayout {
 
   private buildHud(parent: Node) {
     this.tipLabel = this.mkLabel(parent, 'tip', 0, 200, 880, 34, 24);
+    this.netBanner = this.mkLabel(parent, 'netBanner', 0, 260, 880, 30, 22);
+    if (this.netBanner) {
+      this.netBanner.color = new Color(255, 200, 80, 255);
+      this.netBanner.node.active = false;
+    }
     this.roomLabel = this.mkLabel(parent, 'room', 460, 320, 280, 28, 20);
     this.roundLabel = this.mkLabel(parent, 'round', -160, 50, 120, 28, 20);
     this.remainLabel = this.mkLabel(parent, 'remain', 160, 50, 140, 28, 20);
@@ -243,13 +251,28 @@ export class TableLayout {
     this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
     this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
     this.btnContinue = this.mkTextBtn(parent, 'btnCont', 0, -80, '继续打牌');
+    this.btnAutoPlay = this.mkTextBtn(parent, 'btnAuto', -520, 250, '托管');
+    this.btnDissolve = this.mkTextBtn(parent, 'btnDiss', -520, 180, '解散');
     this.btnChu = null;
     this.setActionButtons(false, false, false, false);
     if (this.btnContinue) this.btnContinue.node.active = false;
+    if (this.btnAutoPlay) this.btnAutoPlay.node.active = true;
+    if (this.btnDissolve) this.btnDissolve.node.active = true;
+  }
+
+  setNetBanner(text: string | null) {
+    if (!this.netBanner) return;
+    if (!text) {
+      this.netBanner.node.active = false;
+      this.netBanner.string = '';
+      return;
+    }
+    this.netBanner.node.active = true;
+    this.netBanner.string = text;
   }
 
   /** 荒庄 / 结算遮罩（始终盖在最上层） */
-  showResultOverlay(title: string, sub: string, onOk?: () => void) {
+  showResultOverlay(title: string, sub: string, primaryLabel: string, onPrimary?: () => void, secondaryLabel?: string, onSecondary?: () => void) {
     const parent = this.root.getChildByName('__TableUI') || this.root;
     let ov = parent.getChildByName('__ResultOverlay');
     if (ov) ov.destroy();
@@ -279,10 +302,14 @@ export class TableLayout {
     subLab.string = sub;
     subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
 
-    const btn = this.mkTextBtn(ov, 'ok', 0, -120, '回大厅');
+    const btn = this.mkTextBtn(ov, 'ok', secondaryLabel ? -120 : 0, -120, primaryLabel);
     btn.node.on(Button.EventType.CLICK, () => {
-      onOk?.();
+      onPrimary?.();
     });
+    if (secondaryLabel && onSecondary) {
+      const btn2 = this.mkTextBtn(ov, 'ok2', 120, -120, secondaryLabel);
+      btn2.node.on(Button.EventType.CLICK, () => onSecondary());
+    }
   }
 
   /** 仅显示你真正能用的操作 */
