@@ -1,7 +1,13 @@
 # 湘桌平台协议（JSON Envelope）
 
-
 WebSocket：文本帧，路径 `/websocket`，端口 **20480**。
+
+## 版本策略
+
+| 字段 | 说明 |
+|------|------|
+| `v` | 协议主版本，当前 **1**。服务端忽略未知扩展字段；不认识的 `cmd` 回 `error`。 |
+| 向前兼容 | 新增可选 body 字段不升主版本；破坏性变更升 `v` 并双轨过渡。 |
 
 ## 信封
 
@@ -17,7 +23,7 @@ WebSocket：文本帧，路径 `/websocket`，端口 **20480**。
 
 | ns | 说明 |
 |----|------|
-| `platform` | 登录 / 建房 / 加入 / 准备 / 同步 / 离开 |
+| `platform` | 登录 / 建房 / 加入 / 准备 / 同步 / 离开 / ping |
 | `changsha_mj` | 长沙麻将操作 |
 | `shaoyang_phz` | 预留 |
 
@@ -25,7 +31,8 @@ WebSocket：文本帧，路径 `/websocket`，端口 **20480**。
 
 | cmd | body | 回包 |
 |-----|------|------|
-| login | `{ name }` | loginResult |
+| login | `{ name }` | loginResult（含 ticket） |
+| ping | `{}` | pong（可未登录） |
 | listGames | `{}` | listGamesResult |
 | createRoom | `{ gameId, rules? }` | createRoomResult + state |
 | joinRoom | `{ roomId }` | joinRoomResult + state |
@@ -42,3 +49,5 @@ WebSocket：文本帧，路径 `/websocket`，端口 **20480**。
 ## 客户端
 
 [`NetBus.ts`](../client/assets/scripts/comm/NetBus.ts)：`NetBus.ins.request(ns, cmd, body)`。
+
+升级任务循环见 [`upgrade/LOOP.md`](../upgrade/LOOP.md)。

@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 6,
-    "pending": 94,
+    "done": 7,
+    "pending": 93,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
-  "current_task": "T007",
+  "current_task": "T008",
   "tasks": [
     {
       "id": "T001",
@@ -91,12 +91,13 @@
       "id": "T007",
       "phase": "phase0_foundation",
       "title": "协议版本字段文档化",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T007.md",
       "acceptance": "PROTOCOL 标明 v=1 兼容策略",
       "touch_files": [
         "docs/PROTOCOL_PLATFORM.md"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:53.511148+00:00"
     },
     {
       "id": "T008",

@@ -37,6 +37,7 @@ cd server
 | `client/assets/scripts/comm/NetBus.ts` | 客户端总线 |
 | `docs/PROTOCOL_PLATFORM.md` | 协议 |
 | `docs/RULES_CHANGSHA.md` | 规则 |
+| `upgrade/` | 对标欢乐麻将任务循环（见 [LOOP.md](upgrade/LOOP.md)） |
 
 ## 许可
 
