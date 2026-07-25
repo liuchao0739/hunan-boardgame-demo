@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 5,
-    "pending": 95,
+    "done": 6,
+    "pending": 94,
     "failed": 0
   },
   "current_phase": "phase0_foundation",
-  "current_task": "T004",
+  "current_task": "T007",
   "tasks": [
     {
       "id": "T001",
@@ -53,12 +53,13 @@
       "id": "T004",
       "phase": "phase0_foundation",
       "title": "passport 持久化用户",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T004.md",
       "acceptance": "登录写入/读取 MySQL，重启 userId 稳定",
       "touch_files": [
         "server/service/passport.lua"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:21:39.076721+00:00"
     },
     {
       "id": "T005",
