@@ -5,12 +5,12 @@
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
     "total": 100,
-    "done": 16,
-    "pending": 84,
+    "done": 17,
+    "pending": 83,
     "failed": 0
   },
   "current_phase": "phase1_rules",
-  "current_task": "T016",
+  "current_task": "T017",
   "tasks": [
     {
       "id": "T001",
@@ -200,12 +200,13 @@
       "id": "T016",
       "phase": "phase1_rules",
       "title": "中途四喜/六六顺即时分",
-      "status": "pending",
+      "status": "done",
       "spec": "upgrade/specs/T016.md",
       "acceptance": "触发后分数变化可测",
       "touch_files": [
         "server/lualib/game/changsha_mj/"
-      ]
+      ],
+      "completed_at": "2026-07-25T16:25:37.329868+00:00"
     },
     {
       "id": "T017",
