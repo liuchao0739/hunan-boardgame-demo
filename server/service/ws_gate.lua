@@ -3,9 +3,14 @@ local skynet = require "skynet"
 local socket = require "skynet.socket"
 local websocket = require "http.websocket"
 local Protocol = require "platform.protocol"
+local Log = require "platform.log"
+local Metrics = require "platform.metrics"
+local Registry = require "game.registry"
 
 local passport
 local room_mgr
+local matchmaking
+local club_record
 
 local clients = {} -- fd -> { userId, userName, ticket }
 local user_fd = {} -- userId -> fd（T089 单点登录）
@@ -34,6 +39,11 @@ end
 local function bind_user(fd, userId, userName, ticket)
   clients[fd] = { userId = userId, userName = userName, ticket = ticket }
   user_fd[userId] = fd
+  local n = 0
+  for _, c in pairs(clients) do
+    if c.userId then n = n + 1 end
+  end
+  Metrics.set_online(n)
 end
 
 --- T089：同账号新连接顶掉旧 fd
@@ -57,8 +67,58 @@ local function broadcast_room(roomId, exceptFd)
   end
 end
 
+function GATE_CMD.push_user(userId, ns, cmd, body)
+  local fd = user_fd[userId]
+  if fd then push(fd, ns, cmd, body) end
+end
+
+function GATE_CMD.broadcast_social(roomId, cmd, body, exceptFd)
+  for fd, c in pairs(clients) do
+    if c.userId and fd ~= exceptFd then
+      local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
+      if rid == roomId then
+        push(fd, "platform", cmd, body)
+      end
+    end
+  end
+end
+
 function GATE_CMD.broadcast_room(roomId, exceptFd)
   broadcast_room(roomId, exceptFd)
+end
+
+function GATE_CMD.list_online()
+  local list = {}
+  for _, c in pairs(clients) do
+    if c.userId then
+      list[#list + 1] = {
+        userId = c.userId,
+        userName = c.userName,
+        ticket = c.ticket,
+      }
+    end
+  end
+  return list
+end
+
+local function login_result(fd, req, u, err)
+  if not u then
+    reply(fd, req, "error", { message = err or "登录失败" })
+    return
+  end
+  kick_old_fd(u.userId, fd)
+  bind_user(fd, u.userId, u.userName, u.ticket)
+  reply(fd, req, "loginResult", {
+    ok = true,
+    userId = u.userId,
+    userName = u.userName,
+    ticket = u.ticket,
+    roomCard = u.roomCard,
+    diamond = u.diamond or 0,
+    dailyGift = u.dailyGift or 0,
+    headImg = u.headImg,
+    ukeyExpireAt = u.ukeyExpireAt,
+  })
 end
 
 local function handle_platform(fd, req)
@@ -66,18 +126,23 @@ local function handle_platform(fd, req)
   local body = req.body or {}
   local c = clients[fd] or {}
 
-  if cmd == "login" then
-    local name = body.name or body.testerName or "测试用户"
-    local u = skynet.call(passport, "lua", "login", name)
-    kick_old_fd(u.userId, fd)
-    bind_user(fd, u.userId, u.userName, u.ticket)
-    reply(fd, req, "loginResult", {
-      ok = true,
-      userId = u.userId,
-      userName = u.userName,
-      ticket = u.ticket,
-      roomCard = u.roomCard,
-    })
+  if cmd == "register" then
+    local u, err = skynet.call(passport, "lua", "register", body.name, body.password)
+    login_result(fd, req, u, err)
+    return
+  end
+
+  if cmd == "login" or cmd == "guestLogin" then
+    local mode = body.mode
+    local u, err
+    if cmd == "guestLogin" or mode == "guest" or (body.deviceId and not body.password and not body.name) then
+      u, err = skynet.call(passport, "lua", "guest_login", body.deviceId)
+    elseif body.password and body.password ~= "" then
+      u, err = skynet.call(passport, "lua", "login_account", body.name, body.password)
+    else
+      u, err = skynet.call(passport, "lua", "login", body.name or body.testerName or "测试用户")
+    end
+    login_result(fd, req, u, err)
     return
   end
 
@@ -96,7 +161,7 @@ local function handle_platform(fd, req)
     local ticket = body.ticket
     local u = skynet.call(passport, "lua", "by_ticket", ticket)
     if not u then
-      reply(fd, req, "error", { message = "ticket 无效或过期" })
+      reply(fd, req, "error", { message = "ticket 无效或已过期，请重新登录" })
       return
     end
     kick_old_fd(u.userId, fd)
@@ -108,9 +173,28 @@ local function handle_platform(fd, req)
       userName = u.userName,
       ticket = ticket,
       roomCard = u.roomCard,
+      diamond = u.diamond or 0,
       inRoom = st ~= nil,
     })
     if st then push_state(fd, st) end
+    return
+  end
+
+  if cmd == "refreshTicket" then
+    local ticket = body.ticket or c.ticket
+    local u, err = skynet.call(passport, "lua", "refresh_ticket", ticket)
+    if not u then
+      reply(fd, req, "error", { message = err or "ticket 刷新失败" })
+      return
+    end
+    if c.userId and c.userId == u.userId then
+      c.ticket = u.ticket
+    end
+    reply(fd, req, "refreshTicketResult", {
+      ok = true,
+      ticket = u.ticket,
+      ukeyExpireAt = u.ukeyExpireAt,
+    })
     return
   end
 
@@ -126,6 +210,122 @@ local function handle_platform(fd, req)
     return
   end
 
+  if cmd == "quickMatch" or cmd == "enqueueMatch" then
+    local res, err = skynet.call(matchmaking, "lua", "enqueue", c.userId, c.userName, body.gameId)
+    if not res then
+      reply(fd, req, "error", { message = err or "匹配失败" })
+      return
+    end
+    reply(fd, req, "matchQueueResult", res)
+    return
+  end
+
+  if cmd == "cancelMatch" then
+    local res = skynet.call(matchmaking, "lua", "cancel", c.userId)
+    reply(fd, req, "cancelMatchResult", res)
+    return
+  end
+
+  if cmd == "createClub" then
+    local club, err = skynet.call(club_record, "lua", "create_club", c.userId, body.name or body.clubName)
+    if not club then
+      reply(fd, req, "error", { message = err or "创建失败" })
+      return
+    end
+    reply(fd, req, "createClubResult", { ok = true, clubId = club.clubId, clubName = club.clubName })
+    return
+  end
+
+  if cmd == "joinClub" then
+    local club, ok = skynet.call(club_record, "lua", "join_club", c.userId, tonumber(body.clubId))
+    if not club or not ok then
+      reply(fd, req, "error", { message = "俱乐部不存在或加入失败" })
+      return
+    end
+    reply(fd, req, "joinClubResult", { ok = true, clubId = club.clubId, clubName = club.clubName })
+    return
+  end
+
+  if cmd == "listClubs" then
+    local list = skynet.call(club_record, "lua", "joined_list", c.userId)
+    reply(fd, req, "listClubsResult", { clubs = list or {} })
+    return
+  end
+
+  if cmd == "getBalance" then
+    local bal = skynet.call(passport, "lua", "get_balance", c.userId)
+    reply(fd, req, "getBalanceResult", bal)
+    return
+  end
+
+  if cmd == "getLedger" then
+    local data = skynet.call(passport, "lua", "get_ledger", c.userId, body.page, body.pageSize)
+    reply(fd, req, "getLedgerResult", data)
+    return
+  end
+
+  if cmd == "shopList" then
+    local data = skynet.call(passport, "lua", "shop_list")
+    reply(fd, req, "shopListResult", data)
+    return
+  end
+
+  if cmd == "exchangeDiamond" then
+    local res, err = skynet.call(passport, "lua", "exchange_diamond", c.userId, body.amount)
+    if not res then
+      reply(fd, req, "error", { message = err or "兑换失败" })
+      return
+    end
+    reply(fd, req, "exchangeDiamondResult", res)
+    return
+  end
+
+  if cmd == "claimDailyGift" then
+    local res = skynet.call(passport, "lua", "claim_daily_gift", c.userId)
+    reply(fd, req, "claimDailyGiftResult", res)
+    return
+  end
+
+  if cmd == "sendEmoji" then
+    local payload, err = skynet.call(room_mgr, "lua", "send_emoji", c.userId, body)
+    if not payload then
+      reply(fd, req, "error", { message = err or "发送失败" })
+      return
+    end
+    reply(fd, req, "sendEmojiResult", { ok = true })
+    push(fd, "platform", "emojiEvent", payload)
+    GATE_CMD.broadcast_social(payload.roomId, "emojiEvent", payload, fd)
+    return
+  end
+
+  if cmd == "sendPhrase" then
+    local payload, err = skynet.call(room_mgr, "lua", "send_phrase", c.userId, body)
+    if not payload then
+      reply(fd, req, "error", { message = err or "发送失败" })
+      return
+    end
+    reply(fd, req, "sendPhraseResult", { ok = true })
+    push(fd, "platform", "phraseEvent", payload)
+    GATE_CMD.broadcast_social(payload.roomId, "phraseEvent", payload, fd)
+    return
+  end
+
+  if cmd == "kickPlayer" then
+    local res, err = skynet.call(room_mgr, "lua", "kick", c.userId, tonumber(body.userId or body.targetUserId))
+    if not res then
+      reply(fd, req, "error", { message = err or "踢人失败" })
+      return
+    end
+    reply(fd, req, "kickPlayerResult", res)
+    local kickedFd = user_fd[res.kickedUserId]
+    if kickedFd then
+      push(kickedFd, "platform", "kicked", { reason = "host_kick", message = "已被房主请出房间" })
+      skynet.call(room_mgr, "lua", "force_leave", res.kickedUserId)
+    end
+    broadcast_room(res.roomId, fd)
+    return
+  end
+
   if cmd == "createRoom" then
     local st, err = skynet.call(room_mgr, "lua", "create", c.userId, c.userName, body.gameId or "changsha_mj", body.rules)
     if not st then
@@ -138,7 +338,7 @@ local function handle_platform(fd, req)
   end
 
   if cmd == "joinRoom" then
-    local st, err = skynet.call(room_mgr, "lua", "join", c.userId, c.userName, tonumber(body.roomId))
+    local st, err = skynet.call(room_mgr, "lua", "join", c.userId, c.userName, tonumber(body.roomId), body.password)
     if not st then
       reply(fd, req, "error", { message = err or "加入失败" })
       return
@@ -198,13 +398,32 @@ local function handle_platform(fd, req)
   end
 
   if cmd == "sync" then
-    local st, err = skynet.call(room_mgr, "lua", "sync", c.userId)
+    local st, err = skynet.call(room_mgr, "lua", "sync", c.userId, body.roomId)
     if not st then
       reply(fd, req, "error", { message = err or "同步失败" })
       return
     end
     reply(fd, req, "syncResult", st)
     push_state(fd, st)
+    return
+  end
+
+  if cmd == "getRecords" or cmd == "listRecords" then
+    local page = tonumber(body.page) or 1
+    local pageSize = tonumber(body.pageSize) or 20
+    local data = skynet.call(passport, "lua", "get_records", c.userId, page, pageSize)
+    reply(fd, req, "getRecordsResult", data)
+    return
+  end
+
+  if cmd == "updateProfile" then
+    local u, err = skynet.call(passport, "lua", "update_profile", c.userId, body)
+    if not u then
+      reply(fd, req, "error", { message = err or "更新失败" })
+      return
+    end
+    c.userName = u.userName
+    reply(fd, req, "updateProfileResult", u)
     return
   end
 
@@ -225,6 +444,11 @@ local function handle_game(fd, req)
     reply(fd, req, "error", { message = "请先登录" })
     return
   end
+  if not Registry.known(req.ns) then
+    reply(fd, req, "error", { message = "未知 gameId: " .. tostring(req.ns) })
+    return
+  end
+  Log.info("ws.game", { userId = c.userId, gameId = req.ns, cmd = req.cmd })
   local st, err = skynet.call(room_mgr, "lua", "action", c.userId, req.ns, req.cmd, req.body)
   if not st then
     reply(fd, req, "error", { message = err or "操作失败" })
@@ -284,6 +508,11 @@ function handle.close(fd)
     skynet.call(room_mgr, "lua", "leave", c.userId)
   end
   clients[fd] = nil
+  local n = 0
+  for _, cc in pairs(clients) do
+    if cc.userId then n = n + 1 end
+  end
+  Metrics.set_online(n)
 end
 
 function handle.error(fd)
@@ -293,6 +522,8 @@ end
 skynet.start(function()
   passport = skynet.uniqueservice("passport")
   room_mgr = skynet.uniqueservice("room_mgr")
+  matchmaking = skynet.uniqueservice("matchmaking")
+  club_record = skynet.uniqueservice("club_record")
 
   skynet.dispatch("lua", function(_, _, cmd, ...)
     local f = GATE_CMD[cmd]

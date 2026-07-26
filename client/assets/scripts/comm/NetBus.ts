@@ -358,12 +358,127 @@ export class NetBus {
     return this.request('platform', 'login', { name });
   }
 
+  register(name: string, password: string) {
+    return this.request('platform', 'register', { name, password });
+  }
+
+  loginAccount(name: string, password: string) {
+    return this.request('platform', 'login', { name, password, mode: 'account' });
+  }
+
+  guestLogin(deviceId?: string) {
+    return this.request('platform', 'guestLogin', { deviceId: deviceId || NetBus.deviceId() });
+  }
+
+  static deviceId(): string {
+    const key = 'xz_device_id';
+    try {
+      if (typeof localStorage !== 'undefined') {
+        let id = localStorage.getItem(key);
+        if (!id) {
+          id = `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+          localStorage.setItem(key, id);
+        }
+        return id;
+      }
+    } catch { /* ignore */ }
+    return `dev-${Date.now()}`;
+  }
+
+  refreshTicket(ticket?: string) {
+    const u = (globalThis as any).__HNQP__ || {};
+    return this.request('platform', 'refreshTicket', { ticket: ticket || u.ticket });
+  }
+
+  getRecords(page = 1, pageSize = 20) {
+    return this.request('platform', 'getRecords', { page, pageSize });
+  }
+
+  updateProfile(fields: { userName?: string; headImg?: string }) {
+    return this.request('platform', 'updateProfile', fields);
+  }
+
   createRoom(gameId = 'changsha_mj', rules?: any) {
     return this.request('platform', 'createRoom', { gameId, rules });
   }
 
-  joinRoom(roomId: number) {
-    return this.request('platform', 'joinRoom', { roomId });
+  joinRoom(roomId: number, password?: string) {
+    return this.request('platform', 'joinRoom', { roomId, password });
+  }
+
+  quickMatch(gameId = 'changsha_mj') {
+    return this.request('platform', 'quickMatch', { gameId });
+  }
+
+  cancelMatch() {
+    return this.request('platform', 'cancelMatch', {});
+  }
+
+  sendEmoji(emojiId: string | number, targetSeat?: number) {
+    return this.request('platform', 'sendEmoji', { emojiId, targetSeat });
+  }
+
+  sendPhrase(phraseId: number) {
+    return this.request('platform', 'sendPhrase', { phraseId });
+  }
+
+  kickPlayer(userId: number) {
+    return this.request('platform', 'kickPlayer', { userId });
+  }
+
+  createClub(name: string) {
+    return this.request('platform', 'createClub', { name });
+  }
+
+  joinClub(clubId: number) {
+    return this.request('platform', 'joinClub', { clubId });
+  }
+
+  listClubs() {
+    return this.request('platform', 'listClubs', {});
+  }
+
+  getBalance() {
+    return this.request('platform', 'getBalance', {});
+  }
+
+  getLedger(page = 1, pageSize = 20) {
+    return this.request('platform', 'getLedger', { page, pageSize });
+  }
+
+  shopList() {
+    return this.request('platform', 'shopList', {});
+  }
+
+  exchangeDiamond(amount: number) {
+    return this.request('platform', 'exchangeDiamond', { amount });
+  }
+
+  claimDailyGift() {
+    return this.request('platform', 'claimDailyGift', {});
+  }
+
+  static copyToClipboard(text: string): boolean {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        void navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch { /* ignore */ }
+    try {
+      if (typeof document !== 'undefined') {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      }
+    } catch { /* ignore */ }
+    return false;
   }
 
   prepare(yes = true) {
@@ -386,7 +501,7 @@ export class NetBus {
     return this.request('platform', 'leave', {});
   }
 
-  gameAction(cmd: string, body: any = {}) {
-    return this.request('changsha_mj', cmd, body);
+  gameAction(cmd: string, body: any = {}, gameId = 'changsha_mj') {
+    return this.request(gameId, cmd, body);
   }
 }

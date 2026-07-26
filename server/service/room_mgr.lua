@@ -2,6 +2,10 @@
 local skynet = require "skynet"
 local Registry = require "game.registry"
 local Config = require "platform.config"
+local Features = require "platform.features"
+local Log = require "platform.log"
+local Metrics = require "platform.metrics"
+local Economy = require "platform.economy"
 
 local rooms = {}
 local user_room = {}
@@ -69,6 +73,25 @@ local function on_game_settled(room)
   for _, pl in ipairs(room.players) do
     if not pl.isBot then pl.ready = false end
   end
+  if room.engine and room.engine.settle then
+    room.roundNo = (room.roundNo or 0) + 1
+    local Records = require "platform.records"
+    Records.save_settle(room, room.engine.settle, room.players, room.roundNo)
+    Economy.on_round_settle(room, room.rules)
+    Metrics.inc_round()
+  end
+end
+
+local function member_of(room, userId)
+  for _, p in ipairs(room.players) do
+    if p.userId == userId and not p.isBot then return true end
+  end
+  return false
+end
+
+local function check_password(room, password)
+  if not room.password or room.password == "" then return true end
+  return tostring(password or "") == room.password
 end
 
 local function build_platform_state(room, for_userId)
@@ -112,31 +135,53 @@ local function should_fill_bots(rules)
   return true
 end
 
+local function max_players_for(gameId)
+  if gameId == "shaoyang_phz" then return 3 end
+  return 4
+end
+
 function CMD.create(userId, userName, gameId, rules)
   gameId = gameId or "changsha_mj"
-  if gameId == "shaoyang_phz" then
-    return nil, "邵阳跑胡子尚未开放"
+  rules = rules or {}
+  if not Registry.known(gameId) then
+    return nil, "未知 gameId: " .. tostring(gameId)
+  end
+  if not Features.game_enabled(gameId) then
+    return nil, "玩法未开放: " .. tostring(gameId)
   end
   if user_room[userId] then
     return nil, "已在房间中"
   end
-  local engine, err = Registry.create(gameId, rules or {})
+  local engine, err = Registry.create(gameId, rules)
   if not engine then return nil, err end
 
   local roomId = alloc_room_id()
+  if not rules.matchMade then
+    local ok, bal, err2 = Economy.deduct_create_room(userId, roomId, { roomCard = 9999 })
+    if not ok then return nil, err2 or ("房卡不足，需要 " .. (Config.economy.create_room_cost or 1)) end
+  end
+
+  local pwd = rules.password
+  if pwd ~= nil then pwd = tostring(pwd):sub(1, 16) end
+
   local room = {
     roomId = roomId,
     gameId = gameId,
     state = "waiting",
     ownerId = userId,
+    roundNo = 0,
+    prevScores = nil,
+    password = pwd,
+    allowSpectate = rules.allowSpectate == true,
     players = {
       { userId = userId, userName = userName or ("玩家" .. userId), isBot = false, ready = false },
     },
     engine = engine,
-    rules = rules or {},
+    rules = rules,
   }
   if should_fill_bots(rules) then
-    while #room.players < 4 do
+    local cap = max_players_for(gameId)
+    while #room.players < cap do
       local bi = #room.players
       room.players[#room.players + 1] = {
         userId = -1000 - bi,
@@ -148,14 +193,17 @@ function CMD.create(userId, userName, gameId, rules)
   end
   rooms[roomId] = room
   user_room[userId] = roomId
+  Metrics.inc_room()
+  Log.info("room.create", { roomId = roomId, userId = userId, gameId = gameId })
   return build_platform_state(room, userId)
 end
 
-function CMD.join(userId, userName, roomId)
+function CMD.join(userId, userName, roomId, password)
   local room = rooms[roomId]
   if not room then return nil, "房间不存在" end
   if room.state ~= "waiting" then return nil, "已开局" end
   if user_room[userId] then return nil, "已在房间" end
+  if not check_password(room, password) then return nil, "房间密码错误" end
   local replaced = false
   for i, p in ipairs(room.players) do
     if p.isBot then
@@ -170,7 +218,8 @@ function CMD.join(userId, userName, roomId)
     end
   end
   if not replaced then
-    if #room.players >= 4 then return nil, "房间已满" end
+    local cap = max_players_for(room.gameId)
+    if #room.players >= cap then return nil, "房间已满" end
     room.players[#room.players + 1] = {
       userId = userId,
       userName = userName or ("玩家" .. userId),
@@ -279,11 +328,86 @@ function CMD.tick_bots(roomId)
   CMD._run_bots(room)
 end
 
-function CMD.sync(userId)
+function CMD.sync(userId, roomId)
+  local myRoomId = user_room[userId]
+  if not myRoomId then return nil, "不在房间" end
+  if roomId and tonumber(roomId) ~= myRoomId then
+    return nil, "无权同步他人房间"
+  end
+  local room = rooms[myRoomId]
+  if not room then return nil, "房间不存在" end
+  if not member_of(room, userId) then return nil, "非房间成员" end
+  return build_platform_state(room, userId)
+end
+
+function CMD.kick(ownerId, targetUserId)
+  ownerId = tonumber(ownerId)
+  targetUserId = tonumber(targetUserId)
+  if not targetUserId or targetUserId <= 0 then return nil, "目标无效" end
+  if ownerId == targetUserId then return nil, "不能踢自己" end
+  local roomId = user_room[ownerId]
+  local room = roomId and rooms[roomId]
+  if not room then return nil, "不在房间" end
+  if room.ownerId ~= ownerId then return nil, "仅房主可踢人" end
+  if room.state ~= "waiting" then return nil, "对局进行中不可踢人" end
+  if user_room[targetUserId] ~= roomId then return nil, "目标不在本房" end
+
+  user_room[targetUserId] = nil
+  for i, p in ipairs(room.players) do
+    if p.userId == targetUserId then
+      room.players[i] = {
+        userId = -2000 - i,
+        userName = "空位" .. i,
+        isBot = true,
+        ready = true,
+      }
+      break
+    end
+  end
+  notify_room(roomId)
+  return { ok = true, roomId = roomId, kickedUserId = targetUserId }
+end
+
+function CMD.send_emoji(userId, body)
+  body = body or {}
   local roomId = user_room[userId]
   local room = roomId and rooms[roomId]
   if not room then return nil, "不在房间" end
-  return build_platform_state(room, userId)
+  if not member_of(room, userId) then return nil, "非房间成员" end
+  local payload = {
+    roomId = roomId,
+    fromUserId = userId,
+    emojiId = tonumber(body.emojiId) or body.emojiId or "smile",
+    targetSeat = body.targetSeat,
+    at = os.time(),
+  }
+  notify_room(roomId)
+  return payload
+end
+
+function CMD.send_phrase(userId, body)
+  body = body or {}
+  local roomId = user_room[userId]
+  local room = roomId and rooms[roomId]
+  if not room then return nil, "不在房间" end
+  if not member_of(room, userId) then return nil, "非房间成员" end
+  local phrases = {
+    [1] = "快点啊，等到花都谢了",
+    [2] = "你的牌打得太好了",
+    [3] = "大家好，很高兴见到各位",
+    [4] = "今天运气不错",
+    [5] = "不要走，决战到天亮",
+  }
+  local pid = tonumber(body.phraseId) or 1
+  local payload = {
+    roomId = roomId,
+    fromUserId = userId,
+    phraseId = pid,
+    text = body.text or phrases[pid] or phrases[1],
+    at = os.time(),
+  }
+  notify_room(roomId)
+  return payload
 end
 
 function CMD.action(userId, ns, cmd, body)
@@ -291,8 +415,15 @@ function CMD.action(userId, ns, cmd, body)
   local room = roomId and rooms[roomId]
   if not room then return nil, "不在房间" end
   if room.state ~= "playing" then return nil, "未开局" end
+  if not ns or ns ~= room.gameId then
+    return nil, string.format("game 命名空间不匹配: 期望 %s，收到 %s", tostring(room.gameId), tostring(ns))
+  end
+  if not Registry.known(ns) then
+    return nil, "未知 gameId: " .. tostring(ns)
+  end
   local seat = select(1, seat_of(room, userId))
   if seat == nil then return nil, "无座位" end
+  Log.info("room.action", { roomId = roomId, userId = userId, gameId = room.gameId, cmd = cmd })
   local ok, err = room.engine:on_action(seat, cmd, body or {})
   if not ok then return nil, err end
   if room.engine.phase == "settle" then
@@ -402,8 +533,10 @@ end
 
 function CMD.list_games()
   return {
-    { gameId = "changsha_mj", name = "长沙麻将", enabled = true },
-    { gameId = "shaoyang_phz", name = "邵阳跑胡子", enabled = false },
+    { gameId = "changsha_mj", name = "长沙麻将", enabled = Features.game_enabled("changsha_mj") },
+    { gameId = "shaoyang_phz", name = "邵阳跑胡子", enabled = Features.game_enabled("shaoyang_phz") },
+    { gameId = "chess", name = "象棋", enabled = Features.game_enabled("chess") },
+    { gameId = "go", name = "围棋", enabled = Features.game_enabled("go") },
   }
 end
 
