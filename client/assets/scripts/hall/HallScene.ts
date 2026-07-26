@@ -339,41 +339,71 @@ export class HallScene extends Component {
     this.buildBottomNav(canvas);
   }
 
-  /** 底栏：战绩 / 匹配 / 复制房号（贴图文案已改） */
+  /** 底栏：统一金色图标井 + 文案，三等分居中 */
   private buildBottomNav(canvas: Node) {
     for (const name of ['LinkRecords', 'LinkMatch', 'LinkShare', 'ClubBtn', '__BottomNav', '__ClubDialog']) {
       const n = canvas.getChildByName(name);
       if (n?.isValid) n.destroy();
     }
+    const layer = canvas.layer || Layers.Enum.UI_2D;
     const nav = new Node('__BottomNav');
     canvas.addChild(nav);
-    nav.layer = canvas.layer || Layers.Enum.UI_2D;
-    nav.addComponent(UITransform).setContentSize(520, 100);
-    nav.setPosition(-40, -318, 0);
+    nav.layer = layer;
+    nav.addComponent(UITransform).setContentSize(560, 100);
+    nav.setPosition(0, -318, 0);
+    nav.setSiblingIndex(canvas.children.length - 1);
 
-    const items: Array<{ name: string; img: string; x: number; fn: () => void }> = [
-      { name: 'NavRecords', img: 'weihai/ui/hall/btn_record', x: -160, fn: () => void this.onClickRecords() },
-      { name: 'NavMatch', img: 'weihai/ui/hall/btn_match', x: 0, fn: () => void this.onClickQuickMatch() },
-      { name: 'NavShare', img: 'weihai/ui/hall/btn_share', x: 170, fn: () => this.onClickShareRoom() },
+    const items: Array<{ name: string; caption: string; icon: string; x: number; fn: () => void }> = [
+      { name: 'NavRecords', caption: '战绩', icon: 'weihai/ui/hall/nav_records', x: -170, fn: () => void this.onClickRecords() },
+      { name: 'NavMatch', caption: '匹配', icon: 'weihai/ui/hall/nav_match', x: 0, fn: () => void this.onClickQuickMatch() },
+      { name: 'NavShare', caption: '复制房号', icon: 'weihai/ui/hall/nav_copy', x: 170, fn: () => this.onClickShareRoom() },
     ];
+
     for (const it of items) {
       const n = new Node(it.name);
       nav.addChild(n);
-      n.layer = nav.layer;
-      n.setPosition(it.x, 4, 0);
-      n.addComponent(UITransform).setContentSize(120, 56);
-      const sp = n.addComponent(Sprite);
+      n.layer = layer;
+      n.setPosition(it.x, 6, 0);
+      n.addComponent(UITransform).setContentSize(140, 88);
+
+      // 图标井
+      const well = new Node('well');
+      n.addChild(well);
+      well.layer = layer;
+      well.setPosition(0, 12, 0);
+      well.addComponent(UITransform).setContentSize(56, 56);
+      const wg = well.addComponent(Graphics);
+      wg.fillColor = new Color(18, 16, 12, 160);
+      wg.circle(0, 0, 26);
+      wg.fill();
+      wg.strokeColor = new Color(220, 180, 100, 200);
+      wg.lineWidth = 2;
+      wg.circle(0, 0, 26);
+      wg.stroke();
+
+      const icon = new Node('icon');
+      well.addChild(icon);
+      icon.layer = layer;
+      icon.addComponent(UITransform).setContentSize(40, 40);
+      const sp = icon.addComponent(Sprite);
       sp.sizeMode = Sprite.SizeMode.CUSTOM;
-      void loadSpriteFrame(it.img).then((sf) => {
-        if (!sf || !n.isValid) return;
+      void loadSpriteFrame(it.icon).then((sf) => {
+        if (!sf || !icon.isValid) return;
         sp.spriteFrame = sf;
-        const tw = sf.originalSize?.width || 90;
-        const th = sf.originalSize?.height || 43;
-        const s = Math.min(140 / tw, 52 / th);
-        n.getComponent(UITransform)!.setContentSize(tw * s, th * s);
+        icon.getComponent(UITransform)!.setContentSize(40, 40);
       });
-      // 隐藏匹配按钮上的动态「取消」文案位（仍可改 sprite 旁逻辑）
-      if (it.name === 'NavMatch') (this as any)._matchCapLab = null;
+
+      const cap = new Node('cap');
+      n.addChild(cap);
+      cap.layer = layer;
+      cap.setPosition(0, -30, 0);
+      cap.addComponent(UITransform).setContentSize(130, 26);
+      const lab = cap.addComponent(Label);
+      styleLabel(lab, 18);
+      lab.string = it.caption;
+      lab.color = new Color(255, 230, 170, 255);
+      if (it.name === 'NavMatch') (this as any)._matchCapLab = lab;
+
       const btn = n.addComponent(Button);
       btn.transition = Button.Transition.SCALE;
       btn.zoomScale = 0.92;
