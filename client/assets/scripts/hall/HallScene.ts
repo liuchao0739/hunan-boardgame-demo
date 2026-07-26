@@ -1,11 +1,13 @@
 import {
-  _decorator, Component, Label, EditBox, Button, Node, UITransform, Sprite, Layers, Color,
+  _decorator, Component, Label, EditBox, Button, Node, UITransform, Sprite, Layers, Color, Graphics,
 } from 'cc';
 import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg';
 import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
 import { JoinRoomDialog } from './JoinRoomDialog';
+import { ClubDialog } from './ClubDialog';
+import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
 
@@ -128,6 +130,7 @@ export class HallScene extends Component {
   private onMatchResult(body: any) {
     if (!body?.ok) return;
     this.matching = false;
+    this.setMatchCaption('匹配');
     if (body.roomId) this.roomId = body.roomId;
     if (this.joinEdit) this.joinEdit.string = String(body.roomId || '');
     if (body.state) this.onState(body.state);
@@ -163,16 +166,14 @@ export class HallScene extends Component {
     const createN = this.createBtn?.node ?? this.findNode('CreateBtn');
     const joinN = this.joinBtn?.node ?? this.findNode('JoinBtn');
     const prepN = this.prepareBtn?.node ?? this.findNode('PrepareBtn');
-    const clubN = this.findNode('ClubBtn') ?? canvas.getChildByName('ClubBtn');
 
-    // 右侧主操作：创房 / 加入 / 确定开局
+    // 右侧主操作：创房 / 加入 / 确定开局（老友圈改到底栏，不再单独占位）
     const rows: Array<{ node: Node | null; x: number; y: number; w: number; h: number }> = [
       { node: this.roomLabel?.node ?? null, x: 0, y: 250, w: 900, h: 36 },
-      { node: this.joinEdit?.node ?? null, x: 2000, y: 0, w: 1, h: 1 }, // 隐藏，改用弹窗
+      { node: this.joinEdit?.node ?? null, x: 2000, y: 0, w: 1, h: 1 },
       { node: createN, x: 380, y: 40, w: 300, h: 130 },
       { node: joinN, x: 380, y: -120, w: 300, h: 130 },
       { node: prepN, x: 380, y: -260, w: 220, h: 80 },
-      { node: clubN, x: -480, y: -300, w: 200, h: 70 },
     ];
     for (const r of rows) {
       if (!r.node?.isValid) continue;
@@ -180,8 +181,11 @@ export class HallScene extends Component {
       const ui = r.node.getComponent(UITransform);
       if (ui) ui.setContentSize(r.w, r.h);
     }
+    // 旧版单独老友圈按钮移除，改走底栏
+    const oldClub = this.findNode('ClubBtn') ?? canvas.getChildByName('ClubBtn');
+    if (oldClub?.isValid) oldClub.destroy();
     if (this.joinEdit) this.joinEdit.node.active = false;
-    if (this.infoLabel) this.infoLabel.node.active = false; // 改用顶栏
+    if (this.infoLabel) this.infoLabel.node.active = false;
     styleLabel(this.roomLabel, 24);
 
     const create = this.createBtn ?? createN?.getComponent(Button);
@@ -190,11 +194,9 @@ export class HallScene extends Component {
     skinButton(create, 'weihai/ui/hall/btn_create_room', true, 300);
     skinButton(join, 'weihai/ui/hall/btn_join_room', true, 300);
     skinButton(prep, 'weihai/ui/btn_ok', true, 200);
-    if (clubN) skinButton(clubN.getComponent(Button), 'weihai/ui/hall/btn_club', true, 200);
     this.hideBtnLabels(createN);
     this.hideBtnLabels(joinN);
     this.hideBtnLabels(prepN);
-    this.hideBtnLabels(clubN);
   }
 
   private decorateHall(canvas: Node) {
@@ -306,54 +308,79 @@ export class HallScene extends Component {
     lab.fontSize = 20;
     lab.color = new Color(240, 230, 200, 255);
 
-    this.ensureTextLink(canvas, 'LinkRecords', '战绩', -480, -250, () => void this.onClickRecords());
-    this.ensureTextLink(canvas, 'LinkMatch', '快速匹配', -300, -250, () => void this.onClickQuickMatch());
-    this.ensureTextLink(canvas, 'LinkShare', '复制房号', -120, -250, () => this.onClickShareRoom());
+    this.buildBottomNav(canvas);
+  }
 
-    if (!this.findNode('ClubBtn') && !canvas.getChildByName('ClubBtn')) {
-      const n = new Node('ClubBtn');
-      canvas.addChild(n);
-      n.layer = canvas.layer || Layers.Enum.UI_2D;
-      n.addComponent(UITransform).setContentSize(200, 70);
-      n.setPosition(-480, -300, 0);
-      n.addComponent(Sprite);
+  /** 底栏四入口：战绩 / 快速匹配 / 复制房号 / 老友圈（均接真实接口） */
+  private buildBottomNav(canvas: Node) {
+    for (const name of ['LinkRecords', 'LinkMatch', 'LinkShare', 'ClubBtn', '__BottomNav']) {
+      const n = canvas.getChildByName(name);
+      if (n?.isValid) n.destroy();
+    }
+    const nav = new Node('__BottomNav');
+    canvas.addChild(nav);
+    nav.layer = canvas.layer || Layers.Enum.UI_2D;
+    nav.addComponent(UITransform).setContentSize(720, 100);
+    nav.setPosition(-40, -318, 0);
+
+    const items: Array<{ name: string; caption: string; img: string; x: number; fn: () => void }> = [
+      { name: 'NavRecords', caption: '战绩', img: 'weihai/ui/hall/btn_record', x: -270, fn: () => void this.onClickRecords() },
+      { name: 'NavMatch', caption: '匹配', img: 'weihai/ui/hall/btn_match', x: -90, fn: () => void this.onClickQuickMatch() },
+      { name: 'NavShare', caption: '房号', img: 'weihai/ui/hall/btn_share', x: 90, fn: () => this.onClickShareRoom() },
+      { name: 'NavClub', caption: '老友圈', img: 'weihai/ui/hall/btn_club', x: 270, fn: () => this.onClickClub() },
+    ];
+    for (const it of items) {
+      const n = new Node(it.name);
+      nav.addChild(n);
+      n.layer = nav.layer;
+      n.setPosition(it.x, 8, 0);
+      n.addComponent(UITransform).setContentSize(100, 88);
+      const sp = n.addComponent(Sprite);
+      sp.sizeMode = Sprite.SizeMode.CUSTOM;
+      void loadSpriteFrame(it.img).then((sf) => {
+        if (!sf || !n.isValid) return;
+        sp.spriteFrame = sf;
+        const tw = sf.originalSize?.width || 80;
+        const th = sf.originalSize?.height || 80;
+        const s = Math.min(72 / tw, 56 / th);
+        n.getComponent(UITransform)!.setContentSize(tw * s, th * s);
+      });
+      const cap = new Node('cap');
+      n.addChild(cap);
+      cap.layer = nav.layer;
+      cap.setPosition(0, -42, 0);
+      cap.addComponent(UITransform).setContentSize(100, 24);
+      const lab = cap.addComponent(Label);
+      styleLabel(lab, 16);
+      lab.string = it.caption;
+      lab.color = new Color(255, 235, 180, 255);
+      if (it.name === 'NavMatch') (this as any)._matchCapLab = lab;
       const btn = n.addComponent(Button);
       btn.transition = Button.Transition.SCALE;
-      n.on(Button.EventType.CLICK, () => {
-        this.setRoom('亲友圈：后续开放');
+      btn.zoomScale = 0.92;
+      btn.node.on(Button.EventType.CLICK, () => {
+        AudioBus.playButton();
+        it.fn();
       }, this);
     }
   }
 
+  private onClickClub() {
+    void this.ensureConnected().then((ok) => {
+      if (!ok) return;
+      ClubDialog.show(this.canvas(), (s) => this.setRoom(s));
+    });
+  }
+
   private ensureTextLink(
-    parent: Node,
-    name: string,
-    caption: string,
-    x: number,
-    y: number,
-    onClick: () => void,
+    _parent: Node,
+    _name: string,
+    _caption: string,
+    _x: number,
+    _y: number,
+    _onClick: () => void,
   ) {
-    let n = parent.getChildByName(name);
-    if (!n) {
-      n = new Node(name);
-      parent.addChild(n);
-      n.layer = parent.layer || Layers.Enum.UI_2D;
-      n.addComponent(UITransform).setContentSize(200, 32);
-      const lab = n.addComponent(Label);
-      lab.string = caption;
-      lab.fontSize = 22;
-      lab.horizontalAlign = Label.HorizontalAlign.LEFT;
-      styleLabel(lab, 22);
-      lab.color = new Color(255, 230, 160, 255);
-      n.addComponent(Button);
-    } else {
-      const lab = n.getComponent(Label);
-      if (lab) lab.string = caption;
-    }
-    n.setPosition(x, y, 0);
-    const btn = n.getComponent(Button)!;
-    btn.node.off(Button.EventType.CLICK);
-    btn.node.on(Button.EventType.CLICK, onClick, this);
+    // 已改为底栏图标按钮，保留空实现避免旧调用崩
   }
 
   private hideBtnLabels(node: Node | null) {
@@ -461,11 +488,12 @@ export class HallScene extends Component {
     if (this.matching) {
       const msg = await NetBus.ins.cancelMatch();
       this.matching = false;
+      this.setMatchCaption('匹配');
       this.setRoom(msg.body?.cancelled ? '已取消匹配' : '未在匹配中');
       return;
     }
     if (this.roomId > 0) {
-      this.setRoom(`已在房间 ${this.roomId}`);
+      this.setRoom(`已在房间 ${this.roomId}，可点「复制房号」分享`);
       return;
     }
     if (!(await this.ensureConnected())) return;
@@ -474,19 +502,25 @@ export class HallScene extends Component {
     if (msg.cmd === 'error') this.setRoom(msg.body?.message || '匹配失败');
     else if (msg.body?.queued) {
       this.matching = true;
-      this.setRoom(`匹配中 ${msg.body.position}/${msg.body.need}（再点「快速匹配」可取消）`);
+      this.setMatchCaption('取消');
+      this.setRoom(`匹配中 ${msg.body.position}/${msg.body.need}（再点「匹配」取消）`);
     }
+  }
+
+  private setMatchCaption(s: string) {
+    const lab = (this as any)._matchCapLab as Label | undefined;
+    if (lab?.isValid) lab.string = s;
   }
 
   onClickShareRoom() {
     const id = this.roomId > 0 ? this.roomId : parseInt(this.joinEdit?.string || '0', 10);
     if (!id) {
-      this.setRoom('暂无房间号可复制');
+      this.setRoom('暂无房间号：请先创建或加入房间');
       return;
     }
     const text = String(id);
-    if (NetBus.copyToClipboard(text)) this.setRoom(`房间号 ${text} 已复制`);
-    else this.setRoom(`房间号：${text}`);
+    if (NetBus.copyToClipboard(text)) this.setRoom(`房间号 ${text} 已复制到剪贴板`);
+    else this.setRoom(`房间号：${text}（请手动复制）`);
   }
 
   private ensureRecordsPanel(canvas: Node) {
@@ -496,37 +530,70 @@ export class HallScene extends Component {
     panel.layer = canvas.layer || Layers.Enum.UI_2D;
     panel.setPosition(0, 0, 0);
     panel.active = false;
-    panel.addComponent(UITransform).setContentSize(760, 420);
-    const sp = panel.addComponent(Sprite);
-    sp.sizeMode = Sprite.SizeMode.CUSTOM;
-    sp.color = new Color(20, 20, 30, 230);
+    panel.addComponent(UITransform).setContentSize(780, 460);
+    panel.setSiblingIndex(canvas.children.length - 1);
+
+    const dim = new Node('dim');
+    panel.addChild(dim);
+    dim.layer = panel.layer;
+    dim.addComponent(UITransform).setContentSize(1280, 720);
+    const dg = dim.addComponent(Graphics);
+    dg.fillColor = new Color(0, 0, 0, 160);
+    dg.rect(-640, -360, 1280, 720);
+    dg.fill();
+    dim.addComponent(Button).node.on(Button.EventType.CLICK, () => {
+      panel.active = false;
+    }, this);
+
+    const card = new Node('card');
+    panel.addChild(card);
+    card.layer = panel.layer;
+    card.addComponent(UITransform).setContentSize(760, 420);
+    const csp = card.addComponent(Sprite);
+    csp.sizeMode = Sprite.SizeMode.CUSTOM;
+    void loadSpriteFrame('weihai/ui/settle/glass_bg').then((sf) => {
+      if (sf && card.isValid) {
+        csp.spriteFrame = sf;
+        card.getComponent(UITransform)!.setContentSize(800, 440);
+      }
+    });
 
     const title = new Node('Title');
-    panel.addChild(title);
-    title.setPosition(0, 180, 0);
+    card.addChild(title);
+    title.setPosition(0, 170, 0);
     title.addComponent(UITransform).setContentSize(700, 40);
     const titleLab = title.addComponent(Label);
     titleLab.string = '最近对局';
     styleLabel(titleLab, 28);
+    titleLab.color = new Color(255, 230, 150, 255);
 
     const body = new Node('Body');
-    panel.addChild(body);
+    card.addChild(body);
     body.setPosition(0, -10, 0);
     body.addComponent(UITransform).setContentSize(700, 300);
     const bodyLab = body.addComponent(Label);
     bodyLab.overflow = Label.Overflow.RESIZE_HEIGHT;
     bodyLab.horizontalAlign = Label.HorizontalAlign.LEFT;
-    styleLabel(bodyLab, 22);
+    bodyLab.verticalAlign = Label.VerticalAlign.TOP;
+    styleLabel(bodyLab, 20);
     this.recordsLabel = bodyLab;
 
     const closeN = new Node('CloseBtn');
-    panel.addChild(closeN);
-    closeN.setPosition(320, 180, 0);
-    closeN.addComponent(UITransform).setContentSize(120, 48);
-    const closeLab = closeN.addComponent(Label);
+    card.addChild(closeN);
+    closeN.setPosition(0, -180, 0);
+    closeN.addComponent(UITransform).setContentSize(160, 48);
+    const cg = closeN.addComponent(Graphics);
+    cg.fillColor = new Color(196, 72, 48, 255);
+    cg.roundRect(-80, -24, 160, 48, 10);
+    cg.fill();
+    const closeLabN = new Node('t');
+    closeN.addChild(closeLabN);
+    closeLabN.addComponent(UITransform).setContentSize(140, 36);
+    const closeLab = closeLabN.addComponent(Label);
     closeLab.string = '关闭';
-    styleLabel(closeLab, 24);
+    styleLabel(closeLab, 22);
     closeN.addComponent(Button).node.on(Button.EventType.CLICK, () => {
+      AudioBus.playButton();
       panel.active = false;
     }, this);
 
