@@ -1,7 +1,9 @@
 import {
-  Node, Label, UITransform, Color, Graphics, Sprite, Button, Layers,
+  Node, Label, UITransform, Color, Graphics, Sprite, Button, Layers, Vec3, tween, Tween,
 } from 'cc';
 import { loadSpriteFrame, createTileNode, styleLabel, attachBg } from '../comm/ArtBg';
+import { AudioBus } from '../comm/AudioBus';
+import { buildHuEffectLayer, flyTile, popIn, rollNumber, stopNodeTweens } from './TableFx';
 
 export type SeatPlayer = {
   userId: number;
@@ -14,6 +16,7 @@ export type SeatPlayer = {
   owner?: boolean;
   discard?: number[];
   peng?: number[];
+  melds?: { kind: string; tiles: number[] }[];
 };
 
 type SeatSlot = {
@@ -49,6 +52,16 @@ export class TableLayout {
   remainLabel: Label | null = null;
   roundLabel: Label | null = null;
   exitBtn: Button | null = null;
+  fxLayer: Node | null = null;
+  countdownNode: Node | null = null;
+  countdownGfx: Graphics | null = null;
+  countdownSecLabel: Label | null = null;
+  private countdownRemainMs = 0;
+  private countdownActive = false;
+  private compassAngle = 0;
+  private displayedRemain = -1;
+  private lastActionSig = '';
+  private meldCounts: number[] = [0, 0, 0, 0];
 
   constructor(canvas: Node) {
     this.root = canvas;
@@ -68,6 +81,8 @@ export class TableLayout {
     this.buildDiscardAreas(ui);
     this.buildHud(ui);
     this.buildActionBtns(ui);
+    this.buildFxLayer(ui);
+    this.buildCountdownRing(ui);
 
     this.handRoot = new Node('__HandRoot');
     ui.addChild(this.handRoot);
@@ -245,6 +260,38 @@ export class TableLayout {
     }
   }
 
+  private buildFxLayer(parent: Node) {
+    this.fxLayer = new Node('__FxLayer');
+    parent.addChild(this.fxLayer);
+    this.fxLayer.layer = parent.layer;
+    this.fxLayer.addComponent(UITransform).setContentSize(1280, 720);
+    this.fxLayer.setSiblingIndex(parent.children.length - 2);
+  }
+
+  private buildCountdownRing(parent: Node) {
+    const box = new Node('countdown');
+    parent.addChild(box);
+    box.layer = parent.layer;
+    box.addComponent(UITransform).setContentSize(72, 72);
+    box.setPosition(260, 50, 0);
+    box.active = false;
+    this.countdownNode = box;
+
+    const ring = new Node('ring');
+    box.addChild(ring);
+    ring.layer = parent.layer;
+    ring.addComponent(UITransform).setContentSize(72, 72);
+    this.countdownGfx = ring.addComponent(Graphics);
+
+    const sec = new Node('sec');
+    box.addChild(sec);
+    sec.layer = parent.layer;
+    sec.addComponent(UITransform).setContentSize(48, 32);
+    this.countdownSecLabel = sec.addComponent(Label);
+    styleLabel(this.countdownSecLabel, 22);
+    this.countdownSecLabel.string = '';
+  }
+
   private buildActionBtns(parent: Node) {
     this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 480, -40, 'weihai/ui/btn_guo');
     this.btnChi = this.mkActionBtn(parent, 'btnChi', 360, -40, 'weihai/ui/btn_chi');
@@ -269,6 +316,170 @@ export class TableLayout {
     }
     this.netBanner.node.active = true;
     this.netBanner.string = text;
+  }
+
+  tickCountdown(dtSec: number) {
+    if (!this.countdownActive || !this.countdownNode) return;
+    this.countdownRemainMs = Math.max(0, this.countdownRemainMs - dtSec * 1000);
+    this.redrawCountdownRing();
+    if (this.countdownRemainMs <= 0) this.countdownNode.active = false;
+  }
+
+  updateCountdown(deadlineMs: number | null) {
+    if (!this.countdownNode || !this.countdownGfx) return;
+    if (deadlineMs == null || deadlineMs <= 0) {
+      this.countdownActive = false;
+      this.countdownNode.active = false;
+      return;
+    }
+    this.countdownRemainMs = deadlineMs;
+    this.countdownActive = true;
+    this.countdownNode.active = true;
+    this.redrawCountdownRing();
+  }
+
+  private redrawCountdownRing() {
+    if (!this.countdownGfx || !this.countdownSecLabel) return;
+    const sec = Math.ceil(this.countdownRemainMs / 1000);
+    this.countdownSecLabel.string = sec > 0 ? String(sec) : '0';
+    const g = this.countdownGfx;
+    g.clear();
+    g.lineWidth = 5;
+    g.strokeColor = new Color(60, 60, 60, 180);
+    g.circle(0, 0, 28);
+    g.stroke();
+    const ratio = Math.max(0, Math.min(1, this.countdownRemainMs / 15000));
+    const warn = sec <= 5;
+    g.strokeColor = warn ? new Color(255, 70, 50, 255) : new Color(120, 220, 100, 255);
+    g.lineWidth = 5;
+    if (ratio > 0.001) {
+      const start = Math.PI / 2;
+      const sweep = -Math.PI * 2 * ratio;
+      g.arc(0, 0, 28, start, start + sweep, true);
+      g.stroke();
+    }
+  }
+
+  updateRemainCount(count: number | null | undefined) {
+    if (!this.remainLabel) return;
+    const next = count ?? -1;
+    if (next < 0) {
+      this.remainLabel.string = '剩 --';
+      this.displayedRemain = -1;
+      return;
+    }
+    if (this.displayedRemain < 0) {
+      this.displayedRemain = next;
+      this.remainLabel.string = `剩 ${next}`;
+      return;
+    }
+    if (next === this.displayedRemain) return;
+    rollNumber(this.remainLabel, this.displayedRemain, next, '剩 ', 0.35);
+    this.displayedRemain = next;
+  }
+
+  animateCompassToRelSeat(rel: number) {
+    if (!this.lightNode) return;
+    const target = -rel * 90;
+    if (this.compassAngle === target && Math.abs(this.lightNode.angle - target) < 0.5) {
+      this.lightNode.angle = target;
+      return;
+    }
+    this.compassAngle = target;
+    stopNodeTweens(this.lightNode);
+    this.lightNode.active = true;
+    tween(this.lightNode)
+      .to(0.35, { angle: target }, { easing: 'quadInOut' })
+      .start();
+  }
+
+  showHuEffect(kind: 'hu' | 'zimo') {
+    const parent = this.root.getChildByName('__TableUI') || this.root;
+    buildHuEffectLayer(parent, kind);
+    AudioBus.playHu();
+  }
+
+  async flyDiscardToRiver(
+    relSeat: number,
+    tile: number,
+    fromWorld?: Vec3,
+  ) {
+    const fx = this.fxLayer;
+    const root = this.discardRoots[relSeat];
+    if (!fx?.isValid || !root?.isValid) return;
+    const tw = 28;
+    const th = 40;
+    const cols = 6;
+    const idx = root.children.length;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const tx = Math.round((col - (cols - 1) / 2) * (tw + 1));
+    const ty = Math.round(-row * (th + 2));
+    const toLocal = new Vec3(tx, ty, 0);
+    const toWorld = root.getComponent(UITransform)!.convertToWorldSpaceAR(toLocal);
+    const from = fromWorld ?? this.seatDiscardOrigin(relSeat);
+    const fromLocal = fx.getComponent(UITransform)!.convertToNodeSpaceAR(from);
+    const to = fx.getComponent(UITransform)!.convertToNodeSpaceAR(toWorld);
+    await flyTile(fx, tile, fromLocal, to, tw, th, 0.3);
+  }
+
+  private seatDiscardOrigin(rel: number): Vec3 {
+    const slot = this.seats[rel];
+    if (!slot) return new Vec3(0, 0, 0);
+    const ui = slot.root.getComponent(UITransform)!;
+    return ui.convertToWorldSpaceAR(new Vec3(0, 0, 0));
+  }
+
+  async playDealSequence(myHandCount: number) {
+    const fx = this.fxLayer;
+    if (!fx?.isValid) return;
+    const center = new Vec3(0, 40, 0);
+    const targets: Vec3[] = [];
+    for (let i = 0; i < 4; i++) {
+      const slot = this.seats[i];
+      if (!slot) continue;
+      const ui = slot.handRoot.getComponent(UITransform)!;
+      targets[i] = ui.convertToWorldSpaceAR(new Vec3(0, 0, 0));
+    }
+    const selfTarget = this.handRoot.getComponent(UITransform)!.convertToWorldSpaceAR(new Vec3(0, 0, 0));
+    targets[0] = selfTarget;
+    const counts = [myHandCount, 13, 13, 13];
+    for (let round = 0; round < 3; round++) {
+      for (let s = 0; s < 4; s++) {
+        const to = fx.getComponent(UITransform)!.convertToNodeSpaceAR(targets[s]);
+        await flyTile(fx, -1, center, to, 22, 32, 0.08);
+      }
+    }
+    for (let s = 0; s < 4; s++) {
+      const n = Math.min(counts[s] - 9, 4);
+      for (let k = 0; k < n; k++) {
+        const to = fx.getComponent(UITransform)!.convertToNodeSpaceAR(targets[s]);
+        await flyTile(fx, -1, center, to, 22, 32, 0.06);
+      }
+    }
+  }
+
+  animateHandReflow(handRoot: Node, positions: number[], origin: number, drawIdx = -1) {
+    const nodes = handRoot.children.slice();
+    if (!nodes.length) return;
+    const targetXs = positions.map((p) => Math.round(origin + p));
+    if (drawIdx >= 0 && drawIdx < nodes.length) {
+      const n = nodes[drawIdx];
+      if (n?.isValid) {
+        const tx = targetXs[drawIdx];
+        n.setPosition(tx + 80, 40, 0);
+        stopNodeTweens(n);
+        tween(n).to(0.22, { position: new Vec3(tx, 0, 0) }, { easing: 'backOut' }).start();
+      }
+    }
+    for (let i = 0; i < nodes.length; i++) {
+      if (i === drawIdx) continue;
+      const n = nodes[i];
+      if (!n?.isValid) continue;
+      const tx = targetXs[i];
+      stopNodeTweens(n);
+      tween(n).to(0.18, { position: new Vec3(tx, n.position.y, 0) }, { easing: 'quadOut' }).start();
+    }
   }
 
   /** 荒庄 / 结算遮罩（始终盖在最上层） */
@@ -298,26 +509,67 @@ export class TableLayout {
     const titleLab = this.mkLabel(ov, 'rt', 0, 100, 500, 60, 44);
     titleLab.string = title;
     titleLab.color = new Color(255, 220, 100, 255);
+    titleLab.node.setScale(0.4, 0.4, 1);
+    popIn(titleLab.node);
+
     const subLab = this.mkLabel(ov, 'rs', 0, 20, 500, 120, 24);
     subLab.string = sub;
     subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
+    subLab.node.setScale(0.85, 0.85, 1);
+    popIn(subLab.node, 0.12);
+
+    const scoreMatch = sub.match(/([+-]?\d+)/g);
+    if (scoreMatch?.length) {
+      const nums = scoreMatch.map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n));
+      if (nums.length) {
+        const show = nums.reduce((a, b) => a + b, 0);
+        const scoreLab = this.mkLabel(ov, 'scoreRoll', 0, -50, 400, 48, 36);
+        scoreLab.color = new Color(255, 240, 160, 255);
+        rollNumber(scoreLab, 0, show, show >= 0 ? '+ ' : '', 0.55);
+      }
+    }
 
     const btn = this.mkTextBtn(ov, 'ok', secondaryLabel ? -120 : 0, -120, primaryLabel);
+    btn.node.setScale(0.6, 0.6, 1);
+    popIn(btn.node, 0.28);
     btn.node.on(Button.EventType.CLICK, () => {
+      AudioBus.playButton();
       onPrimary?.();
     });
     if (secondaryLabel && onSecondary) {
       const btn2 = this.mkTextBtn(ov, 'ok2', 120, -120, secondaryLabel);
-      btn2.node.on(Button.EventType.CLICK, () => onSecondary());
+      btn2.node.setScale(0.6, 0.6, 1);
+      popIn(btn2.node, 0.34);
+      btn2.node.on(Button.EventType.CLICK, () => {
+        AudioBus.playButton();
+        onSecondary();
+      });
     }
   }
 
-  /** 仅显示你真正能用的操作 */
+  /** 仅显示你真正能用的操作（统一 popIn 动效） */
   setActionButtons(show: boolean, canPeng: boolean, canHu: boolean, canChi = false) {
-    if (this.btnGuo) this.btnGuo.node.active = show;
-    if (this.btnPeng) this.btnPeng.node.active = show && canPeng;
-    if (this.btnHu) this.btnHu.node.active = show && canHu;
-    if (this.btnChi) this.btnChi.node.active = show && canChi;
+    const sig = `${show}|${canPeng}|${canHu}|${canChi}`;
+    const changed = sig !== this.lastActionSig;
+    this.lastActionSig = sig;
+
+    const items: { btn: Button | null; on: boolean }[] = [
+      { btn: this.btnGuo, on: show },
+      { btn: this.btnPeng, on: show && canPeng },
+      { btn: this.btnHu, on: show && canHu },
+      { btn: this.btnChi, on: show && canChi },
+    ];
+    let delay = 0;
+    for (const { btn, on } of items) {
+      if (!btn) continue;
+      const was = btn.node.active;
+      btn.node.active = on;
+      if (on && changed && !was) {
+        btn.node.setScale(0.55, 0.55, 1);
+        popIn(btn.node, delay);
+        delay += 0.05;
+      }
+    }
   }
 
   setActionVisible(showOps: boolean) {
@@ -442,10 +694,8 @@ export class TableLayout {
       this.lightNode.active = false;
       return;
     }
-    this.lightNode.active = true;
-    // 相对座位：0底→东亮角0，1右→90，2上→180，3左→270（贴图方向需微调）
     const rel = (act.seatIndex - me.seatIndex + 4) % 4;
-    this.lightNode.angle = -rel * 90;
+    this.animateCompassToRelSeat(rel);
   }
 
   private async updateOppHands(byRel: (SeatPlayer | undefined)[]) {
@@ -489,25 +739,42 @@ export class TableLayout {
     }
   }
 
-  async updateMelds(players: SeatPlayer[], myId: number) {
+  async updateMelds(players: SeatPlayer[], myId: number, animateNew = false) {
     const me = players.find((p) => p.userId === myId);
     const mySeat = me?.seatIndex ?? 0;
-    for (const s of this.seats) s.meldRoot.removeAllChildren();
     const tw = 26;
     const th = 36;
     for (const p of players) {
       const rel = (p.seatIndex - mySeat + 4) % 4;
       const root = this.seats[rel]?.meldRoot;
-      if (!root || !p.peng?.length) continue;
+      if (!root) continue;
+      const prevGroups = this.meldCounts[rel] || 0;
+      const meldList = p.melds?.length ? p.melds : (p.peng || []).map((t) => ({ kind: 'peng', tiles: [t, t, t] }));
+      const groups = meldList.length;
+      root.removeAllChildren();
+      if (!groups) {
+        this.meldCounts[rel] = 0;
+        continue;
+      }
       let x = 0;
-      for (const tile of p.peng) {
-        for (let k = 0; k < 3; k++) {
+      let gi = 0;
+      for (const m of meldList) {
+        const tiles = m.tiles?.length ? m.tiles : [0, 0, 0];
+        const cnt = m.kind === 'gang' || m.kind === 'an_gang' || m.kind === 'ming_gang' || m.kind === 'bu_gang' ? 4 : 3;
+        for (let k = 0; k < cnt; k++) {
+          const tile = tiles[Math.min(k, tiles.length - 1)];
           const n = await createTileNode(tile, root, tw, th);
           n.setPosition(x, 0, 0);
+          if (animateNew && gi >= prevGroups) {
+            n.setScale(0.3, 0.3, 1);
+            popIn(n, gi * 0.04);
+          }
           x += tw + 1;
         }
         x += 10;
+        gi++;
       }
+      this.meldCounts[rel] = groups;
     }
   }
 }

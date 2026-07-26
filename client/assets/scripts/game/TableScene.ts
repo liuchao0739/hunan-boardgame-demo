@@ -1,7 +1,10 @@
-import { _decorator, Component, director, Node, UITransform, Label } from 'cc';
+import { _decorator, Component, director, Node, UITransform, Label, Vec3 } from 'cc';
 import { NetBus, ConnState } from '../comm/NetBus';
 import { createTileNode, sortHandTiles } from '../comm/ArtBg';
+import { AudioBus } from '../comm/AudioBus';
+import { VoiceBus, RoundVoice } from '../comm/VoiceBus';
 import { TableLayout, SeatPlayer } from './TableLayout';
+import { gameDisplayName } from './TableRouter';
 
 const { ccclass } = _decorator;
 
@@ -19,9 +22,15 @@ export class TableScene extends Component {
   private lastChi: number[] | null = null;
   private autoPlay = false;
   private roomState = 'playing';
+  private activeGameId = 'changsha_mj';
   private resultShown = false;
+  private prevGame: any = null;
+  private prevHandLen = 0;
+  private dealRoundKey = '';
+  private dealing = false;
 
   onDestroy() {
+    this.unschedule(this.tickCountdown);
     this.clearSubs();
     this.layout = null;
   }
@@ -39,17 +48,21 @@ export class TableScene extends Component {
       if (n) n.active = false;
     }
     this.layout = new TableLayout(canvas);
+    AudioBus.ensure(canvas);
     const u = (globalThis as any).__HNQP__ || {};
     this.myId = u.userId || 0;
+    VoiceBus.dialect = u.voiceDialect === 'dialect' ? 'dialect' : 'mandarin';
 
-    this.layout.btnPeng?.node.on('click', () => void this.act('peng'), this);
-    this.layout.btnHu?.node.on('click', () => void this.actHu(), this);
-    this.layout.btnGuo?.node.on('click', () => void this.act('guo'), this);
-    this.layout.btnChi?.node.on('click', () => void this.actChi(), this);
+    const clickSfx = () => AudioBus.playButton();
+    this.layout.btnPeng?.node.on('click', () => { clickSfx(); void this.act('peng'); }, this);
+    this.layout.btnHu?.node.on('click', () => { clickSfx(); void this.actHu(); }, this);
+    this.layout.btnGuo?.node.on('click', () => { clickSfx(); void this.act('guo'); }, this);
+    this.layout.btnChi?.node.on('click', () => { clickSfx(); void this.actChi(); }, this);
     this.layout.btnContinue?.node.on('click', () => void this.act('continue'), this);
     this.layout.btnAutoPlay?.node.on('click', () => void this.toggleAutoPlay(), this);
     this.layout.btnDissolve?.node.on('click', () => void this.voteDissolve(true), this);
-    this.layout.exitBtn?.node.on('click', () => void this.backToHall(), this);
+    this.layout.exitBtn?.node.on('click', () => { clickSfx(); void this.backToHall(); }, this);
+    this.schedule(this.tickCountdown, 0.1);
 
     this.unsubs.push(NetBus.ins.onConnState((state, detail) => this.onConnState(state, detail)));
     this.unsubs.push(NetBus.ins.on('platform', 'state', (body) => this.applyState(body)));
@@ -58,6 +71,15 @@ export class TableScene extends Component {
     }));
     this.unsubs.push(NetBus.ins.on('platform', 'dissolveResult', (body) => {
       if (body?.dissolved) void this.backToHall();
+    }));
+    this.unsubs.push(NetBus.ins.on('platform', 'emojiEvent', (body) => {
+      if (body?.emojiId != null) this.setTip(`😀 表情 ${body.emojiId}`);
+    }));
+    this.unsubs.push(NetBus.ins.on('platform', 'phraseEvent', (body) => {
+      if (body?.text) this.setTip(`💬 ${body.text}`);
+    }));
+    this.unsubs.push(NetBus.ins.on('platform', 'kicked', (body) => {
+      if (body?.reason === 'host_kick') void this.backToHall();
     }));
 
     const cached = (globalThis as any).__HNQP_ROOM__;
@@ -86,9 +108,14 @@ export class TableScene extends Component {
     }
   }
 
+  private tickCountdown = () => {
+    this.layout?.tickCountdown(0.1);
+  };
+
   private applyState(body: any) {
     if (!this.isValid || !this.layout || this.leaving || !body) return;
     this.roomState = body.state || this.roomState;
+    if (body.gameId) this.activeGameId = body.gameId;
     if (body.state === 'waiting' && !body.game) {
       void this.backToHall();
       return;
@@ -107,14 +134,17 @@ export class TableScene extends Component {
         if (Array.isArray(raw)) {
           this.hand = sortHandTiles(raw);
         } else if (raw && typeof raw === 'object') {
-          // 兼容 Lua/JSON 把数组编成对象
           this.hand = sortHandTiles(Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map((k) => raw[k]));
         }
       }
     }
-    if (this.layout.roomLabel) this.layout.roomLabel.string = `房${body.roomId}`;
+    const fx = this.detectFxEvents(game);
+    if (this.layout.roomLabel) {
+      this.layout.roomLabel.string = `房${body.roomId} · ${gameDisplayName(this.activeGameId)}`;
+    }
     if (this.layout.roundLabel) this.layout.roundLabel.string = `第 ${game.round || 1} 局`;
-    if (this.layout.remainLabel) this.layout.remainLabel.string = `剩 ${game.wallCount ?? '--'}`;
+    this.layout.updateRemainCount(game.wallCount);
+    this.layout.updateCountdown(game.deadlineMs ?? null);
     const sec = game.deadlineMs != null ? Math.ceil(game.deadlineMs / 1000) : null;
     const baseTip = game.message || '';
     this.setTip(sec != null && sec > 0 ? `${baseTip} (${sec}s)` : baseTip);
@@ -133,11 +163,10 @@ export class TableScene extends Component {
       owner: s.userId === body.ownerId,
       discard: s.discards || [],
       peng: (s.melds || []).filter((m: any) => m.kind === 'peng').map((m: any) => m.tiles[0]),
+      melds: (s.melds || []).map((m: any) => ({ kind: m.kind, tiles: m.tiles || [] })),
     }));
     this.layout.updateSeats(players, this.myId, this.seatToUser(game, game.currentSeat));
-    void this.layout.updateDiscards(players, this.myId);
-    void this.layout.updateMelds(players, this.myId);
-    void this.refreshHand();
+    void this.runStateFx(fx, game, players);
 
     this.lastOps = game.availableOps || [];
     this.refreshOps(game);
@@ -158,6 +187,10 @@ export class TableScene extends Component {
     if (game.phase === 'settle' && game.settle && !this.resultShown) {
       this.resultShown = true;
       const s = game.settle;
+      if (s.reason === 'zimo' || s.reason === 'hu' || s.reason === 'dianpao') {
+        this.layout.showHuEffect(s.reason === 'zimo' ? 'zimo' : 'hu');
+        VoiceBus.playRound(s.reason === 'zimo' ? 'zimo' : (s.reason === 'dianpao' ? 'dianpao' : 'hu'));
+      }
       const title = s.reason === 'huangzhuang' ? '荒庄' : (s.reason === 'zimo' ? '自摸！' : '胡牌！');
       const between = this.roomState === 'between_round';
       this.layout.showResultOverlay(
@@ -172,10 +205,125 @@ export class TableScene extends Component {
         between ? () => void this.backToHall() : undefined,
       );
     }
+    this.prevGame = this.snapshotGame(game);
+    this.prevHandLen = this.hand.length;
+  }
+
+  private snapshotGame(game: any) {
+    const meldCounts: number[] = [];
+    for (const s of game.seats || []) {
+      meldCounts[s.seat] = (s.melds || []).length;
+    }
+    const discardLens: number[] = [];
+    for (const s of game.seats || []) {
+      discardLens[s.seat] = (s.discards || []).length;
+    }
+    return {
+      phase: game.phase,
+      round: game.round,
+      currentSeat: game.currentSeat,
+      wallCount: game.wallCount,
+      lastDiscard: game.lastDiscard ? { ...game.lastDiscard } : null,
+      meldCounts,
+      discardLens,
+    };
+  }
+
+  private detectFxEvents(game: any) {
+    const prev = this.prevGame;
+    const roundKey = `${game.round || 0}:${game.dealer ?? 0}`;
+    const dealStart = prev == null
+      || (roundKey !== this.dealRoundKey && (game.phase === 'qishou' || game.phase === 'wait_discard'));
+    if (dealStart) this.dealRoundKey = roundKey;
+
+    let discardFly: { rel: number; tile: number; from?: Vec3 } | null = null;
+    if (game.lastDiscard?.tile != null) {
+      const ld = game.lastDiscard;
+      const prevTile = prev?.lastDiscard?.tile;
+      const prevFrom = prev?.lastDiscard?.fromSeat;
+      if (!prev || prevTile !== ld.tile || prevFrom !== ld.fromSeat) {
+        const rel = (ld.fromSeat - this.mySeat + 4) % 4;
+        discardFly = { rel, tile: ld.tile };
+        AudioBus.playDiscard();
+        VoiceBus.playTile(ld.tile);
+      }
+    }
+
+    let meldNew = false;
+    if (prev?.meldCounts) {
+      for (const s of game.seats || []) {
+        const cnt = (s.melds || []).length;
+        if (cnt > (prev.meldCounts[s.seat] || 0)) meldNew = true;
+      }
+    }
+
+    let roundVoice: RoundVoice | null = null;
+    if (meldNew && prev) {
+      for (const s of game.seats || []) {
+        const melds = s.melds || [];
+        const prevCnt = prev.meldCounts?.[s.seat] || 0;
+        if (melds.length > prevCnt) {
+          const kind = melds[melds.length - 1]?.kind;
+          if (kind === 'chi') roundVoice = 'chi';
+          else if (kind === 'peng') roundVoice = 'peng';
+          else if (kind === 'gang' || kind === 'ming_gang' || kind === 'an_gang' || kind === 'bu_gang') {
+            roundVoice = 'gang';
+          }
+        }
+      }
+    }
+
+    const handDraw = this.hand.length > this.prevHandLen && this.prevHandLen > 0;
+
+    return {
+      dealStart: dealStart && !this.dealing,
+      discardFly,
+      meldNew,
+      roundVoice,
+      handDraw,
+    };
+  }
+
+  private async runStateFx(
+    fx: ReturnType<TableScene['detectFxEvents']>,
+    game: any,
+    players: SeatPlayer[],
+  ) {
+    await this.playTableFx(fx, game, players);
+    await this.refreshHand(fx.handDraw);
+  }
+
+  private async playTableFx(
+    fx: ReturnType<TableScene['detectFxEvents']>,
+    game: any,
+    players: SeatPlayer[],
+  ) {
+    const lay = this.layout!;
+    if (fx.roundVoice) VoiceBus.playRound(fx.roundVoice);
+
+    if (fx.dealStart) {
+      this.dealing = true;
+      await lay.playDealSequence(this.hand.length);
+      this.dealing = false;
+    }
+
+    if (fx.discardFly) {
+      let from: Vec3 | undefined;
+      if (fx.discardFly.rel === 0 && lay.handRoot.children.length) {
+        const last = lay.handRoot.children[lay.handRoot.children.length - 1];
+        from = last.getComponent(UITransform)!.convertToWorldSpaceAR(new Vec3(0, 0, 0));
+      }
+      await lay.flyDiscardToRiver(fx.discardFly.rel, fx.discardFly.tile, from);
+    }
+
+    await lay.updateDiscards(players, this.myId);
+    await lay.updateMelds(players, this.myId, fx.meldNew);
   }
 
   private async prepareNextRound() {
     this.resultShown = false;
+    this.prevGame = null;
+    this.prevHandLen = 0;
     try {
       const msg = await NetBus.ins.prepare(true);
       if (msg.cmd === 'error') this.setTip(msg.body?.message || '准备失败');
@@ -238,7 +386,7 @@ export class TableScene extends Component {
 
   private async act(cmd: string, body: any = {}) {
     try {
-      const msg = await NetBus.ins.gameAction(cmd, body);
+      const msg = await NetBus.ins.gameAction(cmd, body, this.activeGameId);
       if (msg.cmd === 'error') this.setTip(msg.body?.message || '失败');
       // state push follows
       const st = await NetBus.ins.sync();
@@ -262,7 +410,7 @@ export class TableScene extends Component {
     void this.act('continue');
   };
 
-  private async refreshHand() {
+  private async refreshHand(animateDraw = false) {
     const lay = this.layout;
     if (!lay?.handRoot) return;
     const gen = ++this.handGen;
@@ -323,6 +471,10 @@ export class TableScene extends Component {
       root.addChild(n);
     }
     if (stage.isValid) stage.destroy();
+
+    if (animateDraw && built.length > 0) {
+      lay.animateHandReflow(root, positions, origin, built.length - 1);
+    }
   }
 
   private onSelectTile(idx: number) {
