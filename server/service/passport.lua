@@ -346,6 +346,10 @@ function CMD.get_records(userId, page, pageSize)
   return Records.list_for_user(userId, page, pageSize)
 end
 
+function CMD.get_record(userId, recordId)
+  return Records.get_for_user(userId, recordId)
+end
+
 --- 由 room_mgr 调用：战绩必须落在本服务（MySQL 已 init），不能写在 room_mgr 自己的空内存里
 function CMD.save_settle(room_stub, settle, players, roundNo)
   if type(room_stub) ~= "table" or not settle then

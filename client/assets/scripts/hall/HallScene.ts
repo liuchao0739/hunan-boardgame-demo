@@ -7,6 +7,7 @@ import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
 import { JoinRoomDialog } from './JoinRoomDialog';
 import { CreateRoomDialog, BotLevel } from './CreateRoomDialog';
+import { RecordsWnd } from './RecordsWnd';
 import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
@@ -37,8 +38,6 @@ export class HallScene extends Component {
   private enteringTable = false;
   private creating = false;
   private matching = false;
-  private recordsPanel: Node | null = null;
-  private recordsLabel: Label | null = null;
 
   onDestroy() {
     this.clearSubs();
@@ -557,136 +556,9 @@ export class HallScene extends Component {
     });
   }
 
-  private ensureRecordsPanel(canvas: Node) {
-    if (this.recordsPanel?.isValid) return;
-    const layer = canvas.layer || Layers.Enum.UI_2D;
-    const panel = new Node('__RecordsPanel');
-    canvas.addChild(panel);
-    panel.layer = layer;
-    panel.setPosition(0, 0, 0);
-    panel.active = false;
-    panel.addComponent(UITransform).setContentSize(1280, 720);
-
-    const dim = new Node('dim');
-    panel.addChild(dim);
-    dim.layer = layer;
-    dim.addComponent(UITransform).setContentSize(1280, 720);
-    const dg = dim.addComponent(Graphics);
-    dg.fillColor = new Color(0, 0, 0, 170);
-    dg.rect(-640, -360, 1280, 720);
-    dg.fill();
-    dim.addComponent(Button).node.on(Button.EventType.CLICK, () => {
-      panel.active = false;
-    }, this);
-
-    const card = new Node('card');
-    panel.addChild(card);
-    card.layer = layer;
-    card.addComponent(UITransform).setContentSize(720, 460);
-    // 先画实心底，避免贴图未加载时整块空白
-    const cardBg = card.addComponent(Graphics);
-    cardBg.fillColor = new Color(28, 36, 48, 245);
-    cardBg.roundRect(-360, -230, 720, 460, 18);
-    cardBg.fill();
-    cardBg.strokeColor = new Color(220, 180, 90, 200);
-    cardBg.lineWidth = 2;
-    cardBg.roundRect(-360, -230, 720, 460, 18);
-    cardBg.stroke();
-    const csp = card.addComponent(Sprite);
-    csp.sizeMode = Sprite.SizeMode.CUSTOM;
-    void loadSpriteFrame('weihai/ui/settle/glass_bg').then((sf) => {
-      if (sf && card.isValid) {
-        csp.spriteFrame = sf;
-        card.getComponent(UITransform)!.setContentSize(760, 460);
-      }
-    });
-
-    const title = new Node('Title');
-    card.addChild(title);
-    title.layer = layer;
-    title.setPosition(0, 190, 0);
-    title.addComponent(UITransform).setContentSize(640, 40);
-    const titleLab = title.addComponent(Label);
-    titleLab.string = '最近对局';
-    styleLabel(titleLab, 28);
-    titleLab.color = new Color(255, 230, 150, 255);
-
-    const body = new Node('Body');
-    card.addChild(body);
-    body.layer = layer;
-    body.setPosition(0, 10, 0);
-    body.addComponent(UITransform).setContentSize(640, 320);
-    const bodyLab = body.addComponent(Label);
-    bodyLab.overflow = Label.Overflow.RESIZE_HEIGHT;
-    bodyLab.enableWrapText = true;
-    bodyLab.horizontalAlign = Label.HorizontalAlign.LEFT;
-    bodyLab.verticalAlign = Label.VerticalAlign.TOP;
-    bodyLab.lineHeight = 32;
-    styleLabel(bodyLab, 20);
-    bodyLab.color = new Color(255, 245, 220, 255);
-    bodyLab.string = '';
-    this.recordsLabel = bodyLab;
-
-    const closeN = new Node('CloseBtn');
-    card.addChild(closeN);
-    closeN.layer = layer;
-    closeN.setPosition(0, -190, 0);
-    closeN.addComponent(UITransform).setContentSize(160, 48);
-    const cg = closeN.addComponent(Graphics);
-    cg.fillColor = new Color(196, 72, 48, 255);
-    cg.roundRect(-80, -24, 160, 48, 10);
-    cg.fill();
-    const closeLabN = new Node('t');
-    closeN.addChild(closeLabN);
-    closeLabN.layer = layer;
-    closeLabN.addComponent(UITransform).setContentSize(140, 36);
-    const closeLab = closeLabN.addComponent(Label);
-    closeLab.string = '关闭';
-    styleLabel(closeLab, 22);
-    closeN.addComponent(Button).node.on(Button.EventType.CLICK, () => {
-      AudioBus.playButton();
-      panel.active = false;
-    }, this);
-
-    this.recordsPanel = panel;
-  }
-
-  private formatRecordReason(reason: string | undefined): string {
-    const r = (reason || '').toLowerCase();
-    if (r.includes('zimo') || r.includes('自摸')) return '自摸';
-    if (r.includes('dianpao') || r.includes('点炮')) return '点炮';
-    if (r.includes('qiang')) return '抢杠';
-    return reason || '结算';
-  }
-
   async onClickRecords() {
     if (!(await this.ensureConnected())) return;
-    this.ensureRecordsPanel(this.canvas());
-    if (this.recordsPanel?.isValid) {
-      this.recordsPanel.active = true;
-      this.recordsPanel.setSiblingIndex(this.canvas().children.length - 1);
-    }
-    if (this.recordsLabel) this.recordsLabel.string = '加载中…';
-    try {
-      const msg = await NetBus.ins.getRecords(1, 15);
-      if (msg.cmd === 'error') {
-        if (this.recordsLabel) this.recordsLabel.string = msg.body?.message || '加载失败';
-        return;
-      }
-      const list = (msg.body?.list || []) as any[];
-      if (list.length === 0) {
-        if (this.recordsLabel) this.recordsLabel.string = '暂无对局记录\n（打完一局结算后会出现在这里）';
-        return;
-      }
-      const lines = list.map((r, i) => {
-        const delta = r.scoreDelta != null ? (r.scoreDelta >= 0 ? `+${r.scoreDelta}` : `${r.scoreDelta}`) : '0';
-        const why = this.formatRecordReason(r.reason);
-        return `${i + 1}. 房${r.roomId} · ${why} · ${delta}分`;
-      });
-      if (this.recordsLabel) this.recordsLabel.string = lines.join('\n');
-    } catch (e) {
-      console.warn('[Hall] getRecords', e);
-      if (this.recordsLabel) this.recordsLabel.string = '查询超时，请稍后重试';
-    }
+    RecordsWnd.hide(this.canvas());
+    await RecordsWnd.show(this.canvas());
   }
 }

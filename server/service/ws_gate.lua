@@ -416,6 +416,16 @@ local function handle_platform(fd, req)
     return
   end
 
+  if cmd == "getRecord" or cmd == "recordDetail" then
+    local data, err = skynet.call(passport, "lua", "get_record", c.userId, tonumber(body.recordId or body.id))
+    if not data then
+      reply(fd, req, "error", { message = err or "记录不存在" })
+      return
+    end
+    reply(fd, req, "getRecordResult", data)
+    return
+  end
+
   if cmd == "updateProfile" then
     local u, err = skynet.call(passport, "lua", "update_profile", c.userId, body)
     if not u then

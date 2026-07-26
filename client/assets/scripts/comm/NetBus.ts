@@ -394,6 +394,10 @@ export class NetBus {
     return this.request('platform', 'getRecords', { page, pageSize });
   }
 
+  getRecord(recordId: number) {
+    return this.request('platform', 'getRecord', { recordId });
+  }
+
   updateProfile(fields: { userName?: string; headImg?: string }) {
     return this.request('platform', 'updateProfile', fields);
   }
