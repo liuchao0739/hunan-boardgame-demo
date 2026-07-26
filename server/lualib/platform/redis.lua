@@ -17,13 +17,13 @@ local function try_connect()
     return false, "skynet.db.redis missing"
   end
   local conf = Config.redis
-  local db = redis.connect({
+  local ok, db = pcall(redis.connect, {
     host = conf.host,
     port = conf.port,
     db = conf.db,
   })
-  if not db then
-    return false, "connect failed"
+  if not ok or not db then
+    return false, tostring(db)
   end
   M._db = db
   M._ok = true

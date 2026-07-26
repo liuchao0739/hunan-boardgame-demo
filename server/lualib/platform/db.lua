@@ -16,7 +16,8 @@ local function try_connect()
     return false, "skynet.db.mysql missing"
   end
   local conf = Config.mysql
-  local db, err = mysql.connect({
+  -- skynet mysql.connect 失败会抛错，必须 pcall，否则拖垮 passport 启动
+  local ok, db = pcall(mysql.connect, {
     host = conf.host,
     port = conf.port,
     database = conf.database,
@@ -24,8 +25,8 @@ local function try_connect()
     password = conf.password,
     max_packet_size = conf.max_packet_size,
   })
-  if not db then
-    return false, tostring(err)
+  if not ok or not db then
+    return false, tostring(db)
   end
   M._db = db
   M._ok = true
