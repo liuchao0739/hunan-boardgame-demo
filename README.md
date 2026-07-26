@@ -33,11 +33,22 @@ cd server
 |------|------|
 | `server/lualib/platform/` | JSON 协议 |
 | `server/lualib/game/changsha_mj/` | 长沙麻将引擎 |
-| `server/lualib/game/shaoyang_phz/` | 跑胡子占位 |
+| `server/lualib/game/shaoyang_phz/` | 跑胡子 MVP 引擎 |
+| `server/lualib/game/chess/`、`go/` | 象棋/围棋占位 |
 | `client/assets/scripts/comm/NetBus.ts` | 客户端总线 |
 | `docs/PROTOCOL_PLATFORM.md` | 协议 |
 | `docs/RULES_CHANGSHA.md` | 规则 |
-| `upgrade/` | 对标欢乐麻将任务循环（见 [LOOP.md](upgrade/LOOP.md)） |
+| `upgrade/` | 对标欢乐麻将任务循环（见 [upgrade/LOOP.md](upgrade/LOOP.md)） |
+
+## 升级循环
+
+仓库 `upgrade/` 维护 **100 项对标任务**（`specs/` + `progress.json`）。循环指令见 [upgrade/LOOP.md](upgrade/LOOP.md)：
+
+1. 从 `progress.json` 取下一个 `pending` task  
+2. 按 `upgrade/specs/Txxx.md` 实现并自测  
+3. 更新 progress、commit，直至全部 `done`
+
+本地总验收：`./scripts/verify_upgrade.sh`
 
 ## 许可
 

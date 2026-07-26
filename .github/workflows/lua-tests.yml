@@ -1,0 +1,24 @@
+name: Lua unit tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  lua-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run Lua tests
+        run: |
+          cd server
+          ./skynet/3rd/lua/lua test/run_tests.lua
+
+      - name: Verify upgrade script
+        run: |
+          chmod +x scripts/verify_upgrade.sh scripts/backup_mysql.sh
+          ./scripts/verify_upgrade.sh
