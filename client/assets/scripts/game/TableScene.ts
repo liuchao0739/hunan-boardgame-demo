@@ -634,7 +634,8 @@ export class TableScene extends Component {
     if (this.leaving) return;
     this.leaving = true;
     this.clearSubs();
-    try { await NetBus.ins.leave(); } catch { /* */ }
+    try { await NetBus.ins.leave(true); } catch { /* */ }
+    try { delete (globalThis as any).__HNQP_ROOM__; } catch { /* */ }
     this.layout = null;
     director.loadScene('Hall');
   }

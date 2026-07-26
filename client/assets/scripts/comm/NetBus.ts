@@ -410,8 +410,12 @@ export class NetBus {
     return this.request('platform', 'joinRoom', { roomId, password });
   }
 
-  leaveRoom() {
-    return this.request('platform', 'leave', {});
+  leaveRoom(force = true) {
+    return this.request('platform', 'leave', { force });
+  }
+
+  leave(force = true) {
+    return this.request('platform', 'leave', { force });
   }
 
   logout(ticket?: string) {
@@ -510,8 +514,8 @@ export class NetBus {
     return this.request('platform', 'sync', {});
   }
 
-  leave() {
-    return this.request('platform', 'leave', {});
+  leave(force = true) {
+    return this.request('platform', 'leave', { force });
   }
 
   gameAction(cmd: string, body: any = {}, gameId = 'changsha_mj') {

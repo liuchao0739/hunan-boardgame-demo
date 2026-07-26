@@ -486,7 +486,9 @@ function CMD._tick_autoplay(room)
   return true
 end
 
-function CMD.leave(userId)
+function CMD.leave(userId, opts)
+  opts = opts or {}
+  local force = opts.force == true or opts.quit == true
   local roomId = user_room[userId]
   local room = roomId and rooms[roomId]
   if not room then
@@ -494,7 +496,8 @@ function CMD.leave(userId)
     return true
   end
   -- 对局中断线：标记 disconnected，保留座位（T023）
-  if room.state == "playing" then
+  -- 主动「回大厅 / 退出」传 force，必须真正离房，否则大厅会再次自动进桌
+  if room.state == "playing" and not force then
     for i, p in ipairs(room.players) do
       if p.userId == userId then
         p.disconnected = true
@@ -514,6 +517,9 @@ function CMD.leave(userId)
         isBot = true,
         ready = true,
       }
+      if room.engine and room.engine.set_seat_meta then
+        sync_engine_seat(room, i - 1, room.players[i])
+      end
       break
     end
   end
@@ -523,6 +529,8 @@ function CMD.leave(userId)
   end
   if not human then
     rooms[roomId] = nil
+  else
+    notify_room(roomId)
   end
   return true
 end

@@ -138,6 +138,7 @@ export class HallScene extends Component {
   private onState(body: any) {
     if (!body) return;
     if (body.roomId) this.roomId = body.roomId;
+    // 仅「开局瞬间」自动进桌；对局中回大厅离房后不应再被拉回
     if (body.state === 'playing' && !this.enteringTable) {
       this.enteringTable = true;
       this.setRoom(`房间 ${this.roomId} 开局！`);
@@ -148,6 +149,9 @@ export class HallScene extends Component {
     } else if (body.state === 'waiting') {
       if (body.gameId) this.gameId = body.gameId;
       this.setRoom(`房间 ${body.roomId} · ${gameDisplayName(body.gameId)} · 点确定开局`);
+    } else if (body.state === 'between_round') {
+      // 结算间隙仍在房：留在大厅提示，不自动进桌
+      this.setRoom(`房间 ${body.roomId} 局间 · 可点「确定」继续，或解散/回大厅`);
     }
   }
 
@@ -356,28 +360,48 @@ export class HallScene extends Component {
       const n = new Node(it.name);
       nav.addChild(n);
       n.layer = nav.layer;
-      n.setPosition(it.x, 8, 0);
-      n.addComponent(UITransform).setContentSize(100, 88);
-      const sp = n.addComponent(Sprite);
+      n.setPosition(it.x, 10, 0);
+      n.addComponent(UITransform).setContentSize(120, 96);
+
+      // 只展示图标上半，盖住美术图自带的「活动/分享」字
+      const icon = new Node('icon');
+      n.addChild(icon);
+      icon.layer = nav.layer;
+      icon.setPosition(0, 14, 0);
+      icon.addComponent(UITransform).setContentSize(64, 48);
+      const sp = icon.addComponent(Sprite);
       sp.sizeMode = Sprite.SizeMode.CUSTOM;
       void loadSpriteFrame(it.img).then((sf) => {
-        if (!sf || !n.isValid) return;
+        if (!sf || !icon.isValid) return;
         sp.spriteFrame = sf;
         const tw = sf.originalSize?.width || 80;
         const th = sf.originalSize?.height || 80;
-        const s = Math.min(72 / tw, 56 / th);
-        n.getComponent(UITransform)!.setContentSize(tw * s, th * s);
+        // 放大后裁视觉：高度偏小，突出图标
+        const s = Math.min(68 / tw, 50 / th);
+        icon.getComponent(UITransform)!.setContentSize(tw * s, th * s * 0.72);
       });
+
+      const capBg = new Node('capBg');
+      n.addChild(capBg);
+      capBg.layer = nav.layer;
+      capBg.setPosition(0, -28, 0);
+      capBg.addComponent(UITransform).setContentSize(110, 26);
+      const cg = capBg.addComponent(Graphics);
+      cg.fillColor = new Color(20, 18, 12, 200);
+      cg.roundRect(-55, -13, 110, 26, 8);
+      cg.fill();
+
       const cap = new Node('cap');
       n.addChild(cap);
       cap.layer = nav.layer;
-      cap.setPosition(0, -42, 0);
-      cap.addComponent(UITransform).setContentSize(100, 24);
+      cap.setPosition(0, -28, 0);
+      cap.addComponent(UITransform).setContentSize(108, 24);
       const lab = cap.addComponent(Label);
-      styleLabel(lab, 16);
+      styleLabel(lab, 18);
       lab.string = it.caption;
       lab.color = new Color(255, 235, 180, 255);
       if (it.name === 'NavMatch') (this as any)._matchCapLab = lab;
+
       const btn = n.addComponent(Button);
       btn.transition = Button.Transition.SCALE;
       btn.zoomScale = 0.92;

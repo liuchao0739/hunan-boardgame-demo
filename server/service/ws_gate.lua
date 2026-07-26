@@ -439,7 +439,9 @@ local function handle_platform(fd, req)
 
   if cmd == "leave" then
     local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
-    skynet.call(room_mgr, "lua", "leave", c.userId)
+    -- 主动离开默认 force，避免对局中 soft leave 后大厅又被拉回牌桌
+    local force = body.force ~= false
+    skynet.call(room_mgr, "lua", "leave", c.userId, { force = force })
     reply(fd, req, "leaveResult", { ok = true })
     if rid then broadcast_room(rid, fd) end
     return
@@ -448,7 +450,7 @@ local function handle_platform(fd, req)
   if cmd == "logout" then
     local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
     if rid then
-      skynet.call(room_mgr, "lua", "leave", c.userId)
+      skynet.call(room_mgr, "lua", "leave", c.userId, { force = true })
       broadcast_room(rid, fd)
     end
     pcall(skynet.call, matchmaking, "lua", "cancel", c.userId)
