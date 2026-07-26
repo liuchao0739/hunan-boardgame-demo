@@ -349,6 +349,12 @@ local function handle_platform(fd, req)
     return
   end
 
+  if cmd == "listRooms" then
+    local data = skynet.call(room_mgr, "lua", "list_rooms", c.userId)
+    reply(fd, req, "listRoomsResult", data or { rooms = {} })
+    return
+  end
+
   if cmd == "prepare" then
     local st, err = skynet.call(room_mgr, "lua", "prepare", c.userId, body.yes ~= false)
     if not st then

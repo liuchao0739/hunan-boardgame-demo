@@ -318,7 +318,37 @@ end
 function CMD.get_balance(userId)
   userId = tonumber(userId)
   local u = CMD.get(userId)
-  return Economy.get_balance(userId, u)
+  local bal = Economy.get_balance(userId, u)
+  if u then
+    u.roomCard = bal.roomCard
+    u.diamond = bal.diamond
+  end
+  return bal
+end
+
+function CMD.deduct_create_room(userId, roomId)
+  userId = tonumber(userId)
+  local u = CMD.get(userId)
+  local cost = tonumber((Config.economy or {}).create_room_cost) or 1
+  local ok, bal, err = Economy.deduct_create_room(userId, roomId, u or { roomCard = 9999 })
+  if not ok then
+    return nil, err or ("房卡不足，需要 " .. cost)
+  end
+  if u then u.roomCard = bal end
+  return { roomCard = bal, cost = cost, diamond = u and u.diamond or 0 }
+end
+
+--- 局结房卡策略（由 room_mgr 回调，保证与创房扣费同一账本）
+function CMD.on_round_settle(ownerId, roomId, roundNo, rules)
+  rules = rules or {}
+  local room = {
+    ownerId = ownerId,
+    roomId = roomId,
+    roundNo = roundNo,
+    rules = rules,
+  }
+  Economy.on_round_settle(room, rules)
+  return true
 end
 
 function CMD.get_ledger(userId, page, pageSize)

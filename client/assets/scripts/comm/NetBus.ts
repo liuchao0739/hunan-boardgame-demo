@@ -445,6 +445,10 @@ export class NetBus {
     return this.request('platform', 'joinRoom', { roomId, password });
   }
 
+  listRooms() {
+    return this.request('platform', 'listRooms', {});
+  }
+
   leaveRoom(force = true) {
     return this.request('platform', 'leave', { force });
   }

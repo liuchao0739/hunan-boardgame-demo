@@ -906,24 +906,39 @@ function Engine:on_action(seat, cmd, body)
   return false, "未知操作 " .. tostring(cmd)
 end
 
---- T027：超时自动出牌/过
+--- 超时：真人未操作 → 进入托管，再由 AI 代打一步；机器人仅代打
 function Engine:check_timeout()
   if not self.deadlineAt or os.time() < self.deadlineAt then
     return false
   end
   if self.phase == "wait_discard" then
     local seat = self.currentSeat
-    local hand = self.players[seat].hand
-    if #hand == 0 then
+    local p = self.players[seat]
+    if not p or #p.hand == 0 then
       self:_clear_deadline()
       return false
     end
-    local tile = hand[#hand]
+    if not p.isBot then
+      p.autoPlay = true
+      self.message = string.format("座位%d 超时进入托管", seat)
+    end
+    if self:bot_tick(seat, "all") then
+      return true
+    end
+    local tile = p.hand[#p.hand]
     self:on_action(seat, "discard", { tile = tile })
     return true
   end
   if self.phase == "wait_claim" and #self.claimSeats > 0 then
     local seat = self.claimSeats[1]
+    local p = self.players[seat]
+    if p and not p.isBot then
+      p.autoPlay = true
+      self.message = string.format("座位%d 超时进入托管", seat)
+    end
+    if self:bot_tick(seat, "all") then
+      return true
+    end
     self:on_action(seat, "guo", {})
     return true
   end

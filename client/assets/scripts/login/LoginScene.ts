@@ -4,6 +4,7 @@ import {
 } from 'cc';
 import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel } from '../comm/ArtBg';
+import { readInviteFromUrl } from '../comm/InviteLink';
 
 const { ccclass, property } = _decorator;
 
@@ -61,7 +62,15 @@ export class LoginScene extends Component {
         else if (!this.nameEdit.string) this.nameEdit.string = '测试用户';
       }
       NetBus.ins.putServerAddr(addr);
-      this.setStatus(kickMsg ? String(kickMsg) : '湘桌 · 点登录进入（密码可空）');
+      const invite = readInviteFromUrl();
+      if (invite) {
+        (globalThis as any).__HNQP_INVITE__ = invite;
+        this.setStatus(kickMsg
+          ? String(kickMsg)
+          : `收到房间邀请 ${invite.roomId} · 登录后自动进房`);
+      } else {
+        this.setStatus(kickMsg ? String(kickMsg) : '湘桌 · 点登录进入（密码可空）');
+      }
       this.wireButtons();
     } catch (e) {
       console.error('[Login] onLoad fail', e);

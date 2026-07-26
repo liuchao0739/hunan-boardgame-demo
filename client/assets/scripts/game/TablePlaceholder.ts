@@ -24,9 +24,6 @@ export class TablePlaceholder extends Component {
     tip.color = new Color(240, 230, 200, 255);
 
     NetBus.ins.offAll();
-    NetBus.ins.on('platform', 'state', (body) => {
-      if (body?.state === 'waiting') void this.backToHall();
-    });
   }
 
   private async backToHall() {

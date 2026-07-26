@@ -6,6 +6,7 @@ import { VoiceBus, RoundVoice } from '../comm/VoiceBus';
 import { TableLayout, SeatPlayer, ResultSettleInfo } from './TableLayout';
 import { gameDisplayName } from './TableRouter';
 import { chiHandTiles, tingTiles } from './ChangshaTiles';
+import { buildInviteUrl, peekRoomPassword, clearRoomPassword } from '../comm/InviteLink';
 
 const { ccclass } = _decorator;
 
@@ -21,9 +22,11 @@ export class TableScene extends Component {
   private leaving = false;
   private lastOps: any[] = [];
   private lastChi: number[] | null = null;
+  private lastChiOptions: number[][] = [];
   private _lastDiscardTile: number | null = null;
   private autoPlay = false;
   private roomState = 'playing';
+  private roomId = 0;
   private activeGameId = 'changsha_mj';
   private resultShown = false;
   private prevGame: any = null;
@@ -64,6 +67,7 @@ export class TableScene extends Component {
     this.layout.btnAutoPlay?.node.on('click', () => void this.toggleAutoPlay(), this);
     this.layout.btnDissolve?.node.on('click', () => void this.voteDissolve(true), this);
     this.layout.exitBtn?.node.on('click', () => { clickSfx(); void this.backToHall(); }, this);
+    this.layout.shareBtn?.node.on('click', () => { clickSfx(); this.copyShareLink(); }, this);
     this.schedule(this.tickCountdown, 0.1);
 
     this.unsubs.push(NetBus.ins.onConnState((state, detail) => this.onConnState(state, detail)));
@@ -118,14 +122,15 @@ export class TableScene extends Component {
   private applyState(body: any) {
     if (!this.isValid || !this.layout || this.leaving || !body) return;
     this.roomState = body.state || this.roomState;
+    if (body.roomId) this.roomId = Number(body.roomId) || this.roomId;
     if (body.gameId) this.activeGameId = body.gameId;
     if (body.state === 'waiting' && !body.game) {
-      void this.backToHall();
+      this.applyWaiting(body);
       return;
     }
+    this.layout.setWaitingMode(false);
     const game = body.game;
     if (!game) {
-      this.setTip('等待牌局…');
       return;
     }
     // my seat + 强制整理手牌（万→条→筒）
@@ -145,12 +150,16 @@ export class TableScene extends Component {
     if (this.layout.roomLabel) {
       this.layout.roomLabel.string = `房${body.roomId} · ${gameDisplayName(this.activeGameId)}`;
     }
-    if (this.layout.roundLabel) this.layout.roundLabel.string = `第 ${game.round || 1} 局`;
+    if (this.layout.roundLabel) {
+      this.layout.roundLabel.string = `第 ${game.round || 1} 局`;
+      if (this.layout.consoleRoundLab) {
+        this.layout.consoleRoundLab.string = `第${game.round || 1}局`;
+      }
+    }
     this.layout.updateRemainCount(game.wallCount);
+    this.layout.updateWall(game.wallCount);
     this.layout.updateCountdown(game.deadlineMs ?? null);
-    const sec = game.deadlineMs != null ? Math.ceil(game.deadlineMs / 1000) : null;
-    const baseTip = game.message || '';
-    this.setTip(sec != null && sec > 0 ? `${baseTip} (${sec}s)` : baseTip);
+    // 不再用顶栏文案提示「谁出牌」——罗盘指示灯 + 倒计时即可
     if (this.layout.btnAutoPlay) {
       const lab = this.layout.btnAutoPlay.node.getChildByName('t')?.getComponent(Label);
       if (lab) lab.string = this.autoPlay ? '取消托管' : '托管';
@@ -175,17 +184,10 @@ export class TableScene extends Component {
     void this.runStateFx(fx, game, players);
     this.refreshOps(game);
 
-    // 仅起手阶段展示起手胡；继续后不再盖住出牌提示
+    // 仅起手阶段短暂展示起手胡，随后自动继续
     if (game.phase === 'qishou' && game.qishou) {
-      const lines: string[] = ['起手胡'];
-      for (const [seat, hits] of Object.entries(game.qishou)) {
-        const names = (hits as any[]).map((h) => h.name).join('、');
-        lines.push(`座位${seat}: ${names}`);
-      }
-      this.setTip(lines.join(' | '));
-      // 自动继续，避免卡在起手提示
       this.unschedule(this.autoContinueQishou);
-      this.scheduleOnce(this.autoContinueQishou, 1.2);
+      this.scheduleOnce(this.autoContinueQishou, 0.6);
     }
 
     if (game.phase === 'settle' && game.settle && !this.resultShown) {
@@ -387,8 +389,7 @@ export class TableScene extends Component {
     if (fx.roundVoice) VoiceBus.playRound(fx.roundVoice);
 
     if (fx.dealStart) {
-      this.dealing = true;
-      await lay.playDealSequence(this.hand.length);
+      // 开局直接亮牌桌（牌山/手牌/副露），不做发牌飞行动效
       this.dealing = false;
     }
 
@@ -463,28 +464,26 @@ export class TableScene extends Component {
     const canHu = ops.some((o) => o.action === 'hu' || o.action === 'zimo');
     const canChi = ops.some((o) => o.action === 'chi');
     const showClaim = ops.some((o) => ['peng', 'hu', 'guo', 'chi', 'ming_gang'].includes(o.action));
-    lay.setActionButtons(showClaim, canPeng, canHu, canChi);
-    if (canChi) {
-      const chi = ops.find((o) => o.action === 'chi');
-      this.lastChi = chi?.tiles || null;
-    } else {
-      this.lastChi = null;
+    const nextChi = ops
+      .filter((o) => o.action === 'chi' && Array.isArray(o.tiles) && o.tiles.length >= 2)
+      .map((o) => (o.tiles as number[]).map((t) => Number(t)));
+    const chiSig = (arr: number[][]) => arr.map((t) => t.join(',')).join('|');
+    const chiChanged = chiSig(nextChi) !== chiSig(this.lastChiOptions);
+    this.lastChiOptions = nextChi;
+    this.lastChi = nextChi[0] || null;
+    // 倒计时等会反复推 state：吃法面板已打开且选项未变时不要拆掉
+    const picking = !!lay.chiPicker?.isValid;
+    if (!showClaim || !canChi || chiChanged) {
+      lay.hideChiPicker();
     }
-    // 吃碰胡时把牌名写进提示，避免只看到按钮不知道是哪张
-    if (showClaim) {
-      const labels = ops
-        .filter((o) => o.action !== 'guo' && o.label)
-        .map((o) => o.label as string);
-      if (labels.length) {
-        const sec = game.deadlineMs != null ? Math.ceil(game.deadlineMs / 1000) : null;
-        const tip = labels.join(' / ');
-        this.setTip(sec != null && sec > 0 ? `${tip} (${sec}s)` : tip);
-      }
+    if (!(picking && canChi && !chiChanged)) {
+      lay.setActionButtons(showClaim, canPeng, canHu, canChi);
     }
   }
 
   private async act(cmd: string, body: any = {}) {
     try {
+      this.layout?.hideChiPicker();
       const msg = await NetBus.ins.gameAction(cmd, body, this.activeGameId);
       if (msg.cmd === 'error') this.setTip(msg.body?.message || '失败');
       // state push follows
@@ -501,8 +500,25 @@ export class TableScene extends Component {
   }
 
   private async actChi() {
-    if (!this.lastChi) return;
-    await this.act('chi', { tiles: this.lastChi });
+    const opts = this.lastChiOptions;
+    if (!opts.length) return;
+    if (opts.length === 1) {
+      await this.act('chi', { tiles: opts[0].slice(0, 2) });
+      return;
+    }
+    // 多种吃法：弹出选择，暂时收起操作钮
+    const lay = this.layout;
+    if (!lay) return;
+    lay.setActionButtons(false, false, false, false);
+    lay.showChiPicker(
+      opts,
+      (tiles) => { void this.act('chi', { tiles }); },
+      () => {
+        const canPeng = this.lastOps.some((o) => o.action === 'peng');
+        const canHu = this.lastOps.some((o) => o.action === 'hu' || o.action === 'zimo');
+        lay.setActionButtons(true, canPeng, canHu, true);
+      },
+    );
   }
 
   private autoContinueQishou = () => {
@@ -548,11 +564,16 @@ export class TableScene extends Component {
     this.hand = tiles;
 
     const tw = 52;
-    const gap = 4; // 统一间距，不再按花色拉开大空隙
+    const gap = 4;
+    const drawGap = 18; // 摸进的牌与手牌分开（口袋麻将）
+    const justDrew = tiles.length % 3 === 2;
     const positions: number[] = [];
     let xCursor = 0;
     for (let i = 0; i < tiles.length; i++) {
-      if (i > 0) xCursor += tw + gap;
+      if (i > 0) {
+        xCursor += tw + gap;
+        if (justDrew && i === tiles.length - 1) xCursor += drawGap;
+      }
       positions.push(xCursor);
     }
     const totalW = tiles.length ? (positions[positions.length - 1] + tw) : 0;
@@ -628,6 +649,40 @@ export class TableScene extends Component {
     await this.act('discard', { tile });
   }
 
+  private applyWaiting(body: any) {
+    const seats = Array.isArray(body.seats) ? body.seats : [];
+    const humans = seats.filter((s: any) => !s.isBot).length;
+    const cap = body.gameId === 'shaoyang_phz' ? 3 : 4;
+    if (this.layout!.roomLabel) {
+      this.layout!.roomLabel.string = `房${body.roomId} · ${gameDisplayName(this.activeGameId)}`;
+    }
+    this.layout!.applyWaitingSeats(seats, this.myId, Number(body.ownerId) || 0);
+    this.layout!.setWaitingMode(
+      true,
+      `等待好友加入 ${humans}/${cap}\n人满自动开局 · 可复制链接发给微信好友`,
+    );
+    (globalThis as any).__HNQP_ROOM__ = body;
+  }
+
+  private copyShareLink() {
+    const pwd = peekRoomPassword();
+    const id = this.roomId;
+    if (!id) {
+      this.setTip('暂无房间号');
+      return;
+    }
+    if (!pwd) {
+      this.setTip('无房间密码，无法生成链接（请用本局创建时的密码分享）');
+      return;
+    }
+    const url = buildInviteUrl(id, pwd);
+    if (NetBus.copyToClipboard(url)) {
+      this.setTip('分享链接已复制，发给微信好友即可进房');
+    } else {
+      this.setTip(url);
+    }
+  }
+
   private setTip(s: string) {
     const tip = this.layout?.tipLabel;
     if (!tip) return;
@@ -643,6 +698,7 @@ export class TableScene extends Component {
     this.clearSubs();
     try { await NetBus.ins.leave(true); } catch { /* */ }
     try { delete (globalThis as any).__HNQP_ROOM__; } catch { /* */ }
+    clearRoomPassword();
     this.layout = null;
     director.loadScene('Hall');
   }

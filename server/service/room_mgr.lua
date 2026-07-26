@@ -5,7 +5,7 @@ local Config = require "platform.config"
 local Features = require "platform.features"
 local Log = require "platform.log"
 local Metrics = require "platform.metrics"
-local Economy = require "platform.economy"
+-- 注意：房卡扣费必须经 passport（Skynet 各服务 Lua VM 隔离，本地 Economy 扣了大厅也看不到）
 
 local rooms = {}
 local user_room = {}
@@ -68,6 +68,13 @@ end
 
 local passport
 
+local function ensure_passport()
+  if not passport then
+    passport = skynet.uniqueservice("passport")
+  end
+  return passport
+end
+
 local function on_game_settled(room)
   if room.state ~= "playing" then return end
   room.state = "between_round"
@@ -77,10 +84,8 @@ local function on_game_settled(room)
   end
   if room.engine and room.engine.settle then
     room.roundNo = (room.roundNo or 0) + 1
-    -- Skynet 各服务 Lua VM 隔离：必须经 passport 落库，否则大厅 getRecords 永远空
-    if not passport then
-      passport = skynet.uniqueservice("passport")
-    end
+    -- Skynet 各服务 Lua VM 隔离：必须经 passport 落库
+    ensure_passport()
     local stub = {
       roomId = room.roomId,
       gameId = room.gameId,
@@ -94,7 +99,7 @@ local function on_game_settled(room)
     elseif not ok then
       skynet.error("[room_mgr] save_settle failed:", payload)
     end
-    Economy.on_round_settle(room, room.rules)
+    pcall(skynet.call, passport, "lua", "on_round_settle", room.ownerId, room.roomId, room.roundNo, room.rules)
     Metrics.inc_round()
   end
 end
@@ -173,13 +178,23 @@ function CMD.create(userId, userName, gameId, rules)
   if not engine then return nil, err end
 
   local roomId = alloc_room_id()
-  if not rules.matchMade then
-    local ok, bal, err2 = Economy.deduct_create_room(userId, roomId, { roomCard = 9999 })
-    if not ok then return nil, err2 or ("房卡不足，需要 " .. (Config.economy.create_room_cost or 1)) end
-  end
+  local roomCardAfter = nil
+  local roomCardCost = nil
 
   local pwd = rules.password
-  if pwd ~= nil then pwd = tostring(pwd):sub(1, 16) end
+  if pwd ~= nil then pwd = tostring(pwd):gsub("%s+", ""):sub(1, 16) else pwd = "" end
+  if not rules.matchMade then
+    if pwd == "" or #pwd < 4 then
+      return nil, "请设置至少 4 位房间密码"
+    end
+    ensure_passport()
+    local bal, err2 = skynet.call(passport, "lua", "deduct_create_room", userId, roomId)
+    if not bal then
+      return nil, err2 or ("房卡不足，需要 " .. (Config.economy.create_room_cost or 1))
+    end
+    roomCardAfter = bal.roomCard
+    roomCardCost = bal.cost
+  end
 
   local room = {
     roomId = roomId,
@@ -191,12 +206,13 @@ function CMD.create(userId, userName, gameId, rules)
     password = pwd,
     allowSpectate = rules.allowSpectate == true,
     players = {
-      { userId = userId, userName = userName or ("玩家" .. userId), isBot = false, ready = false },
+      { userId = userId, userName = userName or ("玩家" .. userId), isBot = false, ready = true },
     },
     engine = engine,
     rules = rules,
   }
-  if should_fill_bots(rules) then
+  local fillBots = should_fill_bots(rules)
+  if fillBots then
     local cap = max_players_for(gameId)
     while #room.players < cap do
       local bi = #room.players
@@ -211,8 +227,25 @@ function CMD.create(userId, userName, gameId, rules)
   rooms[roomId] = room
   user_room[userId] = roomId
   Metrics.inc_room()
-  Log.info("room.create", { roomId = roomId, userId = userId, gameId = gameId })
-  return build_platform_state(room, userId)
+  Log.info("room.create", {
+    roomId = roomId, userId = userId, gameId = gameId,
+    roomCard = roomCardAfter, fillBots = fillBots,
+  })
+
+  -- 人机局：创建即开局进桌；真人局：等人满再开
+  if fillBots and all_humans_ready(room) and #room.players >= max_players_for(gameId) then
+    room.state = "playing"
+    room.engine:on_start(build_seats_for_engine(room))
+    CMD.tick_bots(room.roomId)
+    notify_room(room.roomId)
+  end
+
+  local st = build_platform_state(room, userId)
+  if roomCardAfter ~= nil then
+    st.roomCard = roomCardAfter
+    st.roomCardCost = roomCardCost
+  end
+  return st
 end
 
 function CMD.join(userId, userName, roomId, password)
@@ -220,7 +253,12 @@ function CMD.join(userId, userName, roomId, password)
   if not room then return nil, "房间不存在" end
   if room.state ~= "waiting" then return nil, "已开局" end
   if user_room[userId] then return nil, "已在房间" end
-  if not check_password(room, password) then return nil, "房间密码错误" end
+  if not room.password or room.password == "" then
+    return nil, "房间未设置密码"
+  end
+  if tostring(password or "") ~= tostring(room.password) then
+    return nil, "房间密码错误"
+  end
   local replaced = false
   for i, p in ipairs(room.players) do
     if p.isBot then
@@ -228,7 +266,7 @@ function CMD.join(userId, userName, roomId, password)
         userId = userId,
         userName = userName or ("玩家" .. userId),
         isBot = false,
-        ready = false,
+        ready = true,
       }
       replaced = true
       break
@@ -241,23 +279,67 @@ function CMD.join(userId, userName, roomId, password)
       userId = userId,
       userName = userName or ("玩家" .. userId),
       isBot = false,
-      ready = false,
+      ready = true,
     }
   end
   user_room[userId] = roomId
+
+  -- 真人局人满自动开局
+  local cap = max_players_for(room.gameId)
+  if all_humans_ready(room) and #room.players >= cap then
+    room.state = "playing"
+    room.engine:on_start(build_seats_for_engine(room))
+    CMD.tick_bots(room.roomId)
+  end
+  notify_room(roomId)
   return build_platform_state(room, userId)
+end
+
+--- 可加入房间列表（仅 waiting；不返回密码）
+function CMD.list_rooms(userId)
+  local list = {}
+  for id, room in pairs(rooms) do
+    if room.state == "waiting" then
+      local humans = 0
+      local ownerName = ""
+      for _, p in ipairs(room.players) do
+        if not p.isBot and p.userId and p.userId > 0 then
+          humans = humans + 1
+          if p.userId == room.ownerId then ownerName = p.userName or "" end
+        end
+      end
+      if ownerName == "" then
+        for _, p in ipairs(room.players) do
+          if p.userId == room.ownerId then ownerName = p.userName or "房主" break end
+        end
+      end
+      list[#list + 1] = {
+        roomId = id,
+        gameId = room.gameId,
+        ownerId = room.ownerId,
+        ownerName = ownerName ~= "" and ownerName or ("玩家" .. tostring(room.ownerId)),
+        humanCount = humans,
+        playerCount = #room.players,
+        maxPlayers = max_players_for(room.gameId),
+        hasPassword = room.password and room.password ~= "",
+        botLevel = room.rules and room.rules.botLevel or nil,
+      }
+    end
+  end
+  table.sort(list, function(a, b) return (a.roomId or 0) > (b.roomId or 0) end)
+  return { rooms = list, selfRoomId = user_room[userId] }
 end
 
 function CMD.prepare(userId, yes)
   local roomId = user_room[userId]
-  local room = roomId and rooms[roomId]
+  local room = rooms[roomId]
   if not room then return nil, "不在房间" end
   local _, p = seat_of(room, userId)
   if not p then return nil, "无座位" end
   p.ready = yes ~= false
 
   if room.state == "between_round" then
-    if all_humans_ready(room) and #room.players >= 4 then
+    if all_humans_ready(room) and #room.players >= max_players_for(room.gameId) then
       room.state = "playing"
       room.dissolve = nil
       room.engine:on_start(build_seats_for_engine(room))
@@ -267,10 +349,19 @@ function CMD.prepare(userId, yes)
     return build_platform_state(room, userId)
   end
 
-  if all_humans_ready(room) and #room.players >= 4 and room.state == "waiting" then
-    room.state = "playing"
-    room.engine:on_start(build_seats_for_engine(room))
-    CMD.tick_bots(room.roomId)
+  if room.state == "waiting" and yes ~= false then
+    -- 房主点「开始游戏」：全员就绪并开局（空位已由机器人填满）
+    if userId == room.ownerId then
+      for _, pl in ipairs(room.players) do
+        if not pl.isBot then pl.ready = true end
+      end
+    end
+    if all_humans_ready(room) and #room.players >= max_players_for(room.gameId) then
+      room.state = "playing"
+      room.engine:on_start(build_seats_for_engine(room))
+      CMD.tick_bots(room.roomId)
+      notify_room(room.roomId)
+    end
   end
   return build_platform_state(room, userId)
 end
@@ -607,10 +698,22 @@ local function kick_disconnected(room)
   return changed
 end
 
+--- 引擎内超时进托管后，把 autoPlay 拉回房间玩家，便于取消托管
+local function pull_autoplay_from_engine(room)
+  if not room.engine or not room.engine.players then return end
+  for i, pl in ipairs(room.players) do
+    local ep = room.engine.players[i - 1]
+    if ep and ep.autoPlay then
+      pl.autoPlay = true
+    end
+  end
+end
+
 local function room_tick(roomId, room)
   if room.state ~= "playing" or not room.engine then return false end
   local changed = kick_disconnected(room)
   if room.engine.check_timeout and room.engine:check_timeout() then
+    pull_autoplay_from_engine(room)
     changed = true
   end
   -- 每秒推进托管/机器人一步，禁止一口气打到结算
