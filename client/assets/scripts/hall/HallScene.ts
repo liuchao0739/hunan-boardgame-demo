@@ -165,13 +165,13 @@ export class HallScene extends Component {
     const joinN = this.joinBtn?.node ?? this.findNode('JoinBtn');
     const prepN = this.prepareBtn?.node ?? this.findNode('PrepareBtn');
 
-    // 右侧主操作：创房 / 加入 / 确定开局（老友圈改到底栏，不再单独占位）
+    // 右侧主操作上移，避开底栏
     const rows: Array<{ node: Node | null; x: number; y: number; w: number; h: number }> = [
       { node: this.roomLabel?.node ?? null, x: 0, y: 250, w: 900, h: 36 },
       { node: this.joinEdit?.node ?? null, x: 2000, y: 0, w: 1, h: 1 },
-      { node: createN, x: 380, y: 40, w: 300, h: 130 },
-      { node: joinN, x: 380, y: -120, w: 300, h: 130 },
-      { node: prepN, x: 380, y: -260, w: 220, h: 80 },
+      { node: createN, x: 380, y: 130, w: 300, h: 130 },
+      { node: joinN, x: 380, y: -30, w: 300, h: 130 },
+      { node: prepN, x: 380, y: -170, w: 220, h: 80 },
     ];
     for (const r of rows) {
       if (!r.node?.isValid) continue;
