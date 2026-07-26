@@ -81,6 +81,7 @@ export class TableScene extends Component {
       if (body?.text) this.setTip(`💬 ${body.text}`);
     }));
     this.unsubs.push(NetBus.ins.on('platform', 'kicked', (body) => {
+      // duplicate_login：NetBus 清会话并回 Login；房主踢人回大厅
       if (body?.reason === 'host_kick') void this.backToHall();
     }));
 
@@ -626,7 +627,11 @@ export class TableScene extends Component {
   }
 
   private setTip(s: string) {
-    if (this.layout?.tipLabel) this.layout.tipLabel.string = s;
+    const tip = this.layout?.tipLabel;
+    if (!tip) return;
+    tip.string = s || '';
+    const wrap = tip.node.parent;
+    if (wrap?.isValid) wrap.active = !!s;
     console.log('[Table]', s);
   }
 

@@ -115,47 +115,75 @@ export class TableLayout {
     ui.addChild(this.handRoot);
     this.handRoot.layer = ui.layer;
     this.handRoot.addComponent(UITransform);
-    this.handRoot.setPosition(0, -292, 0);
+    this.handRoot.setPosition(0, -305, 0);
   }
 
   private buildHud(parent: Node) {
-    this.tipLabel = this.mkLabel(parent, 'tip', 0, 200, 880, 34, 24);
-    this.tingLabel = this.mkLabel(parent, 'ting', 0, 168, 980, 32, 22);
+    // 顶栏提示条（不压对家/牌河）
+    this.tipLabel = this.mkHudChip(parent, 'tip', 0, 278, 520, 30, '');
+    this.tipLabel.fontSize = 20;
+    this.tingLabel = this.mkLabel(parent, 'ting', 0, 248, 720, 24, 17);
     if (this.tingLabel) {
       this.tingLabel.color = new Color(255, 230, 120, 255);
       this.tingLabel.string = '';
       this.tingLabel.node.active = false;
     }
-    this.netBanner = this.mkLabel(parent, 'netBanner', 0, 260, 880, 30, 22);
+    this.netBanner = this.mkLabel(parent, 'netBanner', 0, 308, 640, 26, 18);
     if (this.netBanner) {
       this.netBanner.color = new Color(255, 200, 80, 255);
       this.netBanner.node.active = false;
     }
-    this.roomLabel = this.mkLabel(parent, 'room', 460, 320, 280, 28, 20);
-    this.roundLabel = this.mkLabel(parent, 'round', -160, 50, 120, 28, 20);
-    this.remainLabel = this.mkLabel(parent, 'remain', 160, 50, 140, 28, 20);
-    if (this.roundLabel) this.roundLabel.string = '第 1 局';
-    if (this.remainLabel) this.remainLabel.string = '剩 --';
+    this.roomLabel = this.mkLabel(parent, 'room', 480, 318, 240, 24, 17);
 
-    // 左上角工具条：回大厅 / 托管 / 解散 横排
+    // 局数/剩余：顶栏两侧，远离牌河
+    this.roundLabel = this.mkHudChip(parent, 'round', -400, 248, 112, 28, '第 1 局');
+    this.remainLabel = this.mkHudChip(parent, 'remain', 340, 248, 112, 28, '剩 --');
+
     this.buildTopToolbar(parent);
+  }
+
+  /** 信息芯片（局数/剩余/提示） */
+  private mkHudChip(parent: Node, name: string, x: number, y: number, w: number, h: number, text: string): Label {
+    const wrap = new Node(`${name}Chip`);
+    parent.addChild(wrap);
+    wrap.layer = parent.layer;
+    wrap.setPosition(x, y, 0);
+    wrap.addComponent(UITransform).setContentSize(w, h);
+    const g = wrap.addComponent(Graphics);
+    g.fillColor = new Color(8, 14, 22, 170);
+    g.roundRect(-w / 2, -h / 2, w, h, 10);
+    g.fill();
+    g.strokeColor = new Color(210, 170, 80, 120);
+    g.lineWidth = 1.2;
+    g.roundRect(-w / 2, -h / 2, w, h, 10);
+    g.stroke();
+    const labN = new Node('t');
+    wrap.addChild(labN);
+    labN.layer = parent.layer;
+    labN.addComponent(UITransform).setContentSize(w - 10, h - 4);
+    const lab = labN.addComponent(Label);
+    styleLabel(lab, 17);
+    lab.string = text;
+    lab.color = new Color(255, 236, 190, 255);
+    lab.overflow = Label.Overflow.SHRINK;
+    return lab;
   }
 
   private buildTopToolbar(parent: Node) {
     const bar = new Node('__TopToolbar');
     parent.addChild(bar);
     bar.layer = parent.layer;
-    bar.addComponent(UITransform).setContentSize(380, 48);
+    bar.addComponent(UITransform).setContentSize(340, 38);
     bar.setPosition(-450, 318, 0);
 
     const bg = bar.addComponent(Graphics);
-    bg.fillColor = new Color(0, 0, 0, 90);
-    bg.roundRect(-190, -24, 380, 48, 14);
+    bg.fillColor = new Color(0, 0, 0, 80);
+    bg.roundRect(-170, -19, 340, 38, 11);
     bg.fill();
 
-    this.exitBtn = this.mkToolBtn(bar, 'btnExit', -125, 110, '回大厅');
-    this.btnAutoPlay = this.mkToolBtn(bar, 'btnAuto', 0, 120, '托管');
-    this.btnDissolve = this.mkToolBtn(bar, 'btnDiss', 125, 110, '解散');
+    this.exitBtn = this.mkToolBtn(bar, 'btnExit', -112, 96, '回大厅');
+    this.btnAutoPlay = this.mkToolBtn(bar, 'btnAuto', 0, 104, '托管');
+    this.btnDissolve = this.mkToolBtn(bar, 'btnDiss', 112, 96, '解散');
     if (this.btnAutoPlay) this.btnAutoPlay.node.active = true;
     if (this.btnDissolve) this.btnDissolve.node.active = true;
   }
@@ -164,17 +192,17 @@ export class TableLayout {
     const n = new Node(name);
     parent.addChild(n);
     n.layer = parent.layer;
-    n.addComponent(UITransform).setContentSize(w, 36);
+    n.addComponent(UITransform).setContentSize(w, 30);
     n.setPosition(x, 0, 0);
     const g = n.addComponent(Graphics);
-    g.fillColor = new Color(176, 58, 42, 245);
-    g.roundRect(-w / 2, -18, w, 36, 10);
+    g.fillColor = new Color(168, 52, 38, 235);
+    g.roundRect(-w / 2, -15, w, 30, 8);
     g.fill();
-    g.strokeColor = new Color(255, 200, 140, 120);
+    g.strokeColor = new Color(255, 200, 140, 90);
     g.lineWidth = 1;
-    g.roundRect(-w / 2, -18, w, 36, 10);
+    g.roundRect(-w / 2, -15, w, 30, 8);
     g.stroke();
-    const lab = this.mkLabel(n, 't', 0, 0, w - 8, 28, 18);
+    const lab = this.mkLabel(n, 't', 0, 0, w - 6, 24, 16);
     lab.string = text;
     lab.color = new Color(255, 248, 230, 255);
     const btn = n.addComponent(Button);
@@ -295,13 +323,24 @@ export class TableLayout {
     });
   }
 
-  /** 相对座位：0 自己底、1 右、2 对家、3 左 */
+  /**
+   * 四边严格分区（互不侵入）：
+   * 自己：头像左上｜底边 副露+手牌横排
+   * 左/右：头像外侧｜竖手｜副露与竖手同高靠桌心（禁止旋到自家左下）
+   * 对家：顶上头像｜手牌｜下方副露正向横排
+   */
   private buildSeats(parent: Node) {
     const layouts = [
-      { x: -480, y: -230, hx: 0, hy: 70, handRot: 0 },
-      { x: 520, y: 40, hx: -90, hy: 0, handRot: 90 },
-      { x: 0, y: 300, hx: 0, hy: -55, handRot: 180 },
-      { x: -540, y: 40, hx: 90, hy: 0, handRot: -90 },
+      { x: -590, y: -220, hx: 0, hy: 0, handRot: 0, flagX: 48, flagY: 12 },
+      { x: 575, y: 70, hx: -78, hy: 0, handRot: 90, flagX: -48, flagY: 12 },
+      { x: 0, y: 312, hx: 0, hy: -52, handRot: 180, flagX: 48, flagY: 12 },
+      { x: -575, y: 70, hx: 78, hy: 0, handRot: -90, flagX: 48, flagY: 12 },
+    ];
+    const meldPos = [
+      { x: -430, y: -305, angle: 0 },
+      { x: 405, y: 70, angle: 90 },
+      { x: 0, y: 198, angle: 0 },
+      { x: -405, y: 70, angle: -90 },
     ];
     this.seats = [];
     for (let i = 0; i < 4; i++) {
@@ -309,48 +348,46 @@ export class TableLayout {
       const root = new Node(`seat${i}`);
       parent.addChild(root);
       root.layer = parent.layer;
-      root.addComponent(UITransform).setContentSize(160, 120);
+      root.addComponent(UITransform).setContentSize(140, 120);
       root.setPosition(L.x, L.y, 0);
 
-      // 头像底 + 默认头像图
       const av = new Node('avatar');
       root.addChild(av);
       av.layer = parent.layer;
-      av.addComponent(UITransform).setContentSize(72, 72);
-      av.setPosition(0, 28, 0);
+      av.addComponent(UITransform).setContentSize(52, 52);
+      av.setPosition(0, 16, 0);
       const ag = av.addComponent(Graphics);
-      ag.fillColor = new Color(30, 30, 30, 220);
-      ag.circle(0, 0, 34);
+      ag.fillColor = new Color(28, 28, 28, 230);
+      ag.circle(0, 0, 24);
       ag.fill();
       ag.strokeColor = new Color(220, 180, 80, 255);
-      ag.lineWidth = 3;
-      ag.circle(0, 0, 34);
+      ag.lineWidth = 2.5;
+      ag.circle(0, 0, 24);
       ag.stroke();
       const avImg = new Node('img');
       av.addChild(avImg);
       avImg.layer = parent.layer;
-      avImg.addComponent(UITransform).setContentSize(64, 64);
+      avImg.addComponent(UITransform).setContentSize(44, 44);
       const avSp = avImg.addComponent(Sprite);
       avSp.sizeMode = Sprite.SizeMode.CUSTOM;
       void loadSpriteFrame('weihai/ui/avatar_default').then((sf) => {
         if (sf && avImg.isValid) avSp.spriteFrame = sf;
       });
 
-      // 名字底条
       const nameBg = new Node('nameBg');
       root.addChild(nameBg);
       nameBg.layer = parent.layer;
-      nameBg.addComponent(UITransform).setContentSize(140, 28);
-      nameBg.setPosition(0, -28, 0);
+      nameBg.addComponent(UITransform).setContentSize(100, 22);
+      nameBg.setPosition(0, -26, 0);
       const nsp = nameBg.addComponent(Sprite);
       nsp.sizeMode = Sprite.SizeMode.CUSTOM;
       void loadSpriteFrame('weihai/ui/name_bg').then((sf) => {
         if (sf && nameBg.isValid) nsp.spriteFrame = sf;
       });
 
-      const nameLab = this.mkLabel(root, 'name', 0, -28, 130, 26, 16);
+      const nameLab = this.mkLabel(root, 'name', 0, -26, 94, 20, 13);
       nameLab.string = '空位';
-      const scoreLab = this.mkLabel(root, 'score', 0, -52, 100, 22, 16);
+      const scoreLab = this.mkLabel(root, 'score', 0, -46, 72, 18, 14);
       scoreLab.string = '0';
       scoreLab.color = new Color(255, 220, 120, 255);
 
@@ -358,39 +395,36 @@ export class TableLayout {
       root.addChild(flagHost);
       flagHost.layer = parent.layer;
       flagHost.addComponent(UITransform);
-      flagHost.setPosition(48, 48, 0);
+      flagHost.setPosition(L.flagX, L.flagY, 0);
 
       const handRoot = new Node('oppHand');
       parent.addChild(handRoot);
       handRoot.layer = parent.layer;
       handRoot.addComponent(UITransform);
-      handRoot.setPosition(L.x + L.hx, L.y + L.hy, 0);
-      handRoot.angle = L.handRot;
+      if (i === 0) {
+        handRoot.active = false;
+      } else {
+        handRoot.setPosition(L.x + L.hx, L.y + L.hy, 0);
+        handRoot.angle = L.handRot;
+      }
 
       const meldRoot = new Node('meld');
       parent.addChild(meldRoot);
       meldRoot.layer = parent.layer;
       meldRoot.addComponent(UITransform);
-      // 碰杠区：自己手牌左侧，对家下方等
-      const meldPos = [
-        { x: -420, y: -292 },
-        { x: 380, y: -40 },
-        { x: -200, y: 250 },
-        { x: -380, y: -40 },
-      ];
       meldRoot.setPosition(meldPos[i].x, meldPos[i].y, 0);
+      meldRoot.angle = meldPos[i].angle;
 
       this.seats.push({ root, nameLab, scoreLab, avatarG: ag, avatarSp: avSp, flagHost, handRoot, meldRoot });
     }
   }
 
   private buildDiscardAreas(parent: Node) {
-    // 左右家河略靠桌心，给竖排留宽
     const pos = [
-      { x: 0, y: -95 },
-      { x: 175, y: 25 },
-      { x: 0, y: 145 },
-      { x: -175, y: 25 },
+      { x: 0, y: -88 },
+      { x: 118, y: 5 },
+      { x: 0, y: 90 },
+      { x: -118, y: 5 },
     ];
     this.discardRoots = [];
     for (let i = 0; i < 4; i++) {
@@ -416,7 +450,7 @@ export class TableLayout {
     parent.addChild(box);
     box.layer = parent.layer;
     box.addComponent(UITransform).setContentSize(72, 72);
-    box.setPosition(260, 50, 0);
+    box.setPosition(0, -62, 0);
     box.active = false;
     this.countdownNode = box;
 
@@ -436,15 +470,15 @@ export class TableLayout {
   }
 
   private buildActionBtns(parent: Node) {
-    this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 480, -40, 'weihai/ui/btn_guo');
-    this.btnChi = this.mkActionBtn(parent, 'btnChi', 360, -40, 'weihai/ui/btn_chi');
-    this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
-    this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
+    // 初始坐标占位；真正排布在 layoutActionBar（手牌上方横排，对齐商业客户端）
+    this.btnGuo = this.mkActionBtn(parent, 'btnGuo', 0, -210, 'weihai/ui/btn_guo');
+    this.btnChi = this.mkActionBtn(parent, 'btnChi', 0, -210, 'weihai/ui/btn_chi');
+    this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 0, -210, 'weihai/ui/btn_peng');
+    this.btnHu = this.mkActionBtn(parent, 'btnHu', 0, -210, 'weihai/ui/btn_hu');
     this.btnContinue = this.mkTextBtn(parent, 'btnCont', 0, -80, '继续打牌');
     this.btnChu = null;
     this.setActionButtons(false, false, false, false);
     if (this.btnContinue) this.btnContinue.node.active = false;
-    // 托管/解散已在左上角工具条创建
   }
 
   setNetBanner(text: string | null) {
@@ -669,7 +703,7 @@ export class TableLayout {
     SettleWnd.hide(parent);
   }
 
-  /** 仅显示你真正能用的操作（避免反复 popIn 造成残影感） */
+  /** 仅显示你真正能用的操作；横排在手牌上方偏右（参考威海/口袋麻将） */
   setActionButtons(show: boolean, canPeng: boolean, canHu: boolean, canChi = false) {
     const sig = `${show}|${canPeng}|${canHu}|${canChi}`;
     const changed = sig !== this.lastActionSig;
@@ -677,9 +711,9 @@ export class TableLayout {
 
     const items: { btn: Button | null; on: boolean }[] = [
       { btn: this.btnGuo, on: show },
+      { btn: this.btnChi, on: show && canChi },
       { btn: this.btnPeng, on: show && canPeng },
       { btn: this.btnHu, on: show && canHu },
-      { btn: this.btnChi, on: show && canChi },
     ];
     for (const { btn, on } of items) {
       if (!btn) continue;
@@ -693,6 +727,21 @@ export class TableLayout {
         op.opacity = 255;
       }
     }
+    this.layoutActionBar();
+  }
+
+  /** 可见操作钮：从右往左 胡→碰→吃→过，手牌上方一排 */
+  private layoutActionBar() {
+    const order = [this.btnHu, this.btnPeng, this.btnChi, this.btnGuo];
+    const visible = order.filter((b) => b?.node?.active);
+    const size = 70;
+    const gap = 12;
+    const y = -218;
+    const rightX = 490;
+    visible.forEach((btn, i) => {
+      if (!btn) return;
+      btn.node.setPosition(rightX - i * (size + gap), y, 0);
+    });
   }
 
   setActionVisible(showOps: boolean) {
@@ -719,24 +768,24 @@ export class TableLayout {
     const n = new Node(name);
     parent.addChild(n);
     n.layer = parent.layer;
-    n.addComponent(UITransform).setContentSize(100, 100);
+    const maxPx = 72;
+    n.addComponent(UITransform).setContentSize(maxPx, maxPx);
     n.setPosition(x, y, 0);
     const sp = n.addComponent(Sprite);
     sp.sizeMode = Sprite.SizeMode.CUSTOM;
     sp.type = Sprite.Type.SIMPLE;
-    // 避免 Button 默认再叠一层 target 贴图造成「重影」
     const btn = n.addComponent(Button);
     btn.transition = Button.Transition.SCALE;
-    btn.zoomScale = 0.94;
+    btn.zoomScale = 0.92;
     btn.target = n;
     void loadSpriteFrame(path).then((sf) => {
       if (sf && n.isValid) {
         sp.spriteFrame = sf;
         const ui = n.getComponent(UITransform)!;
-        const tw = sf.originalSize?.width || 100;
-        const th = sf.originalSize?.height || 100;
-        const s = Math.min(100 / tw, 100 / th);
-        ui.setContentSize(tw * s, th * s);
+        const tw = sf.originalSize?.width || maxPx;
+        const th = sf.originalSize?.height || maxPx;
+        const s = Math.min(maxPx / tw, maxPx / th);
+        ui.setContentSize(Math.round(tw * s), Math.round(th * s));
       }
     });
     return btn;
@@ -763,7 +812,7 @@ export class TableLayout {
     const n = new Node(path);
     host.addChild(n);
     n.layer = host.layer;
-    n.addComponent(UITransform).setContentSize(36, 36);
+    n.addComponent(UITransform).setContentSize(24, 24);
     n.setPosition(x, y, 0);
     const sp = n.addComponent(Sprite);
     sp.sizeMode = Sprite.SizeMode.CUSTOM;
@@ -793,20 +842,21 @@ export class TableLayout {
       // 行动中高亮描边
       slot.avatarG.clear();
       const active = p.userId === actUser;
-      slot.avatarG.fillColor = new Color(30, 30, 30, 220);
-      slot.avatarG.circle(0, 0, 34);
+      slot.avatarG.fillColor = new Color(28, 28, 28, 230);
+      slot.avatarG.circle(0, 0, 24);
       slot.avatarG.fill();
       slot.avatarG.strokeColor = active
         ? new Color(255, 80, 60, 255)
         : new Color(220, 180, 80, 255);
-      slot.avatarG.lineWidth = active ? 4 : 3;
-      slot.avatarG.circle(0, 0, 34);
+      slot.avatarG.lineWidth = active ? 3.5 : 2.5;
+      slot.avatarG.circle(0, 0, 24);
       slot.avatarG.stroke();
 
-      let fx = 0;
-      if (p.zhuang) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_zhuang', fx, 0); fx += 28; }
-      if (p.owner) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_owner', fx, 0); fx += 28; }
-      void this.putFlag(slot.flagHost, 'weihai/ui/flag_bupiao', fx, 0);
+      // 竖排标：庄 / 房 / 不飘
+      let fy = 12;
+      if (p.zhuang) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_zhuang', 0, fy); fy -= 26; }
+      if (p.owner) { void this.putFlag(slot.flagHost, 'weihai/ui/flag_owner', 0, fy); fy -= 26; }
+      void this.putFlag(slot.flagHost, 'weihai/ui/flag_bupiao', 0, fy);
     }
     this.updateCompassLight(players, myId, actUser);
     void this.updateOppHands(byRel);
@@ -874,8 +924,8 @@ export class TableLayout {
   async updateMelds(players: SeatPlayer[], myId: number, animateNew = false) {
     const me = players.find((p) => p.userId === myId);
     const mySeat = me?.seatIndex ?? 0;
-    const tw = 26;
-    const th = 36;
+    const tw = 24;
+    const th = 34;
     for (const p of players) {
       const rel = (p.seatIndex - mySeat + 4) % 4;
       const root = this.seats[rel]?.meldRoot;
@@ -886,9 +936,17 @@ export class TableLayout {
       root.removeAllChildren();
       if (!groups) {
         this.meldCounts[rel] = 0;
+        if (rel === 0) this.handRoot.setPosition(0, -305, 0);
         continue;
       }
-      let x = 0;
+      // 自己副露从左往右铺；其余座位组居中，避免压手牌
+      let totalW = 0;
+      for (const m of meldList) {
+        const cnt = m.kind === 'gang' || m.kind === 'an_gang' || m.kind === 'ming_gang' || m.kind === 'bu_gang' ? 4 : 3;
+        totalW += cnt * (tw + 1) + 12;
+      }
+      totalW = Math.max(0, totalW - 12);
+      let x = rel === 0 ? 0 : -totalW / 2;
       let gi = 0;
       for (const m of meldList) {
         const tiles = m.tiles?.length ? m.tiles : [0, 0, 0];
@@ -896,17 +954,22 @@ export class TableLayout {
         for (let k = 0; k < cnt; k++) {
           const tile = tiles[Math.min(k, tiles.length - 1)];
           const n = await createTileNode(tile, root, tw, th);
-          n.setPosition(x, 0, 0);
+          n.setPosition(rel === 0 ? x : x + tw / 2, 0, 0);
           if (animateNew && gi >= prevGroups) {
             n.setScale(0.3, 0.3, 1);
             popIn(n, gi * 0.04);
           }
           x += tw + 1;
         }
-        x += 10;
+        x += 12;
         gi++;
       }
       this.meldCounts[rel] = groups;
+      // 自己有吃碰时，手牌略右移，给左侧副露留空
+      if (rel === 0) {
+        const shift = Math.min(160, 60 + groups * 42);
+        this.handRoot.setPosition(shift, -305, 0);
+      }
     }
   }
 }

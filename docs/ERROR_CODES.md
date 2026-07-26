@@ -8,7 +8,7 @@
 |----------------|------|------------|
 | 请先登录 | 未 login 调平台命令 | 跳转 Login |
 | ticket 无效或已过期 | reconnect 失败 | 重新 guestLogin/login |
-| 账号在其他设备登录 | kicked duplicate_login | 提示被顶号 |
+| 账号在其他设备登录 | kicked duplicate_login | 清会话并自动回登录页 |
 
 ## 房间
 

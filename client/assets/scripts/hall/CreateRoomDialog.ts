@@ -1,5 +1,6 @@
 /**
  * 创房弹窗：选择机器人难度 弱/中/强。
+ * 固定面板尺寸，避免底图 sprite 撑大后与底栏重叠。
  */
 import {
   Node, Label, Button, UITransform, Sprite, Layers, Color, Graphics,
@@ -15,6 +16,9 @@ const LEVELS: Array<{ id: BotLevel; label: string; desc: string }> = [
   { id: 'strong', label: '强', desc: '效率+防守' },
 ];
 
+const PANEL_W = 440;
+const PANEL_H = 300;
+
 export class CreateRoomDialog {
   static show(
     parent: Node,
@@ -29,44 +33,52 @@ export class CreateRoomDialog {
     root.setSiblingIndex(parent.children.length - 1);
 
     const mask = root.addComponent(Graphics);
-    mask.fillColor = new Color(0, 0, 0, 160);
+    mask.fillColor = new Color(0, 0, 0, 170);
     mask.rect(-640, -360, 1280, 720);
     mask.fill();
 
     const panel = new Node('panel');
     root.addChild(panel);
     panel.layer = root.layer;
-    panel.addComponent(UITransform).setContentSize(480, 420);
-    panel.setPosition(0, 20, 0);
+    panel.addComponent(UITransform).setContentSize(PANEL_W, PANEL_H);
+    // 整体上移，底边留出底栏空间（底栏约在 y=-255）
+    panel.setPosition(0, 48, 0);
+
+    const frame = panel.addComponent(Graphics);
+    frame.fillColor = new Color(28, 36, 48, 250);
+    frame.roundRect(-PANEL_W / 2, -PANEL_H / 2, PANEL_W, PANEL_H, 18);
+    frame.fill();
+    frame.strokeColor = new Color(210, 170, 80, 200);
+    frame.lineWidth = 2;
+    frame.roundRect(-PANEL_W / 2, -PANEL_H / 2, PANEL_W, PANEL_H, 18);
+    frame.stroke();
+
     const psp = panel.addComponent(Sprite);
     psp.sizeMode = Sprite.SizeMode.CUSTOM;
     void loadSpriteFrame('weihai/ui/hall/join_dialog_bg').then((sf) => {
-      if (sf && panel.isValid) {
-        psp.spriteFrame = sf;
-        const tw = sf.originalSize?.width || 480;
-        const th = sf.originalSize?.height || 420;
-        const s = Math.min(520 / tw, 460 / th);
-        panel.getComponent(UITransform)!.setContentSize(tw * s, th * s);
-      }
+      if (!sf || !panel.isValid) return;
+      psp.spriteFrame = sf;
+      // 底图适配进固定框，不再改面板尺寸
+      panel.getComponent(UITransform)!.setContentSize(PANEL_W, PANEL_H);
     });
 
     const title = new Node('title');
     panel.addChild(title);
     title.layer = root.layer;
-    title.setPosition(0, 160, 0);
-    title.addComponent(UITransform).setContentSize(360, 40);
+    title.setPosition(0, 110, 0);
+    title.addComponent(UITransform).setContentSize(360, 36);
     const tl = title.addComponent(Label);
-    styleLabel(tl, 28);
+    styleLabel(tl, 26);
     tl.string = '创建房间';
     tl.color = new Color(255, 236, 180, 255);
 
     const tip = new Node('tip');
     panel.addChild(tip);
     tip.layer = root.layer;
-    tip.setPosition(0, 110, 0);
-    tip.addComponent(UITransform).setContentSize(400, 32);
+    tip.setPosition(0, 72, 0);
+    tip.addComponent(UITransform).setContentSize(400, 28);
     const tipLab = tip.addComponent(Label);
-    styleLabel(tipLab, 18);
+    styleLabel(tipLab, 17);
     tipLab.string = '选择机器人难度';
     tipLab.color = new Color(220, 210, 180, 255);
 
@@ -77,12 +89,12 @@ export class CreateRoomDialog {
       for (const o of optionNodes) {
         const on = o.id === selected;
         o.g.clear();
-        o.g.fillColor = on ? new Color(196, 72, 48, 255) : new Color(55, 70, 80, 230);
-        o.g.roundRect(-70, -36, 140, 72, 12);
+        o.g.fillColor = on ? new Color(196, 72, 48, 255) : new Color(40, 50, 62, 235);
+        o.g.roundRect(-62, -32, 124, 64, 12);
         o.g.fill();
         o.g.strokeColor = on ? new Color(255, 210, 120, 220) : new Color(200, 170, 90, 140);
         o.g.lineWidth = on ? 2 : 1.5;
-        o.g.roundRect(-70, -36, 140, 72, 12);
+        o.g.roundRect(-62, -32, 124, 64, 12);
         o.g.stroke();
         o.lab.color = on ? new Color(255, 255, 255, 255) : new Color(255, 245, 220, 255);
       }
@@ -93,24 +105,24 @@ export class CreateRoomDialog {
       const btnN = new Node(`lv_${lv.id}`);
       panel.addChild(btnN);
       btnN.layer = root.layer;
-      btnN.addComponent(UITransform).setContentSize(140, 72);
-      btnN.setPosition((i - 1) * 150, 20, 0);
+      btnN.addComponent(UITransform).setContentSize(124, 64);
+      btnN.setPosition((i - 1) * 138, 8, 0);
       const g = btnN.addComponent(Graphics);
       const labN = new Node('t');
       btnN.addChild(labN);
       labN.layer = root.layer;
       labN.setPosition(0, 10, 0);
-      labN.addComponent(UITransform).setContentSize(120, 36);
+      labN.addComponent(UITransform).setContentSize(110, 30);
       const lab = labN.addComponent(Label);
-      styleLabel(lab, 26);
+      styleLabel(lab, 24);
       lab.string = lv.label;
       const descN = new Node('d');
       btnN.addChild(descN);
       descN.layer = root.layer;
-      descN.setPosition(0, -18, 0);
-      descN.addComponent(UITransform).setContentSize(130, 24);
+      descN.setPosition(0, -16, 0);
+      descN.addComponent(UITransform).setContentSize(118, 22);
       const desc = descN.addComponent(Label);
-      styleLabel(desc, 14);
+      styleLabel(desc, 13);
       desc.string = lv.desc;
       desc.color = new Color(230, 220, 190, 220);
       optionNodes.push({ id: lv.id, g, lab });
@@ -125,16 +137,16 @@ export class CreateRoomDialog {
     const ok = new Node('ok');
     panel.addChild(ok);
     ok.layer = root.layer;
-    ok.setPosition(-90, -140, 0);
-    ok.addComponent(UITransform).setContentSize(160, 52);
+    ok.setPosition(-88, -100, 0);
+    ok.addComponent(UITransform).setContentSize(150, 48);
     const okg = ok.addComponent(Graphics);
     okg.fillColor = new Color(196, 72, 48, 255);
-    okg.roundRect(-80, -26, 160, 52, 12);
+    okg.roundRect(-75, -24, 150, 48, 12);
     okg.fill();
     const okl = new Node('t');
     ok.addChild(okl);
     okl.layer = root.layer;
-    okl.addComponent(UITransform).setContentSize(140, 40);
+    okl.addComponent(UITransform).setContentSize(130, 36);
     const okLab = okl.addComponent(Label);
     styleLabel(okLab, 22);
     okLab.string = '创建';
@@ -147,16 +159,16 @@ export class CreateRoomDialog {
     const close = new Node('close');
     panel.addChild(close);
     close.layer = root.layer;
-    close.setPosition(90, -140, 0);
-    close.addComponent(UITransform).setContentSize(160, 52);
+    close.setPosition(88, -100, 0);
+    close.addComponent(UITransform).setContentSize(150, 48);
     const cg = close.addComponent(Graphics);
     cg.fillColor = new Color(50, 60, 70, 255);
-    cg.roundRect(-80, -26, 160, 52, 12);
+    cg.roundRect(-75, -24, 150, 48, 12);
     cg.fill();
     const cln = new Node('t');
     close.addChild(cln);
     cln.layer = root.layer;
-    cln.addComponent(UITransform).setContentSize(140, 40);
+    cln.addComponent(UITransform).setContentSize(130, 36);
     const cl = cln.addComponent(Label);
     styleLabel(cl, 22);
     cl.string = '取消';

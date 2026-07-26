@@ -24,18 +24,22 @@ export class JoinRoomDialog {
     const panel = new Node('panel');
     root.addChild(panel);
     panel.layer = root.layer;
-    panel.addComponent(UITransform).setContentSize(520, 560);
-    panel.setPosition(0, 10, 0);
+    panel.addComponent(UITransform).setContentSize(480, 500);
+    panel.setPosition(0, 40, 0);
+    const frame = panel.addComponent(Graphics);
+    frame.fillColor = new Color(28, 36, 48, 250);
+    frame.roundRect(-240, -250, 480, 500, 18);
+    frame.fill();
+    frame.strokeColor = new Color(210, 170, 80, 200);
+    frame.lineWidth = 2;
+    frame.roundRect(-240, -250, 480, 500, 18);
+    frame.stroke();
     const psp = panel.addComponent(Sprite);
     psp.sizeMode = Sprite.SizeMode.CUSTOM;
     void loadSpriteFrame('weihai/ui/hall/join_dialog_bg').then((sf) => {
-      if (sf && panel.isValid) {
-        psp.spriteFrame = sf;
-        const tw = sf.originalSize?.width || 520;
-        const th = sf.originalSize?.height || 560;
-        const s = Math.min(560 / tw, 600 / th);
-        panel.getComponent(UITransform)!.setContentSize(tw * s, th * s);
-      }
+      if (!sf || !panel.isValid) return;
+      psp.spriteFrame = sf;
+      panel.getComponent(UITransform)!.setContentSize(480, 500);
     });
 
     const title = new Node('title');
@@ -109,7 +113,7 @@ export class JoinRoomDialog {
     const ok = new Node('ok');
     panel.addChild(ok);
     ok.layer = root.layer;
-    ok.setPosition(-90, -220, 0);
+    ok.setPosition(-90, -200, 0);
     ok.addComponent(UITransform).setContentSize(160, 52);
     const okg = ok.addComponent(Graphics);
     okg.fillColor = new Color(196, 72, 48, 255);
@@ -132,7 +136,7 @@ export class JoinRoomDialog {
     const close = new Node('close');
     panel.addChild(close);
     close.layer = root.layer;
-    close.setPosition(90, -220, 0);
+    close.setPosition(90, -200, 0);
     close.addComponent(UITransform).setContentSize(160, 52);
     const cg = close.addComponent(Graphics);
     cg.fillColor = new Color(50, 60, 70, 255);

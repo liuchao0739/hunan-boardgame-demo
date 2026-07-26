@@ -50,9 +50,18 @@ export class LoginScene extends Component {
 
       const addr = NetBus.readServerAddrFromUrl('127.0.0.1:20480');
       if (this.serverEdit) this.serverEdit.string = addr;
-      if (this.nameEdit && !this.nameEdit.string) this.nameEdit.string = '测试用户';
+      const kickName = (globalThis as any).__HNQP_KICK_NAME__;
+      const kickMsg = (globalThis as any).__HNQP_KICK_MSG__;
+      try {
+        delete (globalThis as any).__HNQP_KICK_NAME__;
+        delete (globalThis as any).__HNQP_KICK_MSG__;
+      } catch { /* */ }
+      if (this.nameEdit) {
+        if (kickName) this.nameEdit.string = String(kickName);
+        else if (!this.nameEdit.string) this.nameEdit.string = '测试用户';
+      }
       NetBus.ins.putServerAddr(addr);
-      this.setStatus('湘桌 · 点登录进入（密码可空）');
+      this.setStatus(kickMsg ? String(kickMsg) : '湘桌 · 点登录进入（密码可空）');
       this.wireButtons();
     } catch (e) {
       console.error('[Login] onLoad fail', e);

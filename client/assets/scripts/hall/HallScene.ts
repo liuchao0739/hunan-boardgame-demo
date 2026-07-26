@@ -169,13 +169,13 @@ export class HallScene extends Component {
     const joinN = this.joinBtn?.node ?? this.findNode('JoinBtn');
     const prepN = this.prepareBtn?.node ?? this.findNode('PrepareBtn');
 
-    // 右侧主操作上移，避开底栏
+    // 右侧主操作：创建/加入再下移，与确定拉开，确定离开底栏顶线
     const rows: Array<{ node: Node | null; x: number; y: number; w: number; h: number }> = [
       { node: this.roomLabel?.node ?? null, x: 0, y: 250, w: 900, h: 36 },
       { node: this.joinEdit?.node ?? null, x: 2000, y: 0, w: 1, h: 1 },
-      { node: createN, x: 380, y: 130, w: 300, h: 130 },
-      { node: joinN, x: 380, y: -30, w: 300, h: 130 },
-      { node: prepN, x: 380, y: -170, w: 220, h: 80 },
+      { node: createN, x: 400, y: 70, w: 280, h: 100 },
+      { node: joinN, x: 400, y: -70, w: 280, h: 100 },
+      { node: prepN, x: 400, y: -175, w: 180, h: 58 },
     ];
     for (const r of rows) {
       if (!r.node?.isValid) continue;
@@ -193,9 +193,9 @@ export class HallScene extends Component {
     const create = this.createBtn ?? createN?.getComponent(Button);
     const join = this.joinBtn ?? joinN?.getComponent(Button);
     const prep = this.prepareBtn ?? prepN?.getComponent(Button);
-    skinButton(create, 'weihai/ui/hall/btn_create_room', true, 300);
-    skinButton(join, 'weihai/ui/hall/btn_join_room', true, 300);
-    skinButton(prep, 'weihai/ui/btn_ok', true, 200);
+    skinButton(create, 'weihai/ui/hall/btn_create_room', true, 260);
+    skinButton(join, 'weihai/ui/hall/btn_join_room', true, 260);
+    skinButton(prep, 'weihai/ui/btn_ok', true, 170);
     this.hideBtnLabels(createN);
     this.hideBtnLabels(joinN);
     this.hideBtnLabels(prepN);
@@ -204,7 +204,10 @@ export class HallScene extends Component {
   private decorateHall(canvas: Node) {
     const oldHero = canvas.getChildByName('__HallHero');
     if (oldHero) oldHero.destroy();
-    void attachHallMeiNv(canvas, -280, -40);
+    // 延后加载 Spine 立绘，避免挡住大厅首屏
+    this.scheduleOnce(() => {
+      void attachHallMeiNv(canvas, -280, -40);
+    }, 0.35);
 
     // 顶栏：昵称 + 房卡
     let top = canvas.getChildByName('__HallTop');
@@ -303,20 +306,20 @@ export class HallScene extends Component {
       void this.onClickLogout();
     }, this);
 
-    // 底栏
+    // 底栏：略抬高整条，图标在栏内居中，离开顶边线
     let bar = canvas.getChildByName('__HallBottom');
     if (bar) bar.destroy();
     bar = new Node('__HallBottom');
     canvas.addChild(bar);
     bar.layer = canvas.layer || Layers.Enum.UI_2D;
     bar.addComponent(UITransform).setContentSize(1280, 100);
-    bar.setPosition(0, -320, 0);
+    bar.setPosition(0, -268, 0);
     const sp = bar.addComponent(Sprite);
     sp.sizeMode = Sprite.SizeMode.CUSTOM;
     void loadSpriteFrame('weihai/ui/hall/bottom_panel').then((sf) => {
       if (sf && bar.isValid) {
         sp.spriteFrame = sf;
-        bar!.getComponent(UITransform)!.setContentSize(1280, 96);
+        bar!.getComponent(UITransform)!.setContentSize(1280, 100);
       } else {
         void loadSpriteFrame('weihai/hall/bottom_bar').then((sf2) => {
           if (sf2 && bar?.isValid) sp.spriteFrame = sf2;
@@ -349,8 +352,9 @@ export class HallScene extends Component {
     const nav = new Node('__BottomNav');
     canvas.addChild(nav);
     nav.layer = layer;
-    nav.addComponent(UITransform).setContentSize(560, 100);
-    nav.setPosition(0, -318, 0);
+    nav.addComponent(UITransform).setContentSize(560, 90);
+    // 相对底栏下移，图标离开顶边横线，文案仍留在安全区内
+    nav.setPosition(0, -278, 0);
     nav.setSiblingIndex(canvas.children.length - 1);
 
     const items: Array<{ name: string; caption: string; icon: string; x: number; fn: () => void }> = [
@@ -363,43 +367,43 @@ export class HallScene extends Component {
       const n = new Node(it.name);
       nav.addChild(n);
       n.layer = layer;
-      n.setPosition(it.x, 6, 0);
-      n.addComponent(UITransform).setContentSize(140, 88);
+      n.setPosition(it.x, -2, 0);
+      n.addComponent(UITransform).setContentSize(140, 82);
 
       // 图标井
       const well = new Node('well');
       n.addChild(well);
       well.layer = layer;
-      well.setPosition(0, 12, 0);
-      well.addComponent(UITransform).setContentSize(56, 56);
+      well.setPosition(0, 10, 0);
+      well.addComponent(UITransform).setContentSize(48, 48);
       const wg = well.addComponent(Graphics);
       wg.fillColor = new Color(18, 16, 12, 160);
-      wg.circle(0, 0, 26);
+      wg.circle(0, 0, 22);
       wg.fill();
       wg.strokeColor = new Color(220, 180, 100, 200);
       wg.lineWidth = 2;
-      wg.circle(0, 0, 26);
+      wg.circle(0, 0, 22);
       wg.stroke();
 
       const icon = new Node('icon');
       well.addChild(icon);
       icon.layer = layer;
-      icon.addComponent(UITransform).setContentSize(40, 40);
+      icon.addComponent(UITransform).setContentSize(34, 34);
       const sp = icon.addComponent(Sprite);
       sp.sizeMode = Sprite.SizeMode.CUSTOM;
       void loadSpriteFrame(it.icon).then((sf) => {
         if (!sf || !icon.isValid) return;
         sp.spriteFrame = sf;
-        icon.getComponent(UITransform)!.setContentSize(40, 40);
+        icon.getComponent(UITransform)!.setContentSize(34, 34);
       });
 
       const cap = new Node('cap');
       n.addChild(cap);
       cap.layer = layer;
-      cap.setPosition(0, -30, 0);
-      cap.addComponent(UITransform).setContentSize(130, 26);
+      cap.setPosition(0, -28, 0);
+      cap.addComponent(UITransform).setContentSize(130, 22);
       const lab = cap.addComponent(Label);
-      styleLabel(lab, 18);
+      styleLabel(lab, 16);
       lab.string = it.caption;
       lab.color = new Color(255, 230, 170, 255);
       if (it.name === 'NavMatch') (this as any)._matchCapLab = lab;

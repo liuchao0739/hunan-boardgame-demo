@@ -1,3 +1,5 @@
+import { director } from 'cc';
+
 type Handler = (body: any, raw: PlatformMsg) => void;
 
 export type PlatformMsg = {
@@ -241,6 +243,41 @@ export class NetBus {
     }, 1500);
   }
 
+  /** 单点登录顶号：断线、清会话并回登录页；房主踢人仅断房间侧由场景处理 */
+  private handleKicked(body: any) {
+    this.intentionalClose = true;
+    this.stopKeepalive();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    const reason = String(body?.reason || '');
+    const message = String(body?.message || (reason === 'host_kick' ? '已被房主请出房间' : '账号在其他设备登录'));
+    this.setConnState('disconnected', message);
+    try { this.ws?.close(); } catch { /* */ }
+    this.ws = null;
+
+    if (reason === 'host_kick') return;
+
+    const u = (globalThis as any).__HNQP__ || (globalThis as any).__WHMJ__ || {};
+    try {
+      (globalThis as any).__HNQP_KICK_MSG__ = message;
+      if (u.userName) (globalThis as any).__HNQP_KICK_NAME__ = u.userName;
+      delete (globalThis as any).__HNQP__;
+      delete (globalThis as any).__WHMJ__;
+      delete (globalThis as any).__HNQP_ROOM__;
+    } catch { /* */ }
+
+    // 延后切场景，让本帧 kicked 订阅者先跑完
+    setTimeout(() => {
+      try {
+        director.loadScene('Login');
+      } catch (e) {
+        console.warn('[NetBus] kick → Login fail', e);
+      }
+    }, 0);
+  }
+
   private stopKeepalive() {
     if (this.pingTimer) {
       clearInterval(this.pingTimer);
@@ -311,9 +348,7 @@ export class NetBus {
       return;
     }
     if (msg.ns === 'platform' && msg.cmd === 'kicked') {
-      this.intentionalClose = true;
-      this.setConnState('disconnected', msg.body?.message || '已在其他设备登录');
-      try { this.ws?.close(); } catch { /* */ }
+      this.handleKicked(msg.body);
     }
     const rid = msg.reqId != null ? Number(msg.reqId) : null;
     if (rid != null && !Number.isNaN(rid) && this.pending.has(rid)) {

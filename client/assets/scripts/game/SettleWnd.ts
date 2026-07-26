@@ -4,7 +4,7 @@
  */
 import {
   Node, Prefab, resources, instantiate, Label, Button, UITransform, Sprite, UIOpacity,
-  Color, Layers, Vec3, tween, Graphics,
+  Color, Layers, Vec3, tween, Graphics, Mask, ScrollView,
 } from 'cc';
 import { createTileNode, loadSpriteFrame, styleLabel } from '../comm/ArtBg';
 import { AudioBus } from '../comm/AudioBus';
@@ -21,6 +21,8 @@ export type SettleShowOpts = {
   onSecondary?: () => void;
   settle?: ResultSettleInfo | null;
   mySeat?: number;
+  /** 战绩回看：跳过牌桌结算预制体，用干净美术壳 +「关闭」 */
+  historyMode?: boolean;
 };
 
 function findDeep(root: Node, name: string): Node | null {
@@ -55,11 +57,11 @@ export class SettleWnd {
     tween(dim).to(0.25, { opacity: 255 }).start();
 
     const g = ov.addComponent(Graphics);
-    g.fillColor = new Color(0, 0, 0, 200);
+    g.fillColor = new Color(0, 0, 0, opts.historyMode ? 220 : 200);
     g.rect(-640, -360, 1280, 720);
     g.fill();
 
-    const prefab = await SettleWnd.loadPrefab();
+    const prefab = opts.historyMode ? null : await SettleWnd.loadPrefab();
     if (prefab) {
       try {
         await SettleWnd.bindPrefab(ov, prefab, opts);
@@ -220,78 +222,123 @@ export class SettleWnd {
     const isDraw = reason === 'huangzhuang';
     const me = settle?.rows?.find((r) => r.isMe);
     const iWin = !!me?.isWinner || (me?.score ?? 0) > 0;
+    const history = !!opts.historyMode;
 
+    const PANEL_W = 780;
+    const PANEL_H = history ? 560 : 540;
     const panel = new Node('panel');
     ov.addChild(panel);
     panel.layer = ov.layer;
-    panel.addComponent(UITransform).setContentSize(860, 620);
-    panel.setPosition(0, 0, 0);
+    panel.addComponent(UITransform).setContentSize(PANEL_W, PANEL_H);
+    panel.setPosition(0, history ? 16 : 24, 0);
 
-    const glass = panel.addComponent(Sprite);
-    glass.sizeMode = Sprite.SizeMode.CUSTOM;
-    const glassSf = await loadSpriteFrame('weihai/ui/settle/glass_bg');
-    if (glassSf) {
-      glass.spriteFrame = glassSf;
-      panel.getComponent(UITransform)!.setContentSize(900, 640);
-    } else {
-      const pg = panel.addComponent(Graphics);
-      pg.fillColor = new Color(20, 28, 36, 250);
-      pg.roundRect(-430, -310, 860, 620, 16);
-      pg.fill();
-      pg.strokeColor = new Color(212, 168, 72, 255);
-      pg.lineWidth = 3;
-      pg.roundRect(-430, -310, 860, 620, 16);
-      pg.stroke();
+    const base = panel.addComponent(Graphics);
+    base.fillColor = new Color(22, 30, 42, 255);
+    base.roundRect(-PANEL_W / 2, -PANEL_H / 2, PANEL_W, PANEL_H, 16);
+    base.fill();
+    base.strokeColor = new Color(212, 168, 72, 220);
+    base.lineWidth = 2;
+    base.roundRect(-PANEL_W / 2, -PANEL_H / 2, PANEL_W, PANEL_H, 16);
+    base.stroke();
+
+    // 牌桌结算可套 glass；战绩回看不用（半透明框容易看成「空方框」）
+    if (!history) {
+      const glass = panel.addComponent(Sprite);
+      glass.sizeMode = Sprite.SizeMode.CUSTOM;
+      const glassSf = await loadSpriteFrame('weihai/ui/settle/glass_bg');
+      if (glassSf) {
+        glass.spriteFrame = glassSf;
+        panel.getComponent(UITransform)!.setContentSize(PANEL_W, PANEL_H);
+      }
     }
 
-    // 标题图 Win/Lose/Draw
+    // 标题贴面板顶边（红绸带顶对齐）
     const titleImg = new Node('titleImg');
     panel.addChild(titleImg);
     titleImg.layer = ov.layer;
-    titleImg.addComponent(UITransform).setContentSize(320, 100);
-    titleImg.setPosition(0, 250, 0);
+    titleImg.addComponent(UITransform).setContentSize(280, 72);
     const tsp = titleImg.addComponent(Sprite);
     tsp.sizeMode = Sprite.SizeMode.CUSTOM;
     const titlePath = isDraw
       ? 'weihai/ui/settle/draw'
       : (iWin ? 'weihai/ui/settle/win' : 'weihai/ui/settle/lose');
     const tsf = await loadSpriteFrame(titlePath);
+    let titleH = 72;
     if (tsf) {
       tsp.spriteFrame = tsf;
       const tw = tsf.originalSize?.width || 320;
       const th = tsf.originalSize?.height || 100;
-      const s = Math.min(360 / tw, 110 / th);
-      titleImg.getComponent(UITransform)!.setContentSize(tw * s, th * s);
+      const s = Math.min(280 / tw, 78 / th);
+      titleH = th * s;
+      titleImg.getComponent(UITransform)!.setContentSize(tw * s, titleH);
     } else {
-      const lab = titleImg.addComponent(Label);
-      styleLabel(lab, 44);
+      const labN = new Node('t');
+      titleImg.addChild(labN);
+      labN.layer = ov.layer;
+      labN.addComponent(UITransform).setContentSize(200, 48);
+      const lab = labN.addComponent(Label);
+      styleLabel(lab, 40);
       lab.string = opts.title;
       lab.color = new Color(255, 230, 140, 255);
+      titleH = 48;
     }
+    titleImg.setPosition(0, PANEL_H / 2 - titleH / 2 - 2, 0);
     popIn(titleImg);
 
-    const sub = new Node('sub');
-    panel.addChild(sub);
-    sub.layer = ov.layer;
-    sub.addComponent(UITransform).setContentSize(800, 32);
-    sub.setPosition(0, 185, 0);
-    const subLab = sub.addComponent(Label);
-    styleLabel(subLab, 22);
-    const wName = settle?.winnerName || '';
+    // 滚动区：标题下沿 → 关闭钮上沿，留足间距避免裁切
+    const btnY = -PANEL_H / 2 + 44;
+    const titleBottom = PANEL_H / 2 - titleH - 4;
+    const scrollTop = titleBottom - 8;
+    const scrollBottom = btnY + 36;
+    const viewH = Math.max(280, scrollTop - scrollBottom);
+    const scrollY = (scrollTop + scrollBottom) / 2;
+
+    const scrollHost = new Node('scrollHost');
+    panel.addChild(scrollHost);
+    scrollHost.layer = ov.layer;
+    scrollHost.setPosition(0, scrollY, 0);
+    scrollHost.addComponent(UITransform).setContentSize(740, viewH);
+    // 透明热区，保证空白处也能拖拽滚动
+    const hitG = scrollHost.addComponent(Graphics);
+    hitG.fillColor = new Color(0, 0, 0, 1);
+    hitG.rect(-370, -viewH / 2, 740, viewH);
+    hitG.fill();
+
+    const viewN = new Node('view');
+    scrollHost.addChild(viewN);
+    viewN.layer = ov.layer;
+    const viewUi = viewN.addComponent(UITransform);
+    viewUi.setContentSize(740, viewH);
+    const mask = viewN.addComponent(Mask);
+    mask.type = Mask.Type.GRAPHICS_RECT;
+
+    const content = new Node('content');
+    viewN.addChild(content);
+    content.layer = ov.layer;
+    const contentUi = content.addComponent(UITransform);
+    // 顶锚点：子节点 y 从 0 往下排，默认顶对齐
+    contentUi.setAnchorPoint(0.5, 1);
+    contentUi.setContentSize(740, viewH);
+    content.setPosition(0, viewH / 2, 0);
+
+    let y = -6; // 相对 content 顶边向下
+
+    const wName = settle?.winnerName
+      || settle?.rows?.find((r) => r.isWinner)?.name
+      || '';
     const how = isDraw
       ? '本局荒庄'
-      : `★ ${wName}　${SettleWnd.reasonText(settle)}${settle?.paoName ? `（点炮：${settle.paoName}）` : ''}`;
-    subLab.string = how;
-    subLab.color = new Color(255, 220, 150, 255);
+      : `★ ${wName || '赢家'}　${SettleWnd.reasonText(settle)}${settle?.paoName ? `（点炮：${settle.paoName}）` : ''}`;
+    const roomBit = opts.roomId != null ? `房${opts.roomId}　` : '';
+    y = SettleWnd.addTextLineTop(content, ov.layer, y, `${roomBit}${how}`, 20, new Color(255, 220, 150, 255), 700);
+    y -= 6;
 
-    // 番型
-    let y = 150;
-    const fans = settle?.fanItems || [];
+    const fans = (settle?.fanItems || []).filter((f) => f && String(f.name || '').trim());
     if (fans.length) {
       const host = new Node('fans');
-      panel.addChild(host);
+      content.addChild(host);
       host.layer = ov.layer;
-      host.setPosition(0, y, 0);
+      host.setPosition(0, y - 14, 0);
       host.addComponent(UITransform);
       const cw = 120;
       const total = Math.min(fans.length, 5) * cw;
@@ -309,7 +356,11 @@ export class SettleWnd {
         cg.lineWidth = 1.5;
         cg.roundRect(-55, -12, 110, 24, 8);
         cg.stroke();
-        const cl = chip.addComponent(Label);
+        const labN = new Node('t');
+        chip.addChild(labN);
+        labN.layer = ov.layer;
+        labN.addComponent(UITransform).setContentSize(100, 24);
+        const cl = labN.addComponent(Label);
         styleLabel(cl, 16);
         cl.string = `${f.name}×${f.fan}`;
         cl.color = new Color(255, 230, 170, 255);
@@ -317,59 +368,32 @@ export class SettleWnd {
       y -= 36;
     }
 
-    // 胡牌
     if (settle?.winHand?.length) {
-      const ht = new Node('ht');
-      panel.addChild(ht);
-      ht.layer = ov.layer;
-      ht.setPosition(0, y, 0);
-      ht.addComponent(UITransform).setContentSize(100, 24);
-      const hl = ht.addComponent(Label);
-      styleLabel(hl, 18);
-      hl.string = '胡牌';
-      hl.color = new Color(200, 210, 200, 255);
-      y -= 44;
+      y = SettleWnd.addTextLineTop(content, ov.layer, y, '胡牌', 18, new Color(200, 210, 200, 255), 100);
+      y -= 4;
       const handHost = new Node('winHand');
-      panel.addChild(handHost);
+      content.addChild(handHost);
       handHost.layer = ov.layer;
-      handHost.setPosition(0, y, 0);
+      handHost.setPosition(0, y - 24, 0);
       handHost.addComponent(UITransform);
-      await SettleWnd.fillTiles(handHost, settle, 32, 46);
+      await SettleWnd.fillTiles(handHost, settle, 30, 44);
+      y -= 56;
+    }
+
+    if (settle?.birds?.length) {
+      y = SettleWnd.addTextLineTop(content, ov.layer, y, '中鸟', 18, new Color(200, 210, 200, 255), 100);
+      y -= 4;
+      const birdHost = new Node('birds');
+      content.addChild(birdHost);
+      birdHost.layer = ov.layer;
+      birdHost.setPosition(0, y - 22, 0);
+      birdHost.addComponent(UITransform);
+      await SettleWnd.fillBirdRow(birdHost, settle.birds, 0);
       y -= 52;
     }
 
-    // 中鸟
-    if (settle?.birds?.length) {
-      const bt = new Node('bt');
-      panel.addChild(bt);
-      bt.layer = ov.layer;
-      bt.setPosition(0, y, 0);
-      bt.addComponent(UITransform).setContentSize(100, 24);
-      const bl = bt.addComponent(Label);
-      styleLabel(bl, 18);
-      bl.string = '中鸟';
-      bl.color = new Color(200, 210, 200, 255);
-      y -= 42;
-      const birdHost = new Node('birds');
-      panel.addChild(birdHost);
-      birdHost.layer = ov.layer;
-      birdHost.setPosition(0, y, 0);
-      birdHost.addComponent(UITransform);
-      await SettleWnd.fillBirdRow(birdHost, settle.birds, 0);
-      y -= 50;
-    }
-
-    // 得分行
-    const st = new Node('st');
-    panel.addChild(st);
-    st.layer = ov.layer;
-    st.setPosition(0, y, 0);
-    st.addComponent(UITransform).setContentSize(120, 22);
-    const sl = st.addComponent(Label);
-    styleLabel(sl, 18);
-    sl.string = '本局得分';
-    sl.color = new Color(200, 210, 200, 255);
-    y -= 34;
+    y = SettleWnd.addTextLineTop(content, ov.layer, y, '本局得分', 18, new Color(200, 210, 200, 255), 120);
+    y -= 4;
 
     const rows = [...(settle?.rows || [])].sort((a, b) => {
       if (a.isWinner && !b.isWinner) return -1;
@@ -379,80 +403,166 @@ export class SettleWnd {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const row = new Node(`row${i}`);
-      panel.addChild(row);
+      content.addChild(row);
       row.layer = ov.layer;
-      row.setPosition(0, y - i * 38, 0);
-      row.addComponent(UITransform).setContentSize(780, 36);
-      const bgPath = r.isWinner ? 'weihai/ui/settle/winner_bg' : 'weihai/ui/settle/loser_bg';
-      const rsp = row.addComponent(Sprite);
-      rsp.sizeMode = Sprite.SizeMode.CUSTOM;
-      const rsf = await loadSpriteFrame(bgPath);
-      if (rsf) {
-        rsp.spriteFrame = rsf;
-        row.getComponent(UITransform)!.setContentSize(780, 36);
-      } else {
-        const rg = row.addComponent(Graphics);
-        rg.fillColor = r.isWinner ? new Color(80, 55, 25, 230) : new Color(35, 42, 50, 220);
-        rg.roundRect(-390, -16, 780, 32, 8);
-        rg.fill();
+      row.setPosition(0, y - 18, 0);
+      row.addComponent(UITransform).setContentSize(700, 36);
+      const rg = row.addComponent(Graphics);
+      rg.fillColor = r.isWinner ? new Color(90, 60, 28, 235) : new Color(35, 42, 50, 230);
+      rg.roundRect(-350, -16, 700, 32, 8);
+      rg.fill();
+      if (r.isWinner) {
+        rg.strokeColor = new Color(230, 180, 90, 200);
+        rg.lineWidth = 1.5;
+        rg.roundRect(-350, -16, 700, 32, 8);
+        rg.stroke();
       }
+
+      if (r.isWinner) {
+        const tag = new Node('tag');
+        row.addChild(tag);
+        tag.layer = ov.layer;
+        tag.setPosition(-300, 0, 0);
+        tag.addComponent(UITransform).setContentSize(56, 28);
+        const tg = tag.addComponent(Graphics);
+        tg.fillColor = new Color(196, 72, 48, 255);
+        tg.roundRect(-28, -12, 56, 24, 8);
+        tg.fill();
+        const labN = new Node('t');
+        tag.addChild(labN);
+        labN.layer = ov.layer;
+        labN.addComponent(UITransform).setContentSize(52, 24);
+        const tl = labN.addComponent(Label);
+        styleLabel(tl, 14);
+        tl.string = reason === 'zimo' ? '自摸' : (reason === 'dianpao' ? '胡牌' : '胡');
+        tl.color = new Color(255, 245, 220, 255);
+      }
+
       const name = new Node('n');
       row.addChild(name);
       name.layer = ov.layer;
-      name.setPosition(-160, 0, 0);
+      name.setPosition(-100, 0, 0);
       name.addComponent(UITransform).setContentSize(360, 28);
       const nl = name.addComponent(Label);
       styleLabel(nl, 18);
-      nl.string = `${r.isWinner ? '★ ' : ''}${r.name}${r.isMe ? '（我）' : ''}`;
+      const dispName = r.name && !/^座位\d+$/.test(r.name) ? r.name : (r.isWinner ? (wName || r.name) : r.name);
+      nl.string = `${r.isWinner ? '★ ' : ''}${dispName}${r.isMe ? '（我）' : ''}`;
       nl.color = r.isWinner ? new Color(255, 230, 150, 255) : new Color(230, 230, 230, 255);
       nl.horizontalAlign = Label.HorizontalAlign.LEFT;
 
       const sc = new Node('s');
       row.addChild(sc);
       sc.layer = ov.layer;
-      sc.setPosition(280, 0, 0);
+      sc.setPosition(260, 0, 0);
       sc.addComponent(UITransform).setContentSize(140, 28);
       const scl = sc.addComponent(Label);
       styleLabel(scl, 22);
       scl.color = r.score >= 0 ? new Color(120, 230, 160, 255) : new Color(255, 130, 110, 255);
-      rollNumber(scl, 0, r.score, r.score >= 0 ? '+' : '', 0.4 + i * 0.04);
+      rollNumber(scl, 0, r.score, r.score >= 0 ? '+' : '', 0.35 + i * 0.04);
 
-      // 赢家行旁图标
-      if (r.isWinner) {
-        const icon = new Node('icon');
-        row.addChild(icon);
-        icon.layer = ov.layer;
-        icon.setPosition(-360, 0, 0);
-        icon.addComponent(UITransform).setContentSize(40, 40);
-        const isp = icon.addComponent(Sprite);
-        isp.sizeMode = Sprite.SizeMode.CUSTOM;
-        const ip = reason === 'zimo'
-          ? 'weihai/ui/settle/icon_zimo'
-          : (reason === 'dianpao' ? 'weihai/ui/settle/icon_dianpao' : 'weihai/ui/settle/icon_hu');
-        const isf = await loadSpriteFrame(ip);
-        if (isf) isp.spriteFrame = isf;
-      }
-      popIn(row, 0.12 + i * 0.04);
+      popIn(row, 0.1 + i * 0.03);
+      y -= 40;
     }
 
-    // 按钮
-    const btnY = -270;
-    const cont = await SettleWnd.mkImgBtn(panel, 'cont', opts.secondaryLabel ? -120 : 0, btnY,
-      'weihai/ui/settle/btn_continue', opts.primaryLabel, 200);
-    cont.on(Button.EventType.CLICK, () => {
-      AudioBus.playButton();
-      opts.onPrimary?.();
-    });
-    if (opts.secondaryLabel && opts.onSecondary) {
-      const back = await SettleWnd.mkImgBtn(panel, 'back', 120, btnY, 'weihai/ui/btn_ok', opts.secondaryLabel, 160);
-      back.on(Button.EventType.CLICK, () => {
+    const contentH = Math.max(viewH + 1, -y + 24);
+    contentUi.setContentSize(740, contentH);
+    content.setPosition(0, viewH / 2, 0);
+
+    const sv = scrollHost.addComponent(ScrollView);
+    sv.horizontal = false;
+    sv.vertical = true;
+    sv.inertia = true;
+    sv.brake = 0.75;
+    sv.elastic = true;
+    sv.bounceDuration = 0.23;
+    sv.cancelInnerEvents = false;
+    sv.content = content;
+    // view 由 content.parent 推导；下一帧再顶对齐，避开 size 变更后的边界校正
+    scrollHost.getComponent(ScrollView)?.scheduleOnce(() => {
+      if (!sv.isValid) return;
+      sv.stopAutoScroll();
+      sv.scrollToTop(0);
+    }, 0);
+
+    // 关闭 / 继续
+    if (history) {
+      const close = SettleWnd.mkTextBtn(panel, 'close', 0, btnY, opts.primaryLabel || '关闭', 160, 48);
+      close.on(Button.EventType.CLICK, () => {
         AudioBus.playButton();
-        opts.onSecondary?.();
+        opts.onPrimary?.();
       });
+    } else {
+      const cont = await SettleWnd.mkImgBtn(panel, 'cont', opts.secondaryLabel ? -120 : 0, btnY,
+        'weihai/ui/settle/btn_continue', opts.primaryLabel, 200);
+      cont.on(Button.EventType.CLICK, () => {
+        AudioBus.playButton();
+        opts.onPrimary?.();
+      });
+      if (opts.secondaryLabel && opts.onSecondary) {
+        const back = SettleWnd.mkTextBtn(panel, 'back', 120, btnY, opts.secondaryLabel, 150, 48);
+        back.on(Button.EventType.CLICK, () => {
+          AudioBus.playButton();
+          opts.onSecondary?.();
+        });
+      }
     }
 
-    panel.setScale(0.88, 0.88, 1);
+    panel.setScale(0.9, 0.9, 1);
     tween(panel).to(0.28, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
+  }
+
+  /** 顶锚点布局：y 为距顶边的负方向光标，返回新的光标 */
+  private static addTextLineTop(
+    parent: Node,
+    layer: number,
+    yTop: number,
+    text: string,
+    size: number,
+    color: Color,
+    width: number,
+  ): number {
+    const n = new Node('line');
+    parent.addChild(n);
+    n.layer = layer;
+    n.setPosition(0, yTop - size / 2 - 2, 0);
+    n.addComponent(UITransform).setContentSize(width, size + 6);
+    const lab = n.addComponent(Label);
+    styleLabel(lab, size);
+    lab.string = text;
+    lab.color = color;
+    return yTop - size - 10;
+  }
+
+  private static mkTextBtn(
+    parent: Node,
+    name: string,
+    x: number,
+    y: number,
+    text: string,
+    w: number,
+    h: number,
+  ): Node {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.setPosition(x, y, 0);
+    n.addComponent(UITransform).setContentSize(w, h);
+    const g = n.addComponent(Graphics);
+    g.fillColor = new Color(196, 72, 48, 255);
+    g.roundRect(-w / 2, -h / 2, w, h, 12);
+    g.fill();
+    const labN = new Node('t');
+    n.addChild(labN);
+    labN.layer = parent.layer;
+    labN.addComponent(UITransform).setContentSize(w - 8, h - 8);
+    const lab = labN.addComponent(Label);
+    styleLabel(lab, 22);
+    lab.string = text;
+    lab.color = new Color(255, 245, 220, 255);
+    const btn = n.addComponent(Button);
+    btn.transition = Button.Transition.SCALE;
+    btn.zoomScale = 0.94;
+    return n;
   }
 
   private static reasonText(settle?: ResultSettleInfo | null): string {
