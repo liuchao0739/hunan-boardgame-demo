@@ -6,7 +6,6 @@ import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg
 import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
 import { JoinRoomDialog } from './JoinRoomDialog';
-import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
 
