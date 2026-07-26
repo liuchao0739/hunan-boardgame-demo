@@ -30,6 +30,12 @@ end
 function M.bootstrap()
   require("game.changsha_mj").register(M)
   require("game.shaoyang_phz").register(M)
+  require("game.chess").register(M)
+  require("game.go").register(M)
+end
+
+function M.known(gameId)
+  return M._factories[gameId] ~= nil
 end
 
 return M

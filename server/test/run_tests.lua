@@ -152,5 +152,24 @@ do
   assert_true(type(encoded) == "string" and encoded:find("birdHits"), "snapshot contains birdHits")
 end
 
+-- T069-T071: 跑胡子牌张 / 发牌出牌 / ops stub
+do
+  local PhzT = require "game.shaoyang_phz.tiles"
+  local Phz = require "game.shaoyang_phz"
+  local deck = PhzT.build_deck()
+  assert_true(#deck == 80, "phz deck 80")
+  local c = PhzT.counts(deck)
+  assert_true(c[0] == 4 and c[19] == 4, "phz count per tile")
+  local e = Phz.new({ playerCount = 3 })
+  e:on_start({ { userId = 1 }, { userId = 2 }, { userId = 3 } })
+  assert_true(e.phase == "wait_discard", "phz wait_discard")
+  assert_true(#e.players[0].hand == 20, "phz hand size")
+  local tile = e.players[0].hand[#e.players[0].hand]
+  local ok = e:on_action(0, "discard", { tile = tile })
+  assert_true(ok, "phz discard one")
+  local snap = e:snapshot(1)
+  assert_true(#snap.availableOps >= 1, "phz claim ops stub")
+end
+
 print(string.format("tests passed=%d failed=%d", passed, failed))
 os.exit(failed == 0 and 0 or 1)
