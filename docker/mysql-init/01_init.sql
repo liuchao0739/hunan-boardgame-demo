@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS room_card_ledger (
   reason VARCHAR(64) NOT NULL,
   ref_id VARCHAR(64) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_user_time (user_id, created_at)
+  KEY idx_user_time (user_id, created_at),
+  UNIQUE KEY uk_ref_id (ref_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS clubs (
