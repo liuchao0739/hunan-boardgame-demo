@@ -6,7 +6,6 @@ import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg
 import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
 import { JoinRoomDialog } from './JoinRoomDialog';
-import { ClubDialog } from './ClubDialog';
 import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
@@ -130,7 +129,6 @@ export class HallScene extends Component {
   private onMatchResult(body: any) {
     if (!body?.ok) return;
     this.matching = false;
-    this.setMatchCaption('匹配');
     if (body.roomId) this.roomId = body.roomId;
     if (this.joinEdit) this.joinEdit.string = String(body.roomId || '');
     if (body.state) this.onState(body.state);
@@ -311,23 +309,22 @@ export class HallScene extends Component {
     this.buildBottomNav(canvas);
   }
 
-  /** 底栏四入口：战绩 / 快速匹配 / 复制房号 / 老友圈（均接真实接口） */
+  /** 底栏：战绩 / 快速匹配 / 复制房号（老友圈未成型，不展示） */
   private buildBottomNav(canvas: Node) {
-    for (const name of ['LinkRecords', 'LinkMatch', 'LinkShare', 'ClubBtn', '__BottomNav']) {
+    for (const name of ['LinkRecords', 'LinkMatch', 'LinkShare', 'ClubBtn', '__BottomNav', '__ClubDialog']) {
       const n = canvas.getChildByName(name);
       if (n?.isValid) n.destroy();
     }
     const nav = new Node('__BottomNav');
     canvas.addChild(nav);
     nav.layer = canvas.layer || Layers.Enum.UI_2D;
-    nav.addComponent(UITransform).setContentSize(720, 100);
+    nav.addComponent(UITransform).setContentSize(520, 100);
     nav.setPosition(-40, -318, 0);
 
     const items: Array<{ name: string; caption: string; img: string; x: number; fn: () => void }> = [
-      { name: 'NavRecords', caption: '战绩', img: 'weihai/ui/hall/btn_record', x: -270, fn: () => void this.onClickRecords() },
-      { name: 'NavMatch', caption: '匹配', img: 'weihai/ui/hall/btn_match', x: -90, fn: () => void this.onClickQuickMatch() },
-      { name: 'NavShare', caption: '房号', img: 'weihai/ui/hall/btn_share', x: 90, fn: () => this.onClickShareRoom() },
-      { name: 'NavClub', caption: '老友圈', img: 'weihai/ui/hall/btn_club', x: 270, fn: () => this.onClickClub() },
+      { name: 'NavRecords', caption: '战绩', img: 'weihai/ui/hall/btn_record', x: -160, fn: () => void this.onClickRecords() },
+      { name: 'NavMatch', caption: '匹配', img: 'weihai/ui/hall/btn_match', x: 0, fn: () => void this.onClickQuickMatch() },
+      { name: 'NavShare', caption: '房号', img: 'weihai/ui/hall/btn_share', x: 160, fn: () => this.onClickShareRoom() },
     ];
     for (const it of items) {
       const n = new Node(it.name);
@@ -363,24 +360,6 @@ export class HallScene extends Component {
         it.fn();
       }, this);
     }
-  }
-
-  private onClickClub() {
-    void this.ensureConnected().then((ok) => {
-      if (!ok) return;
-      ClubDialog.show(this.canvas(), (s) => this.setRoom(s));
-    });
-  }
-
-  private ensureTextLink(
-    _parent: Node,
-    _name: string,
-    _caption: string,
-    _x: number,
-    _y: number,
-    _onClick: () => void,
-  ) {
-    // 已改为底栏图标按钮，保留空实现避免旧调用崩
   }
 
   private hideBtnLabels(node: Node | null) {
