@@ -1,5 +1,5 @@
 import {
-  _decorator, Component, Label, EditBox, Button, Node, UITransform, Sprite, Layers, Color, Graphics,
+  _decorator, Component, Label, EditBox, Button, Node, UITransform, Sprite, Layers, Color, Graphics, director,
 } from 'cc';
 import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg';
@@ -267,12 +267,38 @@ export class HallScene extends Component {
     const brand = new Node('brand');
     top.addChild(brand);
     brand.layer = top.layer;
-    brand.setPosition(420, 0, 0);
-    brand.addComponent(UITransform).setContentSize(280, 40);
+    brand.setPosition(320, 0, 0);
+    brand.addComponent(UITransform).setContentSize(160, 40);
     const bl = brand.addComponent(Label);
     styleLabel(bl, 26);
     bl.string = '湘桌';
     bl.color = new Color(255, 220, 120, 255);
+
+    const logout = new Node('logout');
+    top.addChild(logout);
+    logout.layer = top.layer;
+    logout.setPosition(520, 0, 0);
+    logout.addComponent(UITransform).setContentSize(120, 40);
+    const lg = logout.addComponent(Graphics);
+    lg.fillColor = new Color(90, 50, 40, 230);
+    lg.roundRect(-60, -18, 120, 36, 10);
+    lg.fill();
+    lg.strokeColor = new Color(220, 170, 90, 180);
+    lg.lineWidth = 1.5;
+    lg.roundRect(-60, -18, 120, 36, 10);
+    lg.stroke();
+    const lt = new Node('t');
+    logout.addChild(lt);
+    lt.layer = top.layer;
+    lt.addComponent(UITransform).setContentSize(110, 32);
+    const ll = lt.addComponent(Label);
+    styleLabel(ll, 18);
+    ll.string = '退出登录';
+    ll.color = new Color(255, 235, 200, 255);
+    logout.addComponent(Button).node.on(Button.EventType.CLICK, () => {
+      AudioBus.playButton();
+      void this.onClickLogout();
+    }, this);
 
     // 底栏
     let bar = canvas.getChildByName('__HallBottom');
@@ -500,7 +526,7 @@ export class HallScene extends Component {
     if (lab?.isValid) lab.string = s;
   }
 
-  onClickShareRoom() {
+  async onClickShareRoom() {
     const id = this.roomId > 0 ? this.roomId : parseInt(this.joinEdit?.string || '0', 10);
     if (!id) {
       this.setRoom('暂无房间号：请先创建或加入房间');
@@ -509,6 +535,26 @@ export class HallScene extends Component {
     const text = String(id);
     if (NetBus.copyToClipboard(text)) this.setRoom(`房间号 ${text} 已复制到剪贴板`);
     else this.setRoom(`房间号：${text}（请手动复制）`);
+  }
+
+  async onClickLogout() {
+    this.setRoom('正在退出…');
+    try {
+      if (NetBus.ins.isConnected()) {
+        await NetBus.ins.logout();
+      }
+    } catch { /* ignore */ }
+    this.clearSubs();
+    NetBus.ins.disconnect();
+    try {
+      delete (globalThis as any).__HNQP__;
+      delete (globalThis as any).__WHMJ__;
+      delete (globalThis as any).__HNQP_ROOM__;
+    } catch { /* */ }
+    this.roomId = -1;
+    director.loadScene('Login', (err) => {
+      if (err) this.setRoom('退出失败：缺少 Login 场景');
+    });
   }
 
   private ensureRecordsPanel(canvas: Node) {

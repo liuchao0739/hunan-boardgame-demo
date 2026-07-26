@@ -406,6 +406,15 @@ export class NetBus {
     return this.request('platform', 'joinRoom', { roomId, password });
   }
 
+  leaveRoom() {
+    return this.request('platform', 'leave', {});
+  }
+
+  logout(ticket?: string) {
+    const u = (globalThis as any).__HNQP__ || {};
+    return this.request('platform', 'logout', { ticket: ticket || u.ticket });
+  }
+
   quickMatch(gameId = 'changsha_mj') {
     return this.request('platform', 'quickMatch', { gameId });
   }

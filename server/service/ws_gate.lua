@@ -435,6 +435,21 @@ local function handle_platform(fd, req)
     return
   end
 
+  if cmd == "logout" then
+    local rid = skynet.call(room_mgr, "lua", "get_room_id", c.userId)
+    if rid then
+      skynet.call(room_mgr, "lua", "leave", c.userId)
+      broadcast_room(rid, fd)
+    end
+    pcall(skynet.call, matchmaking, "lua", "cancel", c.userId)
+    skynet.call(passport, "lua", "logout", body.ticket or c.ticket)
+    c.userId = nil
+    c.userName = nil
+    c.ticket = nil
+    reply(fd, req, "logoutResult", { ok = true })
+    return
+  end
+
   reply(fd, req, "error", { message = "未知平台命令 " .. tostring(cmd) })
 end
 

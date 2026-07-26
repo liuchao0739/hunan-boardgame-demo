@@ -272,6 +272,13 @@ function CMD.refresh_ticket(ticket)
   return issue_ticket(u)
 end
 
+function CMD.logout(ticket)
+  if ticket and ticket ~= "" then
+    Redis.del_ticket(ticket)
+  end
+  return { ok = true }
+end
+
 function CMD.update_profile(userId, fields)
   userId = tonumber(userId)
   fields = fields or {}

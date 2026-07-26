@@ -346,11 +346,12 @@ export class TableLayout {
   }
 
   private buildDiscardAreas(parent: Node) {
+    // 左右家河略靠桌心，给竖排留宽
     const pos = [
       { x: 0, y: -95 },
-      { x: 200, y: 20 },
+      { x: 175, y: 25 },
       { x: 0, y: 145 },
-      { x: -200, y: 20 },
+      { x: -175, y: 25 },
     ];
     this.discardRoots = [];
     for (let i = 0; i < 4; i++) {
@@ -502,6 +503,29 @@ export class TableLayout {
     AudioBus.playHu();
   }
 
+  /** 出牌河坐标：上下家横铺，左右家竖铺（避免侧家挤成一坨） */
+  private discardCellPos(rel: number, index: number, tw: number, th: number): { x: number; y: number } {
+    const gapX = 6;
+    const gapY = 6;
+    if (rel === 1 || rel === 3) {
+      const perCol = 5;
+      const row = index % perCol;
+      const col = Math.floor(index / perCol);
+      const y = Math.round(((perCol - 1) / 2 - row) * (th + gapY));
+      // 左家列向右（桌心），右家列向左（桌心）
+      const x = rel === 3
+        ? Math.round(col * (tw + gapX))
+        : Math.round(-col * (tw + gapX));
+      return { x, y };
+    }
+    const cols = 6;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const x = Math.round((col - (cols - 1) / 2) * (tw + gapX));
+    const y = Math.round(-row * (th + gapY));
+    return { x, y };
+  }
+
   async flyDiscardToRiver(
     relSeat: number,
     tile: number,
@@ -512,13 +536,9 @@ export class TableLayout {
     if (!fx?.isValid || !root?.isValid) return;
     const tw = 28;
     const th = 40;
-    const cols = 6;
     const idx = root.children.length;
-    const col = idx % cols;
-    const row = Math.floor(idx / cols);
-    const tx = Math.round((col - (cols - 1) / 2) * (tw + 1));
-    const ty = Math.round(-row * (th + 2));
-    const toLocal = new Vec3(tx, ty, 0);
+    const cell = this.discardCellPos(relSeat, idx, tw, th);
+    const toLocal = new Vec3(cell.x, cell.y, 0);
     const toWorld = root.getComponent(UITransform)!.convertToWorldSpaceAR(toLocal);
     const from = fromWorld ?? this.seatDiscardOrigin(relSeat);
     const fromLocal = fx.getComponent(UITransform)!.convertToNodeSpaceAR(from);
@@ -798,19 +818,15 @@ export class TableLayout {
     for (let i = 0; i < 4; i++) this.discardRoots[i]?.removeAllChildren();
     const tw = 28;
     const th = 40;
-    const cols = 6;
     for (const p of players) {
       const rel = (p.seatIndex - mySeat + 4) % 4;
       const root = this.discardRoots[rel];
       if (!root || !p.discard?.length) continue;
       for (let i = 0; i < p.discard.length; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
         const tile = p.discard[i];
         const n = await createTileNode(tile, root, tw, th);
-        const x = Math.round((col - (cols - 1) / 2) * (tw + 1));
-        const y = Math.round(-row * (th + 2));
-        n.setPosition(x, y, 0);
+        const cell = this.discardCellPos(rel, i, tw, th);
+        n.setPosition(cell.x, cell.y, 0);
         // 刚打出的那张：吃碰黄框 / 可胡红框
         if (highlightKind && highlightTile != null && i === p.discard.length - 1 && tile === highlightTile) {
           TableLayout.markTileHighlight(n, highlightKind);
