@@ -607,9 +607,12 @@ export class TableLayout {
     n.setPosition(x, y, 0);
     const sp = n.addComponent(Sprite);
     sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    sp.type = Sprite.Type.SIMPLE;
+    // 避免 Button 默认再叠一层 target 贴图造成「重影」
     const btn = n.addComponent(Button);
     btn.transition = Button.Transition.SCALE;
-    btn.zoomScale = 0.92;
+    btn.zoomScale = 0.94;
+    btn.target = n;
     void loadSpriteFrame(path).then((sf) => {
       if (sf && n.isValid) {
         sp.spriteFrame = sf;
