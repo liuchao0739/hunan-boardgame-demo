@@ -322,10 +322,12 @@ export class TableScene extends Component {
     let discardFly: { rel: number; tile: number; from?: Vec3 } | null = null;
     if (game.lastDiscard?.tile != null) {
       const ld = game.lastDiscard;
+      const fromSeat = ld.fromSeat ?? ld.seat;
       const prevTile = prev?.lastDiscard?.tile;
-      const prevFrom = prev?.lastDiscard?.fromSeat;
-      if (!prev || prevTile !== ld.tile || prevFrom !== ld.fromSeat) {
-        const rel = (ld.fromSeat - this.mySeat + 4) % 4;
+      const prevLd = prev?.lastDiscard as { fromSeat?: number; seat?: number } | null | undefined;
+      const prevFrom = prevLd?.fromSeat ?? prevLd?.seat;
+      if (!prev || prevTile !== ld.tile || prevFrom !== fromSeat) {
+        const rel = ((Number(fromSeat) - this.mySeat) + 4) % 4;
         discardFly = { rel, tile: ld.tile };
         AudioBus.playDiscard();
         VoiceBus.playTile(ld.tile);

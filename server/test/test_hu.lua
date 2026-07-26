@@ -45,10 +45,14 @@ local function run(assert_true)
     { name = "one away", hand = {0,0, 1,2,3, 4,5,6, 9,10,11, 18,19,21}, fn = T.can_hu },
     { name = "jiang but not hu", hand = {1,1, 4,4, 7,7, 10,10, 13,13, 16,16, 19,22}, fn = T.can_jiang_jiang_hu },
     { name = "hu but not jiang", hand = {0,0, 1,2,3, 4,5,6, 9,10,11, 18,19,20}, fn = T.can_jiang_jiang_hu },
+    -- 听六筒时打来六万不得胡（与用户反馈同型）
+    { name = "wait 6tong reject 6wan", hand = {10,10,10, 3,3,3, 6,7,8, 26,26,26, 23, 5}, fn = T.can_hu },
   }
   for _, c in ipairs(cases_no) do
     assert_true(not c.fn(c.hand), "hu no: " .. c.name)
   end
+  -- 正例：同上听口摸/胡六筒可胡
+  assert_true(T.can_hu({10,10,10, 3,3,3, 6,7,8, 26,26,26, 23, 23}), "hu yes: wait 6tong get 6tong")
 end
 
 M.run = run

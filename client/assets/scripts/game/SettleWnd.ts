@@ -9,6 +9,7 @@ import {
 import { createTileNode, loadSpriteFrame, styleLabel } from '../comm/ArtBg';
 import { AudioBus } from '../comm/AudioBus';
 import { popIn, rollNumber } from './TableFx';
+import { tileName } from './ChangshaTiles';
 import type { ResultSettleInfo } from './TableLayout';
 
 export type SettleShowOpts = {
@@ -326,11 +327,16 @@ export class SettleWnd {
     const wName = settle?.winnerName
       || settle?.rows?.find((r) => r.isWinner)?.name
       || '';
+    const huName = settle?.huTile != null
+      ? tileName(Number(settle.huTile))
+      : '';
     const how = isDraw
       ? '本局荒庄'
-      : `★ ${wName || '赢家'}　${SettleWnd.reasonText(settle)}${settle?.paoName ? `（点炮：${settle.paoName}）` : ''}`;
+      : `★ ${wName || '赢家'}　${SettleWnd.reasonText(settle)}`
+        + (huName ? `　胡${huName}` : '')
+        + (settle?.paoName ? `（点炮：${settle.paoName}）` : '');
     const roomBit = opts.roomId != null ? `房${opts.roomId}　` : '';
-    y = SettleWnd.addTextLineTop(content, ov.layer, y, `${roomBit}${how}`, 20, new Color(255, 220, 150, 255), 700);
+    y = SettleWnd.addTextLineTop(content, ov.layer, y, `${roomBit}${how}`, 18, new Color(255, 220, 150, 255), 720);
     y -= 6;
 
     const fans = (settle?.fanItems || []).filter((f) => f && String(f.name || '').trim());
@@ -436,6 +442,24 @@ export class SettleWnd {
         styleLabel(tl, 14);
         tl.string = reason === 'zimo' ? '自摸' : (reason === 'dianpao' ? '胡牌' : '胡');
         tl.color = new Color(255, 245, 220, 255);
+      } else if (settle?.paoName && (r.name === settle.paoName || r.name.includes(String(settle.paoName)))) {
+        const tag = new Node('pao');
+        row.addChild(tag);
+        tag.layer = ov.layer;
+        tag.setPosition(-300, 0, 0);
+        tag.addComponent(UITransform).setContentSize(56, 28);
+        const tg = tag.addComponent(Graphics);
+        tg.fillColor = new Color(70, 90, 140, 255);
+        tg.roundRect(-28, -12, 56, 24, 8);
+        tg.fill();
+        const labN = new Node('t');
+        tag.addChild(labN);
+        labN.layer = ov.layer;
+        labN.addComponent(UITransform).setContentSize(52, 24);
+        const tl = labN.addComponent(Label);
+        styleLabel(tl, 14);
+        tl.string = '点炮';
+        tl.color = new Color(220, 230, 255, 255);
       }
 
       const name = new Node('n');

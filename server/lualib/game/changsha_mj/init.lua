@@ -510,14 +510,6 @@ function Engine:_do_hu(winner, is_zimo, pao_seat, opts)
     jiangJiangHu = is_jiang,
     paoSeat = pao_seat,
   }
-  local detail_str = string.format(
-    "%s 座位%d fan=%d%s；鸟：%s",
-    is_zimo and "自摸" or (opts.is_qiang_gang and "抢杠胡" or "点炮"),
-    winner,
-    fan,
-    is_jiang and "（将将胡叠加）" or "",
-    Niao.describe(birds)
-  )
   local wp = self.players[winner]
   local hu_tile = nil
   if is_zimo then
@@ -525,6 +517,26 @@ function Engine:_do_hu(winner, is_zimo, pao_seat, opts)
   elseif self.lastDiscard and self.lastDiscard.tile then
     hu_tile = self.lastDiscard.tile
   end
+  -- 点炮：胡牌张/点炮座位一律以 lastDiscard 为准
+  if not is_zimo and self.lastDiscard then
+    pao_seat = self.lastDiscard.seat
+    hu_tile = self.lastDiscard.tile
+    hu_detail.paoSeat = pao_seat
+  end
+  local tile_bit = hu_tile and (" 胡" .. T.tile_name(hu_tile)) or ""
+  local pao_bit = (not is_zimo and pao_seat and self.players[pao_seat])
+    and ("（点炮：" .. tostring(self.players[pao_seat].userName) .. "）")
+    or ""
+  local detail_str = string.format(
+    "%s%s 座位%d fan=%d%s%s；鸟：%s",
+    is_zimo and "自摸" or (opts.is_qiang_gang and "抢杠胡" or "点炮"),
+    tile_bit,
+    winner,
+    fan,
+    is_jiang and "（将将胡叠加）" or "",
+    pao_bit,
+    Niao.describe(birds)
+  )
   self.phase = "settle"
   self.settle = {
     winnerSeat = winner,
@@ -540,10 +552,10 @@ function Engine:_do_hu(winner, is_zimo, pao_seat, opts)
     fan = fan,
     fanItems = fan_items,
     jiangJiangHu = is_jiang,
-    -- 结算展示：赢家完整牌面（与中鸟同款牌面渲染）
     winHand = copy_arr(wp.hand),
     winMelds = copy_melds(wp.melds),
     huTile = hu_tile,
+    huTileName = hu_tile and T.tile_name(hu_tile) or nil,
   }
   self.message = self.settle.detail
   self.dealer = winner
@@ -613,6 +625,7 @@ function Engine:_settle_multi_hu()
     winHand = copy_arr(wp.hand),
     winMelds = copy_melds(wp.melds),
     huTile = self.lastDiscard and self.lastDiscard.tile or wp.hand[#wp.hand],
+    huTileName = (self.lastDiscard and self.lastDiscard.tile) and T.tile_name(self.lastDiscard.tile) or nil,
   }
   self.message = self.settle.detail
   self.dealer = primary
