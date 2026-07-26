@@ -66,6 +66,8 @@ local function all_humans_ready(room)
   return true
 end
 
+local passport
+
 local function on_game_settled(room)
   if room.state ~= "playing" then return end
   room.state = "between_round"
@@ -75,8 +77,23 @@ local function on_game_settled(room)
   end
   if room.engine and room.engine.settle then
     room.roundNo = (room.roundNo or 0) + 1
-    local Records = require "platform.records"
-    Records.save_settle(room, room.engine.settle, room.players, room.roundNo)
+    -- Skynet 各服务 Lua VM 隔离：必须经 passport 落库，否则大厅 getRecords 永远空
+    if not passport then
+      passport = skynet.uniqueservice("passport")
+    end
+    local stub = {
+      roomId = room.roomId,
+      gameId = room.gameId,
+      prevScores = room.prevScores,
+    }
+    local ok, payload, prev = pcall(skynet.call, passport, "lua", "save_settle", stub, room.engine.settle, room.players, room.roundNo)
+    if ok and prev then
+      room.prevScores = prev
+    elseif ok and stub.prevScores then
+      room.prevScores = stub.prevScores
+    elseif not ok then
+      skynet.error("[room_mgr] save_settle failed:", payload)
+    end
     Economy.on_round_settle(room, room.rules)
     Metrics.inc_round()
   end

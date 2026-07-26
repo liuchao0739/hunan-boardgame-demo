@@ -310,7 +310,7 @@ export class HallScene extends Component {
     this.buildBottomNav(canvas);
   }
 
-  /** 底栏：战绩 / 快速匹配 / 复制房号（老友圈未成型，不展示） */
+  /** 底栏：战绩 / 匹配 / 复制房号（美术图上可能印着「活动/分享」，以文案为准） */
   private buildBottomNav(canvas: Node) {
     for (const name of ['LinkRecords', 'LinkMatch', 'LinkShare', 'ClubBtn', '__BottomNav', '__ClubDialog']) {
       const n = canvas.getChildByName(name);
@@ -325,7 +325,7 @@ export class HallScene extends Component {
     const items: Array<{ name: string; caption: string; img: string; x: number; fn: () => void }> = [
       { name: 'NavRecords', caption: '战绩', img: 'weihai/ui/hall/btn_record', x: -160, fn: () => void this.onClickRecords() },
       { name: 'NavMatch', caption: '匹配', img: 'weihai/ui/hall/btn_match', x: 0, fn: () => void this.onClickQuickMatch() },
-      { name: 'NavShare', caption: '房号', img: 'weihai/ui/hall/btn_share', x: 160, fn: () => this.onClickShareRoom() },
+      { name: 'NavShare', caption: '复制房号', img: 'weihai/ui/hall/btn_share', x: 160, fn: () => this.onClickShareRoom() },
     ];
     for (const it of items) {
       const n = new Node(it.name);
