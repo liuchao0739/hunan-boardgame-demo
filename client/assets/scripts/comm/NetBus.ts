@@ -514,10 +514,6 @@ export class NetBus {
     return this.request('platform', 'sync', {});
   }
 
-  leave(force = true) {
-    return this.request('platform', 'leave', { force });
-  }
-
   gameAction(cmd: string, body: any = {}, gameId = 'changsha_mj') {
     return this.request(gameId, cmd, body);
   }
