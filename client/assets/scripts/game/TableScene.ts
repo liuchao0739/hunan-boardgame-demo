@@ -3,8 +3,9 @@ import { NetBus, ConnState } from '../comm/NetBus';
 import { createTileNode, sortHandTiles } from '../comm/ArtBg';
 import { AudioBus } from '../comm/AudioBus';
 import { VoiceBus, RoundVoice } from '../comm/VoiceBus';
-import { TableLayout, SeatPlayer } from './TableLayout';
+import { TableLayout, SeatPlayer, ResultSettleInfo } from './TableLayout';
 import { gameDisplayName } from './TableRouter';
+import { chiHandTiles, tingTiles } from './ChangshaTiles';
 
 const { ccclass } = _decorator;
 
@@ -20,6 +21,7 @@ export class TableScene extends Component {
   private leaving = false;
   private lastOps: any[] = [];
   private lastChi: number[] | null = null;
+  private _lastDiscardTile: number | null = null;
   private autoPlay = false;
   private roomState = 'playing';
   private activeGameId = 'changsha_mj';
@@ -166,9 +168,10 @@ export class TableScene extends Component {
       melds: (s.melds || []).map((m: any) => ({ kind: m.kind, tiles: m.tiles || [] })),
     }));
     this.layout.updateSeats(players, this.myId, this.seatToUser(game, game.currentSeat));
-    void this.runStateFx(fx, game, players);
-
+    // 必须在 refreshHand 之前写入，否则吃碰高亮会读到空 ops
     this.lastOps = game.availableOps || [];
+    this._lastDiscardTile = game.lastDiscard?.tile != null ? Number(game.lastDiscard.tile) : null;
+    void this.runStateFx(fx, game, players);
     this.refreshOps(game);
 
     // 仅起手阶段展示起手胡；继续后不再盖住出牌提示
@@ -187,12 +190,15 @@ export class TableScene extends Component {
     if (game.phase === 'settle' && game.settle && !this.resultShown) {
       this.resultShown = true;
       const s = game.settle;
-      if (s.reason === 'zimo' || s.reason === 'hu' || s.reason === 'dianpao') {
+      if (s.reason === 'zimo' || s.reason === 'hu' || s.reason === 'dianpao' || s.reason === 'qiang_gang') {
         this.layout.showHuEffect(s.reason === 'zimo' ? 'zimo' : 'hu');
         VoiceBus.playRound(s.reason === 'zimo' ? 'zimo' : (s.reason === 'dianpao' ? 'dianpao' : 'hu'));
       }
-      const title = s.reason === 'huangzhuang' ? '荒庄' : (s.reason === 'zimo' ? '自摸！' : '胡牌！');
+      const title = s.reason === 'huangzhuang'
+        ? '荒庄'
+        : (s.reason === 'zimo' ? '自摸！' : '胡牌！');
       const between = this.roomState === 'between_round';
+      const settleInfo = this.buildSettleInfo(s, game);
       this.layout.showResultOverlay(
         title,
         s.detail || '本局结束',
@@ -203,6 +209,7 @@ export class TableScene extends Component {
         },
         between ? '回大厅' : undefined,
         between ? () => void this.backToHall() : undefined,
+        settleInfo,
       );
     } else if (game.phase !== 'settle' && this.resultShown) {
       // 新一局已开始：务必关掉结算遮罩，否则点不到牌
@@ -219,8 +226,10 @@ export class TableScene extends Component {
       meldCounts[s.seat] = (s.melds || []).length;
     }
     const discardLens: number[] = [];
+    const scores: number[] = [];
     for (const s of game.seats || []) {
       discardLens[s.seat] = (s.discards || []).length;
+      scores[s.seat] = s.score || 0;
     }
     return {
       phase: game.phase,
@@ -230,6 +239,49 @@ export class TableScene extends Component {
       lastDiscard: game.lastDiscard ? { ...game.lastDiscard } : null,
       meldCounts,
       discardLens,
+      scores,
+    };
+  }
+
+  private buildSettleInfo(s: any, game: any): ResultSettleInfo {
+    const winner = s.winnerSeat;
+    const scoreArr: number[] = Array.isArray(s.scores) ? s.scores : [];
+    const rows = (game.seats || [])
+      .map((seat: any) => {
+        const total = Number(seat.score ?? scoreArr[seat.seat] ?? 0);
+        const prev = this.prevGame?.scores?.[seat.seat];
+        // 优先显示本局分差；没有上一帧则显示总分
+        const score = prev != null ? total - prev : total;
+        return {
+          seat: seat.seat as number,
+          name: String(seat.userName || `座位${seat.seat}`),
+          score: Number(score) || 0,
+          isMe: seat.userId === this.myId,
+          isWinner: winner != null && Number(seat.seat) === Number(winner),
+        };
+      })
+      .sort((a: { seat: number }, b: { seat: number }) => a.seat - b.seat);
+
+    let fanItems = Array.isArray(s.fanItems) ? s.fanItems : [];
+    // 一炮多响时 fanItems 可能是嵌套结构
+    if (fanItems.length && fanItems[0]?.fanItems) {
+      const flat: any[] = [];
+      for (const block of fanItems) {
+        for (const it of block.fanItems || []) flat.push(it);
+      }
+      fanItems = flat;
+    }
+
+    return {
+      reason: String(s.reason || ''),
+      detail: s.detail,
+      fan: s.fan != null ? Number(s.fan) : undefined,
+      fanItems: fanItems.map((f: any) => ({
+        name: String(f.name || f.id || '番'),
+        fan: Number(f.fan) || 0,
+      })),
+      birds: Array.isArray(s.birds) ? s.birds.map((t: any) => Number(t)) : [],
+      rows,
     };
   }
 
@@ -320,7 +372,8 @@ export class TableScene extends Component {
       await lay.flyDiscardToRiver(fx.discardFly.rel, fx.discardFly.tile, from);
     }
 
-    await lay.updateDiscards(players, this.myId);
+    const riverHl = this.claimRiverHighlight();
+    await lay.updateDiscards(players, this.myId, riverHl ? this._lastDiscardTile : null, riverHl);
     await lay.updateMelds(players, this.myId, fx.meldNew);
   }
 
@@ -388,6 +441,17 @@ export class TableScene extends Component {
     } else {
       this.lastChi = null;
     }
+    // 吃碰胡时把牌名写进提示，避免只看到按钮不知道是哪张
+    if (showClaim) {
+      const labels = ops
+        .filter((o) => o.action !== 'guo' && o.label)
+        .map((o) => o.label as string);
+      if (labels.length) {
+        const sec = game.deadlineMs != null ? Math.ceil(game.deadlineMs / 1000) : null;
+        const tip = labels.join(' / ');
+        this.setTip(sec != null && sec > 0 ? `${tip} (${sec}s)` : tip);
+      }
+    }
   }
 
   private async act(cmd: string, body: any = {}) {
@@ -416,6 +480,36 @@ export class TableScene extends Component {
     void this.act('continue');
   };
 
+  /** 吃/碰相关手牌黄框；点炮可胡时河牌红框（手牌不整手刷红） */
+  private collectHighlightTiles(): Map<number, 'claim' | 'hu'> {
+    const map = new Map<number, 'claim' | 'hu'>();
+    const ops = this.lastOps || [];
+    for (const t of chiHandTiles(ops)) map.set(t, 'claim');
+    const discardTile = this._lastDiscardTile;
+    if (discardTile != null && ops.some((o) => o.action === 'peng' || o.action === 'ming_gang')) {
+      map.set(discardTile, 'claim');
+    }
+    return map;
+  }
+
+  private claimRiverHighlight(): 'claim' | 'hu' | null {
+    const ops = this.lastOps || [];
+    if (ops.some((o) => o.action === 'hu')) return 'hu';
+    if (ops.some((o) => o.action === 'chi' || o.action === 'peng' || o.action === 'ming_gang')) {
+      return 'claim';
+    }
+    return null;
+  }
+
+  private updateTingTips() {
+    if (!this.layout) return;
+    if (this.hand.length % 3 === 1) {
+      this.layout.setTingTips(tingTiles(this.hand));
+    } else {
+      this.layout.setTingTips([]);
+    }
+  }
+
   private async refreshHand(animateDraw = false) {
     const lay = this.layout;
     if (!lay?.handRoot) return;
@@ -425,20 +519,17 @@ export class TableScene extends Component {
     this.hand = tiles;
 
     const tw = 52;
-    const gap = 2;
-    const suitGap = 16;
+    const gap = 4; // 统一间距，不再按花色拉开大空隙
     const positions: number[] = [];
     let xCursor = 0;
     for (let i = 0; i < tiles.length; i++) {
-      if (i > 0) {
-        const prevSuit = Math.floor(tiles[i - 1] / 9);
-        const suit = Math.floor(tiles[i] / 9);
-        xCursor += tw + (prevSuit !== suit ? suitGap : gap);
-      }
+      if (i > 0) xCursor += tw + gap;
       positions.push(xCursor);
     }
     const totalW = tiles.length ? (positions[positions.length - 1] + tw) : 0;
     const origin = -totalW / 2 + tw / 2;
+
+    const highlight = this.collectHighlightTiles();
 
     // 离屏容器建齐后再一次性替换，杜绝半成品/过期节点混进手牌区
     const stage = new Node('__HandStaging');
@@ -463,6 +554,8 @@ export class TableScene extends Component {
       }
       if (!n?.isValid) continue;
       n.setPosition(Math.round(origin + positions[i]), this.selectedIdx === idx ? 20 : 0, 0);
+      const hl = highlight.get(tile);
+      if (hl) TableLayout.markTileHighlight(n, hl);
       built.push(n);
     }
 
@@ -481,6 +574,7 @@ export class TableScene extends Component {
     if (animateDraw && built.length > 0) {
       lay.animateHandReflow(root, positions, origin, built.length - 1);
     }
+    this.updateTingTips();
   }
 
   private onSelectTile(idx: number) {

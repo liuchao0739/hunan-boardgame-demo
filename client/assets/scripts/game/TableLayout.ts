@@ -4,6 +4,7 @@ import {
 import { loadSpriteFrame, createTileNode, styleLabel, attachBg } from '../comm/ArtBg';
 import { AudioBus } from '../comm/AudioBus';
 import { buildHuEffectLayer, flyTile, popIn, rollNumber, stopNodeTweens } from './TableFx';
+import { tileName } from './ChangshaTiles';
 
 export type SeatPlayer = {
   userId: number;
@@ -17,6 +18,21 @@ export type SeatPlayer = {
   discard?: number[];
   peng?: number[];
   melds?: { kind: string; tiles: number[] }[];
+};
+
+export type ResultSettleInfo = {
+  reason: string;
+  detail?: string;
+  fan?: number;
+  fanItems?: Array<{ name: string; fan: number }>;
+  birds?: number[];
+  rows?: Array<{
+    seat: number;
+    name: string;
+    score: number;
+    isMe?: boolean;
+    isWinner?: boolean;
+  }>;
 };
 
 type SeatSlot = {
@@ -51,6 +67,7 @@ export class TableLayout {
   roomLabel: Label | null = null;
   remainLabel: Label | null = null;
   roundLabel: Label | null = null;
+  tingLabel: Label | null = null;
   exitBtn: Button | null = null;
   fxLayer: Node | null = null;
   countdownNode: Node | null = null;
@@ -93,6 +110,12 @@ export class TableLayout {
 
   private buildHud(parent: Node) {
     this.tipLabel = this.mkLabel(parent, 'tip', 0, 200, 880, 34, 24);
+    this.tingLabel = this.mkLabel(parent, 'ting', 0, 168, 980, 32, 22);
+    if (this.tingLabel) {
+      this.tingLabel.color = new Color(255, 230, 120, 255);
+      this.tingLabel.string = '';
+      this.tingLabel.node.active = false;
+    }
     this.netBanner = this.mkLabel(parent, 'netBanner', 0, 260, 880, 30, 22);
     if (this.netBanner) {
       this.netBanner.color = new Color(255, 200, 80, 255);
@@ -109,6 +132,50 @@ export class TableLayout {
     const exitUi = this.exitBtn.node.getComponent(UITransform);
     if (exitUi) exitUi.setContentSize(120, 48);
     this.exitBtn.node.setPosition(-520, 320, 0);
+  }
+
+  /** 听牌提示：可胡哪些牌 */
+  setTingTips(tiles: number[]) {
+    if (!this.tingLabel) return;
+    if (!tiles.length) {
+      this.tingLabel.string = '';
+      this.tingLabel.node.active = false;
+      return;
+    }
+    const names = tiles.map((t) => tileName(t)).join('　');
+    this.tingLabel.string = `听：${names}`;
+    this.tingLabel.node.active = true;
+  }
+
+  /** 手牌高亮：黄框 = 吃碰相关；红框 = 可胡相关 */
+  static markTileHighlight(node: Node, kind: 'none' | 'claim' | 'hu') {
+    let mark = node.getChildByName('__HL');
+    if (kind === 'none') {
+      if (mark?.isValid) mark.destroy();
+      return;
+    }
+    if (!mark) {
+      mark = new Node('__HL');
+      node.addChild(mark);
+      mark.layer = node.layer;
+      const ui = node.getComponent(UITransform);
+      const w = ui?.width || 52;
+      const h = ui?.height || 74;
+      mark.addComponent(UITransform).setContentSize(w + 6, h + 6);
+      mark.setPosition(0, 0, 0);
+      mark.addComponent(Graphics);
+    }
+    const g = mark.getComponent(Graphics)!;
+    g.clear();
+    const ui = node.getComponent(UITransform);
+    const w = (ui?.width || 52) + 4;
+    const h = (ui?.height || 74) + 4;
+    g.lineWidth = 4;
+    g.strokeColor = kind === 'hu'
+      ? new Color(255, 70, 60, 255)
+      : new Color(255, 210, 40, 255);
+    g.roundRect(-w / 2, -h / 2, w, h, 6);
+    g.stroke();
   }
 
   private buildCompass(parent: Node) {
@@ -482,8 +549,16 @@ export class TableLayout {
     }
   }
 
-  /** 荒庄 / 结算遮罩（始终盖在最上层） */
-  showResultOverlay(title: string, sub: string, primaryLabel: string, onPrimary?: () => void, secondaryLabel?: string, onSecondary?: () => void) {
+  /** 结算面板（对标商业麻将：横幅标题 / 番型 / 中鸟 / 分位计分 / 动效） */
+  showResultOverlay(
+    title: string,
+    sub: string,
+    primaryLabel: string,
+    onPrimary?: () => void,
+    secondaryLabel?: string,
+    onSecondary?: () => void,
+    settle?: ResultSettleInfo | null,
+  ) {
     this.hideResultOverlay();
     const parent = this.root.getChildByName('__TableUI') || this.root;
     const ov = new Node('__ResultOverlay');
@@ -492,58 +567,303 @@ export class TableLayout {
     ov.layer = parent.layer;
     ov.addComponent(UITransform).setContentSize(1280, 720);
     ov.setPosition(0, 0, 0);
-    const g = ov.addComponent(Graphics);
-    g.fillColor = new Color(0, 0, 0, 190);
-    g.rect(-640, -360, 1280, 720);
-    g.fill();
-    // 面板
-    g.fillColor = new Color(28, 48, 40, 245);
-    g.roundRect(-280, -180, 560, 360, 16);
-    g.fill();
-    g.strokeColor = new Color(220, 180, 80, 255);
-    g.lineWidth = 3;
-    g.roundRect(-280, -180, 560, 360, 16);
-    g.stroke();
 
-    const titleLab = this.mkLabel(ov, 'rt', 0, 100, 500, 60, 44);
-    titleLab.string = title;
-    titleLab.color = new Color(255, 220, 100, 255);
-    titleLab.node.setScale(0.4, 0.4, 1);
-    popIn(titleLab.node);
+    const dim = ov.addComponent(UIOpacity);
+    dim.opacity = 0;
+    tween(dim).to(0.28, { opacity: 255 }, { easing: 'quadOut' }).start();
 
-    const subLab = this.mkLabel(ov, 'rs', 0, 20, 500, 120, 24);
-    subLab.string = sub;
-    subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
-    subLab.node.setScale(0.85, 0.85, 1);
-    popIn(subLab.node, 0.12);
+    const bg = ov.addComponent(Graphics);
+    bg.fillColor = new Color(6, 10, 14, 210);
+    bg.rect(-640, -360, 1280, 720);
+    bg.fill();
+    // 顶部暖光
+    bg.fillColor = new Color(180, 120, 40, 36);
+    bg.circle(0, 240, 280);
+    bg.fill();
+    bg.fillColor = new Color(180, 120, 40, 22);
+    bg.circle(0, 200, 420);
+    bg.fill();
 
-    const scoreMatch = sub.match(/([+-]?\d+)/g);
-    if (scoreMatch?.length) {
-      const nums = scoreMatch.map((s) => parseInt(s, 10)).filter((n) => !Number.isNaN(n));
-      if (nums.length) {
-        const show = nums.reduce((a, b) => a + b, 0);
-        const scoreLab = this.mkLabel(ov, 'scoreRoll', 0, -50, 400, 48, 36);
-        scoreLab.color = new Color(255, 240, 160, 255);
-        rollNumber(scoreLab, 0, show, show >= 0 ? '+ ' : '', 0.55);
+    const reason = settle?.reason || '';
+    const isWin = reason === 'zimo' || reason === 'dianpao' || reason === 'hu' || reason === 'qiang_gang';
+    const isDraw = reason === 'huangzhuang';
+
+    // 放射金线（仅胡牌）
+    if (isWin) {
+      const rays = new Node('rays');
+      ov.addChild(rays);
+      rays.layer = ov.layer;
+      rays.addComponent(UITransform).setContentSize(800, 800);
+      rays.setPosition(0, 80, 0);
+      const rg = rays.addComponent(Graphics);
+      rg.strokeColor = new Color(255, 200, 80, 55);
+      rg.lineWidth = 2;
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        rg.moveTo(Math.cos(a) * 40, Math.sin(a) * 40);
+        rg.lineTo(Math.cos(a) * 360, Math.sin(a) * 360);
+        rg.stroke();
       }
+      rays.setScale(0.4, 0.4, 1);
+      tween(rays)
+        .to(0.55, { scale: new Vec3(1.05, 1.05, 1) }, { easing: 'quadOut' })
+        .to(8, { angle: 360 })
+        .start();
+      this.spawnSettleSparkles(ov);
     }
 
-    const btn = this.mkTextBtn(ov, 'ok', secondaryLabel ? -120 : 0, -120, primaryLabel);
+    // 主面板
+    const panel = new Node('panel');
+    ov.addChild(panel);
+    panel.layer = ov.layer;
+    panel.addComponent(UITransform).setContentSize(620, 460);
+    panel.setPosition(0, -30, 0);
+    const pg = panel.addComponent(Graphics);
+    pg.fillColor = new Color(18, 28, 34, 250);
+    pg.roundRect(-310, -230, 620, 460, 18);
+    pg.fill();
+    pg.strokeColor = new Color(212, 168, 72, 255);
+    pg.lineWidth = 3;
+    pg.roundRect(-310, -230, 620, 460, 18);
+    pg.stroke();
+    pg.strokeColor = new Color(255, 220, 140, 90);
+    pg.lineWidth = 1;
+    pg.roundRect(-302, -222, 604, 444, 14);
+    pg.stroke();
+    // 顶栏色带
+    pg.fillColor = isDraw
+      ? new Color(55, 70, 80, 255)
+      : new Color(150, 55, 40, 255);
+    pg.roundRect(-310, 150, 620, 80, 18);
+    pg.fill();
+    pg.fillColor = isDraw
+      ? new Color(55, 70, 80, 255)
+      : new Color(150, 55, 40, 255);
+    pg.rect(-310, 150, 620, 40);
+    pg.fill();
+
+    panel.setScale(0.86, 0.86, 1);
+    const pop = panel.addComponent(UIOpacity);
+    pop.opacity = 0;
+    tween(pop).to(0.22, { opacity: 255 }).start();
+    tween(panel).to(0.32, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
+
+    const titleLab = this.mkLabel(panel, 'rt', 0, 178, 560, 56, 48);
+    titleLab.string = title;
+    titleLab.color = isDraw
+      ? new Color(200, 220, 230, 255)
+      : new Color(255, 236, 160, 255);
+    titleLab.node.setScale(0.3, 0.3, 1);
+    tween(titleLab.node)
+      .delay(0.08)
+      .to(0.35, { scale: new Vec3(1.08, 1.08, 1) }, { easing: 'backOut' })
+      .to(0.12, { scale: new Vec3(1, 1, 1) })
+      .start();
+
+    const reasonLab = this.mkLabel(panel, 'reason', 0, 118, 560, 28, 20);
+    reasonLab.string = this.settleReasonText(settle);
+    reasonLab.color = new Color(230, 200, 140, 255);
+
+    // 番型 chips
+    const fanItems = settle?.fanItems || [];
+    if (fanItems.length) {
+      const chipHost = new Node('chips');
+      panel.addChild(chipHost);
+      chipHost.layer = panel.layer;
+      chipHost.addComponent(UITransform);
+      chipHost.setPosition(0, 78, 0);
+      const chipW = 108;
+      const total = fanItems.length * chipW;
+      fanItems.forEach((f, i) => {
+        const chip = new Node(`c${i}`);
+        chipHost.addChild(chip);
+        chip.layer = panel.layer;
+        chip.addComponent(UITransform).setContentSize(100, 32);
+        chip.setPosition(-total / 2 + chipW / 2 + i * chipW, 0, 0);
+        const cg = chip.addComponent(Graphics);
+        cg.fillColor = new Color(40, 55, 48, 255);
+        cg.roundRect(-50, -14, 100, 28, 8);
+        cg.fill();
+        cg.strokeColor = new Color(212, 168, 72, 200);
+        cg.lineWidth = 1.5;
+        cg.roundRect(-50, -14, 100, 28, 8);
+        cg.stroke();
+        const cl = this.mkLabel(chip, 't', 0, 0, 96, 26, 16);
+        cl.string = `${f.name}×${f.fan}`;
+        cl.color = new Color(255, 230, 170, 255);
+        chip.setScale(0.5, 0.5, 1);
+        popIn(chip, 0.15 + i * 0.05);
+      });
+    } else if (settle?.fan != null && settle.fan > 0) {
+      const fl = this.mkLabel(panel, 'fanOnly', 0, 78, 400, 28, 22);
+      fl.string = `番数 ${settle.fan}`;
+      fl.color = new Color(255, 220, 140, 255);
+    }
+
+    // 中鸟
+    const birds = settle?.birds || [];
+    if (birds.length) {
+      const birdTitle = this.mkLabel(panel, 'birdT', 0, 42, 400, 24, 18);
+      birdTitle.string = '中鸟';
+      birdTitle.color = new Color(180, 200, 190, 255);
+      void this.fillSettleBirds(panel, birds, 8);
+    }
+
+    // 分位计分
+    const rows = settle?.rows || [];
+    if (rows.length) {
+      const boardY = birds.length ? -70 : -30;
+      rows.forEach((r, i) => {
+        const row = new Node(`row${i}`);
+        panel.addChild(row);
+        row.layer = panel.layer;
+        row.addComponent(UITransform).setContentSize(540, 40);
+        row.setPosition(0, boardY - i * 44, 0);
+        const rg = row.addComponent(Graphics);
+        rg.fillColor = r.isWinner
+          ? new Color(70, 50, 28, 220)
+          : new Color(28, 38, 44, 200);
+        rg.roundRect(-270, -18, 540, 36, 8);
+        rg.fill();
+        if (r.isWinner) {
+          rg.strokeColor = new Color(230, 180, 70, 255);
+          rg.lineWidth = 2;
+          rg.roundRect(-270, -18, 540, 36, 8);
+          rg.stroke();
+        }
+        const name = this.mkLabel(row, 'n', -150, 0, 220, 30, 20);
+        name.string = `${r.isWinner ? '★ ' : ''}${r.name}${r.isMe ? '（我）' : ''}`;
+        name.color = r.isWinner
+          ? new Color(255, 230, 150, 255)
+          : new Color(210, 220, 220, 255);
+        const sc = this.mkLabel(row, 's', 180, 0, 140, 30, 24);
+        sc.color = r.score >= 0
+          ? new Color(120, 230, 160, 255)
+          : new Color(255, 130, 110, 255);
+        rollNumber(sc, 0, r.score, r.score >= 0 ? '+' : '', 0.5 + i * 0.05);
+        row.setScale(0.85, 0.85, 1);
+        popIn(row, 0.22 + i * 0.06);
+      });
+    } else {
+      const subLab = this.mkLabel(panel, 'rs', 0, -20, 540, 100, 22);
+      subLab.string = sub;
+      subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
+      subLab.color = new Color(200, 210, 200, 255);
+      popIn(subLab.node, 0.15);
+    }
+
+    const btnY = -188;
+    const btn = this.mkSettleBtn(panel, 'ok', secondaryLabel ? -120 : 0, btnY, primaryLabel, true);
     btn.node.setScale(0.6, 0.6, 1);
-    popIn(btn.node, 0.28);
+    popIn(btn.node, 0.4);
     btn.node.on(Button.EventType.CLICK, () => {
       AudioBus.playButton();
       onPrimary?.();
     });
     if (secondaryLabel && onSecondary) {
-      const btn2 = this.mkTextBtn(ov, 'ok2', 120, -120, secondaryLabel);
+      const btn2 = this.mkSettleBtn(panel, 'ok2', 120, btnY, secondaryLabel, false);
       btn2.node.setScale(0.6, 0.6, 1);
-      popIn(btn2.node, 0.34);
+      popIn(btn2.node, 0.46);
       btn2.node.on(Button.EventType.CLICK, () => {
         AudioBus.playButton();
         onSecondary();
       });
     }
+  }
+
+  private settleReasonText(settle?: ResultSettleInfo | null): string {
+    if (!settle) return '';
+    const map: Record<string, string> = {
+      zimo: '自摸胡牌',
+      dianpao: '点炮胡牌',
+      hu: '胡牌',
+      qiang_gang: '抢杠胡',
+      huangzhuang: '荒庄流局',
+    };
+    const base = map[settle.reason] || settle.detail || '';
+    if (settle.fan != null && settle.fan > 0 && settle.reason !== 'huangzhuang') {
+      return `${base} · ${settle.fan} 番`;
+    }
+    return base;
+  }
+
+  private spawnSettleSparkles(parent: Node) {
+    for (let i = 0; i < 18; i++) {
+      const d = new Node(`sp${i}`);
+      parent.addChild(d);
+      d.layer = parent.layer;
+      d.addComponent(UITransform).setContentSize(8, 8);
+      const g = d.addComponent(Graphics);
+      g.fillColor = new Color(255, 220, 120, 220);
+      g.circle(0, 0, 3 + (i % 3));
+      g.fill();
+      const x0 = (Math.random() - 0.5) * 200;
+      const y0 = 40 + Math.random() * 80;
+      d.setPosition(x0, y0, 0);
+      d.setScale(0, 0, 1);
+      const dx = (Math.random() - 0.5) * 520;
+      const dy = 80 + Math.random() * 220;
+      tween(d)
+        .delay(0.05 + Math.random() * 0.25)
+        .to(0.15, { scale: new Vec3(1, 1, 1) })
+        .to(0.85 + Math.random() * 0.4, {
+          position: new Vec3(x0 + dx, y0 + dy, 0),
+          scale: new Vec3(0.2, 0.2, 1),
+        }, { easing: 'quadOut' })
+        .call(() => { if (d.isValid) d.destroy(); })
+        .start();
+    }
+  }
+
+  private async fillSettleBirds(panel: Node, birds: number[], y: number) {
+    const host = new Node('birds');
+    panel.addChild(host);
+    host.layer = panel.layer;
+    host.addComponent(UITransform);
+    host.setPosition(0, y, 0);
+    const tw = 36;
+    const gap = 6;
+    const total = birds.length * (tw + gap) - gap;
+    for (let i = 0; i < birds.length; i++) {
+      const n = await createTileNode(birds[i], host, tw, 50);
+      if (!n?.isValid) continue;
+      n.setPosition(-total / 2 + tw / 2 + i * (tw + gap), 0, 0);
+      n.setScale(0.4, 0.4, 1);
+      popIn(n, 0.2 + i * 0.06);
+    }
+  }
+
+  private mkSettleBtn(parent: Node, name: string, x: number, y: number, text: string, primary: boolean): Button {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.addComponent(UITransform).setContentSize(160, 54);
+    n.setPosition(x, y, 0);
+    const g = n.addComponent(Graphics);
+    if (primary) {
+      g.fillColor = new Color(196, 72, 48, 255);
+      g.roundRect(-80, -27, 160, 54, 12);
+      g.fill();
+      g.strokeColor = new Color(255, 210, 120, 220);
+      g.lineWidth = 2;
+      g.roundRect(-80, -27, 160, 54, 12);
+      g.stroke();
+    } else {
+      g.fillColor = new Color(45, 58, 66, 255);
+      g.roundRect(-80, -27, 160, 54, 12);
+      g.fill();
+      g.strokeColor = new Color(140, 160, 170, 180);
+      g.lineWidth = 1.5;
+      g.roundRect(-80, -27, 160, 54, 12);
+      g.stroke();
+    }
+    const lab = this.mkLabel(n, 't', 0, 0, 140, 36, 24);
+    lab.string = text;
+    lab.color = primary ? new Color(255, 245, 220, 255) : new Color(210, 220, 225, 255);
+    const btn = n.addComponent(Button);
+    btn.transition = Button.Transition.SCALE;
+    btn.zoomScale = 0.94;
+    return btn;
   }
 
   hideResultOverlay() {
@@ -727,7 +1047,12 @@ export class TableLayout {
     }
   }
 
-  async updateDiscards(players: SeatPlayer[], myId: number) {
+  async updateDiscards(
+    players: SeatPlayer[],
+    myId: number,
+    highlightTile: number | null = null,
+    highlightKind: 'claim' | 'hu' | null = null,
+  ) {
     const me = players.find((p) => p.userId === myId);
     const mySeat = me?.seatIndex ?? 0;
     for (let i = 0; i < 4; i++) this.discardRoots[i]?.removeAllChildren();
@@ -741,10 +1066,15 @@ export class TableLayout {
       for (let i = 0; i < p.discard.length; i++) {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const n = await createTileNode(p.discard[i], root, tw, th);
+        const tile = p.discard[i];
+        const n = await createTileNode(tile, root, tw, th);
         const x = Math.round((col - (cols - 1) / 2) * (tw + 1));
         const y = Math.round(-row * (th + 2));
         n.setPosition(x, y, 0);
+        // 刚打出的那张：吃碰黄框 / 可胡红框
+        if (highlightKind && highlightTile != null && i === p.discard.length - 1 && tile === highlightTile) {
+          TableLayout.markTileHighlight(n, highlightKind);
+        }
       }
     }
   }
