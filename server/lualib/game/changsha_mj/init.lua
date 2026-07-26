@@ -94,9 +94,12 @@ function Engine:set_auto_play(seat, yes)
   p.autoPlay = yes and true or false
 end
 
-function Engine:_seat_needs_auto(seat)
+function Engine:_seat_needs_auto(seat, mode)
   local p = self.players[seat]
   if not p then return false end
+  -- mode: nil/"all" = bot+托管; "bot" = 仅机器人; "autoplay" = 仅真人托管
+  if mode == "bot" then return p.isBot and true or false end
+  if mode == "autoplay" then return (p.autoPlay and not p.isBot) and true or false end
   return p.isBot or p.autoPlay
 end
 
@@ -930,26 +933,33 @@ function Engine:snapshot(for_seat)
   }
 end
 
-function Engine:needs_bot_tick()
+function Engine:needs_bot_tick(mode)
   if self.phase == "settle" or self.phase == "finished" or self.phase == "waiting" then
     return false
   end
   if self.phase == "qishou" then
+    -- 起手阶段：机器人可自动 continue；托管真人由慢速 tick 处理
+    if mode == "autoplay" then
+      for s = 0, self.cfg.playerCount - 1 do
+        if self:_seat_needs_auto(s, "autoplay") then return true end
+      end
+      return false
+    end
     return true
   end
   if self.phase == "wait_discard" then
-    return self:_seat_needs_auto(self.currentSeat)
+    return self:_seat_needs_auto(self.currentSeat, mode)
   end
   if self.phase == "wait_claim" then
     for _, s in ipairs(self.claimSeats) do
-      if self:_seat_needs_auto(s) then return true end
+      if self:_seat_needs_auto(s, mode) then return true end
     end
   end
   return false
 end
 
-function Engine:bot_tick(seat)
-  if not self:_seat_needs_auto(seat) then return false end
+function Engine:bot_tick(seat, mode)
+  if not self:_seat_needs_auto(seat, mode) then return false end
   if self.phase == "qishou" then
     self:on_action(seat, "continue", {})
     return true

@@ -266,8 +266,8 @@ function CMD.set_auto_play(userId, yes)
   if not p then return nil, "无座位" end
   p.autoPlay = yes ~= false
   sync_engine_seat(room, seat, p)
+  -- 不立刻狂跑 _run_bots：托管由 room_tick 每秒一步，避免一点托管整局秒结
   if room.state == "playing" then
-    CMD._run_bots(room)
     notify_room(room.roomId)
   end
   return build_platform_state(room, userId)
@@ -433,13 +433,16 @@ function CMD.action(userId, ns, cmd, body)
   return build_platform_state(room, userId)
 end
 
-function CMD._run_bots(room)
+function CMD._run_bots(room, max_steps, mode)
   if not room.engine then return end
-  for _ = 1, 32 do
-    if not room.engine:needs_bot_tick() then break end
+  -- 默认只推进机器人，避免把真人托管一口气打完
+  mode = mode or "bot"
+  max_steps = max_steps or 16
+  for _ = 1, max_steps do
+    if not room.engine:needs_bot_tick(mode) then break end
     local acted = false
     for s = 0, 3 do
-      if room.engine:bot_tick(s) then
+      if room.engine:bot_tick(s, mode) then
         acted = true
         break
       end
@@ -449,6 +452,21 @@ function CMD._run_bots(room)
   if room.engine.phase == "settle" and room.state == "playing" then
     on_game_settled(room)
   end
+end
+
+--- 托管慢速：每秒最多一步（含机器人补位时也可 1 步）
+function CMD._tick_autoplay(room)
+  if not room.engine then return false end
+  if not room.engine:needs_bot_tick("autoplay") and not room.engine:needs_bot_tick("bot") then
+    return false
+  end
+  -- 优先一步机器人响应；若无需机器人则推一步托管
+  if room.engine:needs_bot_tick("bot") then
+    CMD._run_bots(room, 1, "bot")
+  elseif room.engine:needs_bot_tick("autoplay") then
+    CMD._run_bots(room, 1, "autoplay")
+  end
+  return true
 end
 
 function CMD.leave(userId)
@@ -569,7 +587,10 @@ local function room_tick(roomId, room)
   local changed = kick_disconnected(room)
   if room.engine.check_timeout and room.engine:check_timeout() then
     changed = true
-    CMD._run_bots(room)
+  end
+  -- 每秒推进托管/机器人一步，禁止一口气打到结算
+  if CMD._tick_autoplay(room) then
+    changed = true
   end
   return changed
 end

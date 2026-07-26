@@ -258,24 +258,36 @@ function Engine:snapshot(for_seat)
   }
 end
 
-function Engine:needs_bot_tick()
+function Engine:needs_bot_tick(mode)
+  mode = mode or "all"
+  local function need(p)
+    if not p then return false end
+    if mode == "bot" then return p.isBot end
+    if mode == "autoplay" then return p.autoPlay and not p.isBot end
+    return p.isBot or p.autoPlay
+  end
   if self.phase == "settle" or self.phase == "waiting" then return false end
   if self.phase == "wait_discard" then
-    local p = self.players[self.currentSeat]
-    return p and (p.isBot or p.autoPlay)
+    return need(self.players[self.currentSeat])
   end
   if self.phase == "wait_claim" then
     for _, s in ipairs(self.claimSeats) do
-      local p = self.players[s]
-      if p and (p.isBot or p.autoPlay) then return true end
+      if need(self.players[s]) then return true end
     end
   end
   return false
 end
 
-function Engine:bot_tick(seat)
+function Engine:bot_tick(seat, mode)
+  mode = mode or "all"
   local p = self.players[seat]
-  if not p or not (p.isBot or p.autoPlay) then return false end
+  local ok = false
+  if p then
+    if mode == "bot" then ok = p.isBot
+    elseif mode == "autoplay" then ok = p.autoPlay and not p.isBot
+    else ok = p.isBot or p.autoPlay end
+  end
+  if not ok then return false end
   if self.phase == "wait_discard" and seat == self.currentSeat then
     local hand = p.hand
     if #hand == 0 then return false end
