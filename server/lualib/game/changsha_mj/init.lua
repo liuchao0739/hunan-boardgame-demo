@@ -11,6 +11,18 @@ local function copy_arr(a)
   return r
 end
 
+local function copy_melds(melds)
+  local r = {}
+  for _, m in ipairs(melds or {}) do
+    r[#r + 1] = {
+      kind = m.kind,
+      tiles = copy_arr(m.tiles or {}),
+      fromSeat = m.fromSeat,
+    }
+  end
+  return r
+end
+
 local Engine = {}
 Engine.__index = Engine
 
@@ -502,9 +514,19 @@ function Engine:_do_hu(winner, is_zimo, pao_seat, opts)
     is_jiang and "（将将胡叠加）" or "",
     Niao.describe(birds)
   )
+  local wp = self.players[winner]
+  local hu_tile = nil
+  if is_zimo then
+    hu_tile = wp.hand[#wp.hand]
+  elseif self.lastDiscard and self.lastDiscard.tile then
+    hu_tile = self.lastDiscard.tile
+  end
   self.phase = "settle"
   self.settle = {
     winnerSeat = winner,
+    winnerName = wp.userName,
+    paoSeat = pao_seat,
+    paoName = pao_seat and self.players[pao_seat] and self.players[pao_seat].userName or nil,
     reason = hu_detail.reason,
     detail = detail_str,
     detailItems = self:_build_detail_items(hu_detail),
@@ -514,6 +536,10 @@ function Engine:_do_hu(winner, is_zimo, pao_seat, opts)
     fan = fan,
     fanItems = fan_items,
     jiangJiangHu = is_jiang,
+    -- 结算展示：赢家完整牌面（与中鸟同款牌面渲染）
+    winHand = copy_arr(wp.hand),
+    winMelds = copy_melds(wp.melds),
+    huTile = hu_tile,
   }
   self.message = self.settle.detail
   self.dealer = winner
@@ -557,10 +583,14 @@ function Engine:_settle_multi_hu()
       end
     end
   end
+  local wp = self.players[primary]
   self.phase = "settle"
   self.settle = {
     winnerSeat = primary,
+    winnerName = wp.userName,
     winners = winners,
+    paoSeat = pao,
+    paoName = self.players[pao] and self.players[pao].userName or nil,
     reason = "duo_xiang",
     detail = string.format("一炮%d响 座位%s fan合计=%d；鸟：%s",
       #winners, table.concat(winners, ","), total_fan, Niao.describe(birds)),
@@ -576,6 +606,9 @@ function Engine:_settle_multi_hu()
     birds = birds,
     birdHits = birdHitsArr,
     fan = total_fan,
+    winHand = copy_arr(wp.hand),
+    winMelds = copy_melds(wp.melds),
+    huTile = self.lastDiscard and self.lastDiscard.tile or wp.hand[#wp.hand],
   }
   self.message = self.settle.detail
   self.dealer = primary

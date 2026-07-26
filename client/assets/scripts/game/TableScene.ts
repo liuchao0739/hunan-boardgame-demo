@@ -246,11 +246,13 @@ export class TableScene extends Component {
   private buildSettleInfo(s: any, game: any): ResultSettleInfo {
     const winner = s.winnerSeat;
     const scoreArr: number[] = Array.isArray(s.scores) ? s.scores : [];
+    const seatByIdx = new Map<number, any>();
+    for (const seat of game.seats || []) seatByIdx.set(Number(seat.seat), seat);
+
     const rows = (game.seats || [])
       .map((seat: any) => {
         const total = Number(seat.score ?? scoreArr[seat.seat] ?? 0);
         const prev = this.prevGame?.scores?.[seat.seat];
-        // 优先显示本局分差；没有上一帧则显示总分
         const score = prev != null ? total - prev : total;
         return {
           seat: seat.seat as number,
@@ -263,7 +265,6 @@ export class TableScene extends Component {
       .sort((a: { seat: number }, b: { seat: number }) => a.seat - b.seat);
 
     let fanItems = Array.isArray(s.fanItems) ? s.fanItems : [];
-    // 一炮多响时 fanItems 可能是嵌套结构
     if (fanItems.length && fanItems[0]?.fanItems) {
       const flat: any[] = [];
       for (const block of fanItems) {
@@ -271,6 +272,19 @@ export class TableScene extends Component {
       }
       fanItems = flat;
     }
+
+    const winnerSeat = winner != null ? seatByIdx.get(Number(winner)) : null;
+    const paoSeat = s.paoSeat != null ? seatByIdx.get(Number(s.paoSeat)) : null;
+
+    const winMelds = Array.isArray(s.winMelds)
+      ? s.winMelds.map((m: any) => ({
+        kind: String(m.kind || 'peng'),
+        tiles: Array.isArray(m.tiles) ? m.tiles.map((t: any) => Number(t)) : [],
+      }))
+      : (winnerSeat?.melds || []).map((m: any) => ({
+        kind: String(m.kind || 'peng'),
+        tiles: Array.isArray(m.tiles) ? m.tiles.map((t: any) => Number(t)) : [],
+      }));
 
     return {
       reason: String(s.reason || ''),
@@ -281,6 +295,11 @@ export class TableScene extends Component {
         fan: Number(f.fan) || 0,
       })),
       birds: Array.isArray(s.birds) ? s.birds.map((t: any) => Number(t)) : [],
+      winnerName: String(s.winnerName || winnerSeat?.userName || (winner != null ? `座位${winner}` : '')),
+      paoName: s.paoName || paoSeat?.userName || undefined,
+      winHand: Array.isArray(s.winHand) ? s.winHand.map((t: any) => Number(t)) : undefined,
+      winMelds,
+      huTile: s.huTile != null ? Number(s.huTile) : null,
       rows,
     };
   }

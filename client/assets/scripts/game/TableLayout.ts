@@ -26,6 +26,11 @@ export type ResultSettleInfo = {
   fan?: number;
   fanItems?: Array<{ name: string; fan: number }>;
   birds?: number[];
+  winnerName?: string;
+  paoName?: string;
+  winHand?: number[];
+  winMelds?: Array<{ kind: string; tiles: number[] }>;
+  huTile?: number | null;
   rows?: Array<{
     seat: number;
     name: string;
@@ -549,7 +554,7 @@ export class TableLayout {
     }
   }
 
-  /** 结算面板（对标商业麻将：横幅标题 / 番型 / 中鸟 / 分位计分 / 动效） */
+  /** 结算面板：赢家抬头 + 胡牌牌面（同中鸟）+ 番型 + 中鸟 + 四人分位完整可见 */
   showResultOverlay(
     title: string,
     sub: string,
@@ -573,197 +578,186 @@ export class TableLayout {
     tween(dim).to(0.28, { opacity: 255 }, { easing: 'quadOut' }).start();
 
     const bg = ov.addComponent(Graphics);
-    bg.fillColor = new Color(6, 10, 14, 210);
+    bg.fillColor = new Color(6, 10, 14, 215);
     bg.rect(-640, -360, 1280, 720);
     bg.fill();
-    // 顶部暖光
-    bg.fillColor = new Color(180, 120, 40, 36);
-    bg.circle(0, 240, 280);
-    bg.fill();
-    bg.fillColor = new Color(180, 120, 40, 22);
-    bg.circle(0, 200, 420);
+    bg.fillColor = new Color(180, 120, 40, 28);
+    bg.circle(0, 260, 300);
     bg.fill();
 
     const reason = settle?.reason || '';
-    const isWin = reason === 'zimo' || reason === 'dianpao' || reason === 'hu' || reason === 'qiang_gang';
+    const isWin = reason === 'zimo' || reason === 'dianpao' || reason === 'hu'
+      || reason === 'qiang_gang' || reason === 'duo_xiang';
     const isDraw = reason === 'huangzhuang';
 
-    // 放射金线（仅胡牌）
-    if (isWin) {
-      const rays = new Node('rays');
-      ov.addChild(rays);
-      rays.layer = ov.layer;
-      rays.addComponent(UITransform).setContentSize(800, 800);
-      rays.setPosition(0, 80, 0);
-      const rg = rays.addComponent(Graphics);
-      rg.strokeColor = new Color(255, 200, 80, 55);
-      rg.lineWidth = 2;
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2;
-        rg.moveTo(Math.cos(a) * 40, Math.sin(a) * 40);
-        rg.lineTo(Math.cos(a) * 360, Math.sin(a) * 360);
-        rg.stroke();
-      }
-      rays.setScale(0.4, 0.4, 1);
-      tween(rays)
-        .to(0.55, { scale: new Vec3(1.05, 1.05, 1) }, { easing: 'quadOut' })
-        .to(8, { angle: 360 })
-        .start();
-      this.spawnSettleSparkles(ov);
-    }
+    if (isWin) this.spawnSettleSparkles(ov);
 
-    // 主面板
+    // 大面板：保证 4 人分位 + 胡牌 + 中鸟都在框内
+    const PW = 720;
+    const PH = 620;
     const panel = new Node('panel');
     ov.addChild(panel);
     panel.layer = ov.layer;
-    panel.addComponent(UITransform).setContentSize(620, 460);
-    panel.setPosition(0, -30, 0);
+    panel.addComponent(UITransform).setContentSize(PW, PH);
+    panel.setPosition(0, 0, 0);
     const pg = panel.addComponent(Graphics);
-    pg.fillColor = new Color(18, 28, 34, 250);
-    pg.roundRect(-310, -230, 620, 460, 18);
+    pg.fillColor = new Color(16, 24, 30, 252);
+    pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16);
     pg.fill();
     pg.strokeColor = new Color(212, 168, 72, 255);
     pg.lineWidth = 3;
-    pg.roundRect(-310, -230, 620, 460, 18);
+    pg.roundRect(-PW / 2, -PH / 2, PW, PH, 16);
     pg.stroke();
-    pg.strokeColor = new Color(255, 220, 140, 90);
-    pg.lineWidth = 1;
-    pg.roundRect(-302, -222, 604, 444, 14);
-    pg.stroke();
-    // 顶栏色带
-    pg.fillColor = isDraw
-      ? new Color(55, 70, 80, 255)
-      : new Color(150, 55, 40, 255);
-    pg.roundRect(-310, 150, 620, 80, 18);
+    // 顶栏
+    pg.fillColor = isDraw ? new Color(50, 62, 72, 255) : new Color(148, 48, 36, 255);
+    pg.roundRect(-PW / 2, PH / 2 - 70, PW, 70, 16);
     pg.fill();
-    pg.fillColor = isDraw
-      ? new Color(55, 70, 80, 255)
-      : new Color(150, 55, 40, 255);
-    pg.rect(-310, 150, 620, 40);
+    pg.fillColor = isDraw ? new Color(50, 62, 72, 255) : new Color(148, 48, 36, 255);
+    pg.rect(-PW / 2, PH / 2 - 70, PW, 35);
     pg.fill();
 
-    panel.setScale(0.86, 0.86, 1);
+    panel.setScale(0.92, 0.92, 1);
     const pop = panel.addComponent(UIOpacity);
     pop.opacity = 0;
-    tween(pop).to(0.22, { opacity: 255 }).start();
-    tween(panel).to(0.32, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
+    tween(pop).to(0.2, { opacity: 255 }).start();
+    tween(panel).to(0.28, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }).start();
 
-    const titleLab = this.mkLabel(panel, 'rt', 0, 178, 560, 56, 48);
+    const topY = PH / 2 - 36;
+    const titleLab = this.mkLabel(panel, 'rt', 0, topY, 640, 48, 40);
     titleLab.string = title;
-    titleLab.color = isDraw
-      ? new Color(200, 220, 230, 255)
-      : new Color(255, 236, 160, 255);
-    titleLab.node.setScale(0.3, 0.3, 1);
+    titleLab.color = isDraw ? new Color(200, 220, 230, 255) : new Color(255, 236, 150, 255);
+    titleLab.node.setScale(0.4, 0.4, 1);
     tween(titleLab.node)
-      .delay(0.08)
-      .to(0.35, { scale: new Vec3(1.08, 1.08, 1) }, { easing: 'backOut' })
-      .to(0.12, { scale: new Vec3(1, 1, 1) })
+      .delay(0.05)
+      .to(0.3, { scale: new Vec3(1.06, 1.06, 1) }, { easing: 'backOut' })
+      .to(0.1, { scale: new Vec3(1, 1, 1) })
       .start();
 
-    const reasonLab = this.mkLabel(panel, 'reason', 0, 118, 560, 28, 20);
-    reasonLab.string = this.settleReasonText(settle);
-    reasonLab.color = new Color(230, 200, 140, 255);
+    // 谁胡的
+    let y = topY - 52;
+    const winnerLine = this.mkLabel(panel, 'winner', 0, y, 680, 30, 22);
+    if (isDraw) {
+      winnerLine.string = '本局荒庄，无人胡牌';
+      winnerLine.color = new Color(180, 200, 210, 255);
+    } else {
+      const wName = settle?.winnerName || '赢家';
+      const how = this.settleReasonText(settle);
+      const pao = settle?.paoName ? `（点炮：${settle.paoName}）` : '';
+      winnerLine.string = `★ ${wName}　${how}${pao}`;
+      winnerLine.color = new Color(255, 220, 140, 255);
+    }
 
-    // 番型 chips
+    // 番型 chips（牌型）
+    y -= 36;
     const fanItems = settle?.fanItems || [];
     if (fanItems.length) {
       const chipHost = new Node('chips');
       panel.addChild(chipHost);
       chipHost.layer = panel.layer;
       chipHost.addComponent(UITransform);
-      chipHost.setPosition(0, 78, 0);
-      const chipW = 108;
-      const total = fanItems.length * chipW;
-      fanItems.forEach((f, i) => {
+      chipHost.setPosition(0, y, 0);
+      const chipW = 118;
+      const total = Math.min(fanItems.length, 5) * chipW;
+      fanItems.slice(0, 5).forEach((f, i) => {
         const chip = new Node(`c${i}`);
         chipHost.addChild(chip);
         chip.layer = panel.layer;
-        chip.addComponent(UITransform).setContentSize(100, 32);
+        chip.addComponent(UITransform).setContentSize(110, 30);
         chip.setPosition(-total / 2 + chipW / 2 + i * chipW, 0, 0);
         const cg = chip.addComponent(Graphics);
-        cg.fillColor = new Color(40, 55, 48, 255);
-        cg.roundRect(-50, -14, 100, 28, 8);
+        cg.fillColor = new Color(42, 58, 50, 255);
+        cg.roundRect(-55, -13, 110, 26, 8);
         cg.fill();
-        cg.strokeColor = new Color(212, 168, 72, 200);
+        cg.strokeColor = new Color(220, 180, 80, 220);
         cg.lineWidth = 1.5;
-        cg.roundRect(-50, -14, 100, 28, 8);
+        cg.roundRect(-55, -13, 110, 26, 8);
         cg.stroke();
-        const cl = this.mkLabel(chip, 't', 0, 0, 96, 26, 16);
+        const cl = this.mkLabel(chip, 't', 0, 0, 104, 24, 16);
         cl.string = `${f.name}×${f.fan}`;
-        cl.color = new Color(255, 230, 170, 255);
-        chip.setScale(0.5, 0.5, 1);
-        popIn(chip, 0.15 + i * 0.05);
+        cl.color = new Color(255, 232, 170, 255);
+        popIn(chip, 0.1 + i * 0.04);
       });
-    } else if (settle?.fan != null && settle.fan > 0) {
-      const fl = this.mkLabel(panel, 'fanOnly', 0, 78, 400, 28, 22);
-      fl.string = `番数 ${settle.fan}`;
-      fl.color = new Color(255, 220, 140, 255);
+    }
+
+    // 胡牌牌面（对齐中鸟展示）
+    y -= 40;
+    const hasHand = !!(settle?.winHand?.length);
+    if (hasHand) {
+      const handTitle = this.mkLabel(panel, 'handT', 0, y, 400, 24, 18);
+      handTitle.string = '胡牌';
+      handTitle.color = new Color(180, 200, 190, 255);
+      y -= 42;
+      void this.fillSettleWinHand(panel, settle!, y);
+      y -= 48;
     }
 
     // 中鸟
     const birds = settle?.birds || [];
     if (birds.length) {
-      const birdTitle = this.mkLabel(panel, 'birdT', 0, 42, 400, 24, 18);
+      const birdTitle = this.mkLabel(panel, 'birdT', 0, y, 400, 24, 18);
       birdTitle.string = '中鸟';
       birdTitle.color = new Color(180, 200, 190, 255);
-      void this.fillSettleBirds(panel, birds, 8);
+      y -= 40;
+      void this.fillSettleBirds(panel, birds, y);
+      y -= 48;
     }
 
-    // 分位计分
-    const rows = settle?.rows || [];
+    // 分位：赢家置顶，紧凑行高，保证 4 人全看见
+    y -= 8;
+    const boardTitle = this.mkLabel(panel, 'scoreT', 0, y, 400, 22, 18);
+    boardTitle.string = '本局得分';
+    boardTitle.color = new Color(180, 200, 190, 255);
+    y -= 34;
+
+    const rows = [...(settle?.rows || [])].sort((a, b) => {
+      if (a.isWinner && !b.isWinner) return -1;
+      if (!a.isWinner && b.isWinner) return 1;
+      return a.seat - b.seat;
+    });
+    const rowH = 34;
     if (rows.length) {
-      const boardY = birds.length ? -70 : -30;
       rows.forEach((r, i) => {
         const row = new Node(`row${i}`);
         panel.addChild(row);
         row.layer = panel.layer;
-        row.addComponent(UITransform).setContentSize(540, 40);
-        row.setPosition(0, boardY - i * 44, 0);
+        row.addComponent(UITransform).setContentSize(640, rowH);
+        row.setPosition(0, y - i * (rowH + 4), 0);
         const rg = row.addComponent(Graphics);
-        rg.fillColor = r.isWinner
-          ? new Color(70, 50, 28, 220)
-          : new Color(28, 38, 44, 200);
-        rg.roundRect(-270, -18, 540, 36, 8);
+        rg.fillColor = r.isWinner ? new Color(72, 52, 28, 230) : new Color(28, 38, 44, 210);
+        rg.roundRect(-320, -rowH / 2 + 2, 640, rowH - 2, 8);
         rg.fill();
         if (r.isWinner) {
           rg.strokeColor = new Color(230, 180, 70, 255);
           rg.lineWidth = 2;
-          rg.roundRect(-270, -18, 540, 36, 8);
+          rg.roundRect(-320, -rowH / 2 + 2, 640, rowH - 2, 8);
           rg.stroke();
         }
-        const name = this.mkLabel(row, 'n', -150, 0, 220, 30, 20);
+        const name = this.mkLabel(row, 'n', -140, 0, 280, 28, 18);
         name.string = `${r.isWinner ? '★ ' : ''}${r.name}${r.isMe ? '（我）' : ''}`;
-        name.color = r.isWinner
-          ? new Color(255, 230, 150, 255)
-          : new Color(210, 220, 220, 255);
-        const sc = this.mkLabel(row, 's', 180, 0, 140, 30, 24);
-        sc.color = r.score >= 0
-          ? new Color(120, 230, 160, 255)
-          : new Color(255, 130, 110, 255);
-        rollNumber(sc, 0, r.score, r.score >= 0 ? '+' : '', 0.5 + i * 0.05);
-        row.setScale(0.85, 0.85, 1);
-        popIn(row, 0.22 + i * 0.06);
+        name.color = r.isWinner ? new Color(255, 230, 150, 255) : new Color(210, 220, 220, 255);
+        const sc = this.mkLabel(row, 's', 220, 0, 140, 28, 22);
+        sc.color = r.score >= 0 ? new Color(120, 230, 160, 255) : new Color(255, 130, 110, 255);
+        rollNumber(sc, 0, r.score, r.score >= 0 ? '+' : '', 0.45 + i * 0.04);
+        popIn(row, 0.18 + i * 0.05);
       });
+      y -= rows.length * (rowH + 4) + 8;
     } else {
-      const subLab = this.mkLabel(panel, 'rs', 0, -20, 540, 100, 22);
+      const subLab = this.mkLabel(panel, 'rs', 0, y - 20, 600, 80, 20);
       subLab.string = sub;
       subLab.overflow = Label.Overflow.RESIZE_HEIGHT;
       subLab.color = new Color(200, 210, 200, 255);
-      popIn(subLab.node, 0.15);
     }
 
-    const btnY = -188;
-    const btn = this.mkSettleBtn(panel, 'ok', secondaryLabel ? -120 : 0, btnY, primaryLabel, true);
-    btn.node.setScale(0.6, 0.6, 1);
-    popIn(btn.node, 0.4);
+    const btnY = -PH / 2 + 42;
+    const btn = this.mkSettleBtn(panel, 'ok', secondaryLabel ? -130 : 0, btnY, primaryLabel, true);
+    popIn(btn.node, 0.35);
     btn.node.on(Button.EventType.CLICK, () => {
       AudioBus.playButton();
       onPrimary?.();
     });
     if (secondaryLabel && onSecondary) {
-      const btn2 = this.mkSettleBtn(panel, 'ok2', 120, btnY, secondaryLabel, false);
-      btn2.node.setScale(0.6, 0.6, 1);
-      popIn(btn2.node, 0.46);
+      const btn2 = this.mkSettleBtn(panel, 'ok2', 130, btnY, secondaryLabel, false);
+      popIn(btn2.node, 0.4);
       btn2.node.on(Button.EventType.CLICK, () => {
         AudioBus.playButton();
         onSecondary();
@@ -774,10 +768,11 @@ export class TableLayout {
   private settleReasonText(settle?: ResultSettleInfo | null): string {
     if (!settle) return '';
     const map: Record<string, string> = {
-      zimo: '自摸胡牌',
-      dianpao: '点炮胡牌',
+      zimo: '自摸',
+      dianpao: '点炮胡',
       hu: '胡牌',
       qiang_gang: '抢杠胡',
+      duo_xiang: '一炮多响',
       huangzhuang: '荒庄流局',
     };
     const base = map[settle.reason] || settle.detail || '';
@@ -788,7 +783,7 @@ export class TableLayout {
   }
 
   private spawnSettleSparkles(parent: Node) {
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 14; i++) {
       const d = new Node(`sp${i}`);
       parent.addChild(d);
       d.layer = parent.layer;
@@ -798,11 +793,11 @@ export class TableLayout {
       g.circle(0, 0, 3 + (i % 3));
       g.fill();
       const x0 = (Math.random() - 0.5) * 200;
-      const y0 = 40 + Math.random() * 80;
+      const y0 = 60 + Math.random() * 80;
       d.setPosition(x0, y0, 0);
       d.setScale(0, 0, 1);
       const dx = (Math.random() - 0.5) * 520;
-      const dy = 80 + Math.random() * 220;
+      const dy = 80 + Math.random() * 200;
       tween(d)
         .delay(0.05 + Math.random() * 0.25)
         .to(0.15, { scale: new Vec3(1, 1, 1) })
@@ -812,6 +807,85 @@ export class TableLayout {
         }, { easing: 'quadOut' })
         .call(() => { if (d.isValid) d.destroy(); })
         .start();
+    }
+  }
+
+  /** 赢家胡牌：副露 + 手牌，胡牌用红框标出（展示方式同中鸟） */
+  private async fillSettleWinHand(panel: Node, settle: ResultSettleInfo, y: number) {
+    const host = new Node('winHand');
+    panel.addChild(host);
+    host.layer = panel.layer;
+    host.addComponent(UITransform);
+    host.setPosition(0, y, 0);
+
+    const tw = 34;
+    const th = 48;
+    const gap = 3;
+    const groupGap = 10;
+    const melds = settle.winMelds || [];
+    const hand = [...(settle.winHand || [])];
+    const huTile = settle.huTile != null ? Number(settle.huTile) : null;
+
+    // 点炮胡时手牌里已含胡牌：把一张胡牌挪到末尾单独亮出
+    let showHand = hand;
+    let trailingHu: number | null = null;
+    if (huTile != null) {
+      const idx = showHand.lastIndexOf(huTile);
+      if (idx >= 0) {
+        showHand = showHand.slice();
+        showHand.splice(idx, 1);
+        trailingHu = huTile;
+      } else {
+        trailingHu = huTile;
+      }
+    }
+
+    type Slot = { tile: number; kind: 'meld' | 'hand' | 'hu' };
+    const slots: Slot[] = [];
+    for (const m of melds) {
+      const tiles = m.tiles?.length ? m.tiles : [];
+      const cnt = (m.kind === 'gang' || m.kind === 'ming_gang' || m.kind === 'an_gang' || m.kind === 'bu_gang')
+        ? 4 : Math.max(3, tiles.length);
+      for (let k = 0; k < cnt; k++) {
+        slots.push({ tile: tiles[Math.min(k, tiles.length - 1)] ?? 0, kind: 'meld' });
+      }
+      // 组间隔占位（用 kind 标记）
+      slots.push({ tile: -1, kind: 'meld' });
+    }
+    // 去掉末尾占位
+    if (slots.length && slots[slots.length - 1].tile < 0) slots.pop();
+
+    for (const t of showHand) slots.push({ tile: t, kind: 'hand' });
+    if (trailingHu != null) {
+      slots.push({ tile: -1, kind: 'hand' }); // 间隔
+      slots.push({ tile: trailingHu, kind: 'hu' });
+    }
+
+    // 计算总宽
+    let totalW = 0;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].tile < 0) totalW += groupGap;
+      else totalW += tw + (i + 1 < slots.length && slots[i + 1].tile >= 0 ? gap : 0);
+    }
+    let x = -totalW / 2 + tw / 2;
+    let iNode = 0;
+    for (const s of slots) {
+      if (s.tile < 0) {
+        x += groupGap;
+        continue;
+      }
+      const n = await createTileNode(s.tile, host, tw, th);
+      if (!n?.isValid) continue;
+      n.setPosition(x, 0, 0);
+      if (s.kind === 'hu') TableLayout.markTileHighlight(n, 'hu');
+      const target = s.kind === 'hu' ? 1.1 : 1;
+      n.setScale(0.4, 0.4, 1);
+      tween(n)
+        .delay(0.1 + iNode * 0.025)
+        .to(0.2, { scale: new Vec3(target, target, 1) }, { easing: 'backOut' })
+        .start();
+      x += tw + gap;
+      iNode += 1;
     }
   }
 
@@ -837,27 +911,27 @@ export class TableLayout {
     const n = new Node(name);
     parent.addChild(n);
     n.layer = parent.layer;
-    n.addComponent(UITransform).setContentSize(160, 54);
+    n.addComponent(UITransform).setContentSize(168, 52);
     n.setPosition(x, y, 0);
     const g = n.addComponent(Graphics);
     if (primary) {
       g.fillColor = new Color(196, 72, 48, 255);
-      g.roundRect(-80, -27, 160, 54, 12);
+      g.roundRect(-84, -26, 168, 52, 12);
       g.fill();
       g.strokeColor = new Color(255, 210, 120, 220);
       g.lineWidth = 2;
-      g.roundRect(-80, -27, 160, 54, 12);
+      g.roundRect(-84, -26, 168, 52, 12);
       g.stroke();
     } else {
       g.fillColor = new Color(45, 58, 66, 255);
-      g.roundRect(-80, -27, 160, 54, 12);
+      g.roundRect(-84, -26, 168, 52, 12);
       g.fill();
       g.strokeColor = new Color(140, 160, 170, 180);
       g.lineWidth = 1.5;
-      g.roundRect(-80, -27, 160, 54, 12);
+      g.roundRect(-84, -26, 168, 52, 12);
       g.stroke();
     }
-    const lab = this.mkLabel(n, 't', 0, 0, 140, 36, 24);
+    const lab = this.mkLabel(n, 't', 0, 0, 150, 36, 22);
     lab.string = text;
     lab.color = primary ? new Color(255, 245, 220, 255) : new Color(210, 220, 225, 255);
     const btn = n.addComponent(Button);
