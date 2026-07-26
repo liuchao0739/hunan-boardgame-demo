@@ -1,5 +1,6 @@
 import {
   _decorator, Component, Label, Node, EditBox, Button, UITransform, director, Color, Sprite,
+  instantiate,
 } from 'cc';
 import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel } from '../comm/ArtBg';
@@ -28,30 +29,35 @@ export class LoginScene extends Component {
   private registerBtn: Button | null = null;
 
   onLoad() {
-    this.purgeBrokenPassword();
-    this.ensurePasswordFromNameEdit();
-    this.ensureLinkButtons();
-    this.layoutUi();
-    attachBg(this.canvas(), 'weihai/bg/hall');
+    try {
+      this.purgeBrokenPassword();
+      this.ensurePasswordFromNameEdit();
+      this.ensureLinkButtons();
+      this.layoutUi();
+      attachBg(this.canvas(), 'weihai/bg/hall');
 
-    if (this.nameEdit) {
-      this.nameEdit.maxLength = 32;
-      this.nameEdit.placeholder = '昵称 / 用户名';
-    }
-    if (this.passwordEdit) {
-      this.passwordEdit.maxLength = 64;
-      this.passwordEdit.inputFlag = EditBox.InputFlag.PASSWORD;
-      this.passwordEdit.placeholder = '密码（可空）';
-      this.passwordEdit.string = '';
-    }
-    if (this.serverEdit) this.serverEdit.maxLength = 128;
+      if (this.nameEdit) {
+        this.nameEdit.maxLength = 32;
+        this.nameEdit.placeholder = '昵称 / 用户名';
+      }
+      if (this.passwordEdit) {
+        this.passwordEdit.maxLength = 64;
+        this.passwordEdit.inputFlag = EditBox.InputFlag.PASSWORD;
+        this.passwordEdit.placeholder = '密码（可空）';
+        this.passwordEdit.string = '';
+      }
+      if (this.serverEdit) this.serverEdit.maxLength = 128;
 
-    const addr = NetBus.readServerAddrFromUrl('127.0.0.1:20480');
-    if (this.serverEdit) this.serverEdit.string = addr;
-    if (this.nameEdit && !this.nameEdit.string) this.nameEdit.string = '测试用户';
-    NetBus.ins.putServerAddr(addr);
-    this.setStatus('湘桌 · 点登录进入（密码可空）');
-    this.wireButtons();
+      const addr = NetBus.readServerAddrFromUrl('127.0.0.1:20480');
+      if (this.serverEdit) this.serverEdit.string = addr;
+      if (this.nameEdit && !this.nameEdit.string) this.nameEdit.string = '测试用户';
+      NetBus.ins.putServerAddr(addr);
+      this.setStatus('湘桌 · 点登录进入（密码可空）');
+      this.wireButtons();
+    } catch (e) {
+      console.error('[Login] onLoad fail', e);
+      this.setStatus('登录页初始化失败，请刷新');
+    }
   }
 
   private canvas(): Node {
@@ -87,7 +93,7 @@ export class LoginScene extends Component {
     }
     const src = this.nameEdit?.node;
     if (!src?.isValid) return;
-    const n = Node.instantiate(src);
+    const n = instantiate(src);
     n.name = 'PasswordEdit';
     parent.addChild(n);
     n.layer = parent.layer;
