@@ -137,11 +137,50 @@ export class TableLayout {
     if (this.roundLabel) this.roundLabel.string = '第 1 局';
     if (this.remainLabel) this.remainLabel.string = '剩 --';
 
-    // 随时可回大厅
-    this.exitBtn = this.mkTextBtn(parent, 'btnExit', -520, 320, '回大厅');
-    const exitUi = this.exitBtn.node.getComponent(UITransform);
-    if (exitUi) exitUi.setContentSize(120, 48);
-    this.exitBtn.node.setPosition(-520, 320, 0);
+    // 左上角工具条：回大厅 / 托管 / 解散 横排
+    this.buildTopToolbar(parent);
+  }
+
+  private buildTopToolbar(parent: Node) {
+    const bar = new Node('__TopToolbar');
+    parent.addChild(bar);
+    bar.layer = parent.layer;
+    bar.addComponent(UITransform).setContentSize(380, 48);
+    bar.setPosition(-450, 318, 0);
+
+    const bg = bar.addComponent(Graphics);
+    bg.fillColor = new Color(0, 0, 0, 90);
+    bg.roundRect(-190, -24, 380, 48, 14);
+    bg.fill();
+
+    this.exitBtn = this.mkToolBtn(bar, 'btnExit', -125, 110, '回大厅');
+    this.btnAutoPlay = this.mkToolBtn(bar, 'btnAuto', 0, 120, '托管');
+    this.btnDissolve = this.mkToolBtn(bar, 'btnDiss', 125, 110, '解散');
+    if (this.btnAutoPlay) this.btnAutoPlay.node.active = true;
+    if (this.btnDissolve) this.btnDissolve.node.active = true;
+  }
+
+  private mkToolBtn(parent: Node, name: string, x: number, w: number, text: string): Button {
+    const n = new Node(name);
+    parent.addChild(n);
+    n.layer = parent.layer;
+    n.addComponent(UITransform).setContentSize(w, 36);
+    n.setPosition(x, 0, 0);
+    const g = n.addComponent(Graphics);
+    g.fillColor = new Color(176, 58, 42, 245);
+    g.roundRect(-w / 2, -18, w, 36, 10);
+    g.fill();
+    g.strokeColor = new Color(255, 200, 140, 120);
+    g.lineWidth = 1;
+    g.roundRect(-w / 2, -18, w, 36, 10);
+    g.stroke();
+    const lab = this.mkLabel(n, 't', 0, 0, w - 8, 28, 18);
+    lab.string = text;
+    lab.color = new Color(255, 248, 230, 255);
+    const btn = n.addComponent(Button);
+    btn.transition = Button.Transition.SCALE;
+    btn.zoomScale = 0.94;
+    return btn;
   }
 
   /** 听牌提示：可胡哪些牌 */
@@ -402,13 +441,10 @@ export class TableLayout {
     this.btnPeng = this.mkActionBtn(parent, 'btnPeng', 480, -150, 'weihai/ui/btn_peng');
     this.btnHu = this.mkActionBtn(parent, 'btnHu', 480, -260, 'weihai/ui/btn_hu');
     this.btnContinue = this.mkTextBtn(parent, 'btnCont', 0, -80, '继续打牌');
-    this.btnAutoPlay = this.mkTextBtn(parent, 'btnAuto', -520, 250, '托管');
-    this.btnDissolve = this.mkTextBtn(parent, 'btnDiss', -520, 180, '解散');
     this.btnChu = null;
     this.setActionButtons(false, false, false, false);
     if (this.btnContinue) this.btnContinue.node.active = false;
-    if (this.btnAutoPlay) this.btnAutoPlay.node.active = true;
-    if (this.btnDissolve) this.btnDissolve.node.active = true;
+    // 托管/解散已在左上角工具条创建
   }
 
   setNetBanner(text: string | null) {
