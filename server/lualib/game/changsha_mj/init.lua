@@ -3,6 +3,7 @@ local T = require "game.changsha_mj.tiles"
 local Q = require "game.changsha_mj.qishou"
 local Niao = require "game.changsha_mj.niao"
 local Fan = require "game.changsha_mj.fan"
+local Bot = require "game.changsha_mj.bot"
 local JsonUtil = require "platform.jsonutil"
 
 local function copy_arr(a)
@@ -32,18 +33,21 @@ local DEFAULT = {
   playerCount = 4,
   multiHu = "first", -- "all" | "first"
   actionTimeoutSec = 15,
+  botLevel = "medium", -- weak | medium | strong
 }
 
 function Engine.new(opts)
   opts = opts or {}
   local self = setmetatable({}, Engine)
   self.gameId = "changsha_mj"
+  local botLevel = opts.botLevel or (opts.rules and opts.rules.botLevel) or DEFAULT.botLevel
   self.cfg = {
     birdCount = opts.birdCount or DEFAULT.birdCount,
     baseScore = opts.baseScore or DEFAULT.baseScore,
     playerCount = opts.playerCount or DEFAULT.playerCount,
     multiHu = opts.multiHu or opts.rules and opts.rules.multiHu or DEFAULT.multiHu,
     actionTimeoutSec = opts.actionTimeoutSec or DEFAULT.actionTimeoutSec,
+    botLevel = Bot.normalize_level(botLevel),
   }
   self.phase = "waiting"
   self.deadlineAt = nil
@@ -960,7 +964,7 @@ function Engine:snapshot(for_seat)
     zhongtu = self.zhongtu,
     drawn = (for_seat == self.currentSeat) and self.drawn or nil,
     scoreLedger = self.scoreLedger,
-    rules = { multiHu = self.cfg.multiHu },
+    rules = { multiHu = self.cfg.multiHu, botLevel = self.cfg.botLevel },
     deadlineAt = self.deadlineAt,
     deadlineMs = deadlineMs,
   }
@@ -993,6 +997,7 @@ end
 
 function Engine:bot_tick(seat, mode)
   if not self:_seat_needs_auto(seat, mode) then return false end
+  local level = self.cfg.botLevel or "medium"
   if self.phase == "qishou" then
     self:on_action(seat, "continue", {})
     return true
@@ -1018,7 +1023,11 @@ function Engine:bot_tick(seat, mode)
       end
     end
     local hand = self.players[seat].hand
-    local tile = hand[#hand]
+    local tile = Bot.choose_discard(hand, level, {
+      players = self.players,
+      seat = seat,
+    })
+    if not tile then tile = hand[#hand] end
     self:on_action(seat, "discard", { tile = tile })
     return true
   end
@@ -1029,19 +1038,9 @@ function Engine:bot_tick(seat, mode)
     end
     if not in_claim then return false end
     local ops = self:_ops_claim(seat)
-    for _, op in ipairs(ops) do
-      if op.action == "hu" then
-        self:on_action(seat, "hu", {})
-        return true
-      end
-    end
-    for _, op in ipairs(ops) do
-      if op.action == "peng" then
-        self:on_action(seat, "peng", {})
-        return true
-      end
-    end
-    self:on_action(seat, "guo", {})
+    local hand = self.players[seat].hand
+    local action, body = Bot.choose_claim(ops, hand, level)
+    self:on_action(seat, action, body or {})
     return true
   end
   return false

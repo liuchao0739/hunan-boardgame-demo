@@ -6,6 +6,7 @@ import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg
 import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
 import { JoinRoomDialog } from './JoinRoomDialog';
+import { CreateRoomDialog, BotLevel } from './CreateRoomDialog';
 import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
@@ -419,17 +420,25 @@ export class HallScene extends Component {
       return;
     }
     if (!(await this.ensureConnected())) return;
+    CreateRoomDialog.show(this.canvas(), (botLevel) => {
+      void this.doCreateRoom(botLevel);
+    });
+  }
+
+  private async doCreateRoom(botLevel: BotLevel) {
+    if (this.creating) return;
     this.creating = true;
-    this.setRoom('正在创建长沙麻将房间…');
+    const levelName = botLevel === 'weak' ? '弱' : botLevel === 'strong' ? '强' : '中';
+    this.setRoom(`正在创建房间（机器人${levelName}）…`);
     try {
-      const msg = await NetBus.ins.createRoom(this.gameId);
+      const msg = await NetBus.ins.createRoom(this.gameId, { botLevel });
       if (msg.cmd === 'error') {
         this.setRoom(msg.body?.message || '创建失败');
       } else {
         const st = msg.body;
         this.roomId = st.roomId;
         if (this.joinEdit) this.joinEdit.string = String(st.roomId);
-        this.setRoom(`房间 ${st.roomId} 已配机器人，点「确定」开局`);
+        this.setRoom(`房间 ${st.roomId} · 机器人${levelName}，点「确定」开局`);
         void this.pullBalance();
       }
     } finally {
