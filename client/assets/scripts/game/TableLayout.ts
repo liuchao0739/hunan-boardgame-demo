@@ -1,5 +1,5 @@
 import {
-  Node, Label, UITransform, Color, Graphics, Sprite, Button, Layers, Vec3, tween, Tween,
+  Node, Label, UITransform, Color, Graphics, Sprite, Button, Layers, Vec3, tween, Tween, UIOpacity,
 } from 'cc';
 import { loadSpriteFrame, createTileNode, styleLabel, attachBg } from '../comm/ArtBg';
 import { AudioBus } from '../comm/AudioBus';
@@ -553,7 +553,7 @@ export class TableLayout {
     if (ov?.isValid) ov.destroy();
   }
 
-  /** 仅显示你真正能用的操作（统一 popIn 动效） */
+  /** 仅显示你真正能用的操作（避免反复 popIn 造成残影感） */
   setActionButtons(show: boolean, canPeng: boolean, canHu: boolean, canChi = false) {
     const sig = `${show}|${canPeng}|${canHu}|${canChi}`;
     const changed = sig !== this.lastActionSig;
@@ -565,15 +565,16 @@ export class TableLayout {
       { btn: this.btnHu, on: show && canHu },
       { btn: this.btnChi, on: show && canChi },
     ];
-    let delay = 0;
     for (const { btn, on } of items) {
       if (!btn) continue;
       const was = btn.node.active;
       btn.node.active = on;
       if (on && changed && !was) {
-        btn.node.setScale(0.55, 0.55, 1);
-        popIn(btn.node, delay);
-        delay += 0.05;
+        stopNodeTweens(btn.node);
+        btn.node.setScale(1, 1, 1);
+        let op = btn.node.getComponent(UIOpacity);
+        if (!op) op = btn.node.addComponent(UIOpacity);
+        op.opacity = 255;
       }
     }
   }
