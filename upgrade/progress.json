@@ -4,12 +4,12 @@
   "demo": "https://xiangzhuo.xiandan.me/",
   "generated_at": "2026-07-25T16:18:53.562652+00:00",
   "stats": {
-    "total": 100,
-    "done": 100,
+    "total": 116,
+    "done": 116,
     "pending": 0,
     "failed": 0
   },
-  "current_phase": "complete",
+  "current_phase": "phase9_visual",
   "current_task": null,
   "tasks": [
     {
@@ -1236,6 +1236,201 @@
         "scripts/verify_upgrade.sh"
       ],
       "completed_at": "2026-07-26T05:30:36.280679+00:00"
+    },
+    {
+      "id": "T101",
+      "phase": "phase9_visual",
+      "title": "phase9_visual 验收标准写入 REFERENCE",
+      "status": "done",
+      "spec": "upgrade/specs/T101.md",
+      "acceptance": "REFERENCE 含观感 phase9 与演示站截图验收",
+      "touch_files": [
+        "upgrade/REFERENCE.md"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T102",
+      "phase": "phase9_visual",
+      "title": "RoundSettlementWnd / 结算美术壳接入",
+      "status": "done",
+      "spec": "upgrade/specs/T102.md",
+      "acceptance": "结算弹窗使用美术面板非纯 Graphics 框",
+      "touch_files": [
+        "client/assets/scripts/game/SettleWnd.ts",
+        "client/assets/scripts/game/TableLayout.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T103",
+      "phase": "phase9_visual",
+      "title": "结算填充赢家牌面与中鸟",
+      "status": "done",
+      "spec": "upgrade/specs/T103.md",
+      "acceptance": "MahjongListArea 展示副露+手牌+胡牌红框与中鸟",
+      "touch_files": [
+        "client/assets/scripts/game/SettleWnd.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T104",
+      "phase": "phase9_visual",
+      "title": "结算四人得分与胜负标题态",
+      "status": "done",
+      "spec": "upgrade/specs/T104.md",
+      "acceptance": "Win/Lose/Draw 标题图 + 四人行完整可见",
+      "touch_files": [
+        "client/assets/scripts/game/SettleWnd.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T105",
+      "phase": "phase9_visual",
+      "title": "大厅顶栏账号与房卡条",
+      "status": "done",
+      "spec": "upgrade/specs/T105.md",
+      "acceptance": "大厅顶部有昵称/房卡美术条",
+      "touch_files": [
+        "client/assets/scripts/hall/HallScene.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T106",
+      "phase": "phase9_visual",
+      "title": "大厅底栏与创房加入美术按钮",
+      "status": "done",
+      "spec": "upgrade/specs/T106.md",
+      "acceptance": "使用 hall 创房/加入/底栏原图",
+      "touch_files": [
+        "client/assets/scripts/hall/HallScene.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T107",
+      "phase": "phase9_visual",
+      "title": "加入房间弹窗数字键盘",
+      "status": "done",
+      "spec": "upgrade/specs/T107.md",
+      "acceptance": "JoinRoom 弹窗输入房号可进房",
+      "touch_files": [
+        "client/assets/scripts/hall/HallScene.ts",
+        "client/assets/scripts/hall/JoinRoomDialog.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T108",
+      "phase": "phase9_visual",
+      "title": "登录页品牌与登录按钮统一",
+      "status": "done",
+      "spec": "upgrade/specs/T108.md",
+      "acceptance": "登录主 CTA 使用 btn_login，标题层级正确",
+      "touch_files": [
+        "client/assets/scripts/login/LoginScene.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T109",
+      "phase": "phase9_visual",
+      "title": "牌桌独立台面视觉",
+      "status": "done",
+      "spec": "upgrade/specs/T109.md",
+      "acceptance": "牌桌与大厅背景区分，有毡面/边框层次",
+      "touch_files": [
+        "client/assets/scripts/game/TableLayout.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T110",
+      "phase": "phase9_visual",
+      "title": "完整牌面与选中态",
+      "status": "done",
+      "spec": "upgrade/specs/T110.md",
+      "acceptance": "手牌使用更完整牌体+贴面，选中上浮清晰",
+      "touch_files": [
+        "client/assets/scripts/comm/ArtBg.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T111",
+      "phase": "phase9_visual",
+      "title": "座位框换头像资源",
+      "status": "done",
+      "spec": "upgrade/specs/T111.md",
+      "acceptance": "四家座位使用头像框资源，非黑圆笑脸",
+      "touch_files": [
+        "client/assets/scripts/game/TableLayout.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T112",
+      "phase": "phase9_visual",
+      "title": "胡/自摸图标特效",
+      "status": "done",
+      "spec": "upgrade/specs/T112.md",
+      "acceptance": "胡牌时刻使用 Icon_Hu/ZiMo/DianPao 资源",
+      "touch_files": [
+        "client/assets/scripts/game/TableFx.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T113",
+      "phase": "phase9_visual",
+      "title": "结算入场衔接胡特效",
+      "status": "done",
+      "spec": "upgrade/specs/T113.md",
+      "acceptance": "先播胡特效再弹出结算窗",
+      "touch_files": [
+        "client/assets/scripts/game/TableScene.ts"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T114",
+      "phase": "phase9_visual",
+      "title": "phase9 美术资源无 @ 路径副本",
+      "status": "done",
+      "spec": "upgrade/specs/T114.md",
+      "acceptance": "weihai/ui/settle|hall 可 resources.load",
+      "touch_files": [
+        "client/assets/resources/weihai/ui/"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T115",
+      "phase": "phase9_visual",
+      "title": "演示站 Web Mobile 发版验收",
+      "status": "done",
+      "spec": "upgrade/specs/T115.md",
+      "acceptance": "xiangzhuo.xiandan.me 强制刷新可见新壳",
+      "touch_files": [
+        "docs/DEPLOY_SEAFILE.md"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
+    },
+    {
+      "id": "T116",
+      "phase": "phase9_visual",
+      "title": "LOOP 指向 phase9_visual",
+      "status": "done",
+      "spec": "upgrade/specs/T116.md",
+      "acceptance": "current_phase=phase9_visual 直至视觉验收",
+      "touch_files": [
+        "upgrade/progress.json",
+        "upgrade/LOOP.md"
+      ],
+      "completed_at": "2026-07-26T09:16:04.162079+00:00"
     }
   ],
   "notes": "对标商业级欢乐麻将能力；按 upgrade/LOOP.md 循环执行。"

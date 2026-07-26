@@ -1,7 +1,7 @@
 import {
-  Node, tween, Vec3, Tween, UIOpacity, UITransform, Color, Graphics, Label,
+  Node, tween, Vec3, Tween, UIOpacity, UITransform, Color, Graphics, Label, Sprite,
 } from 'cc';
-import { createTileNode, styleLabel } from '../comm/ArtBg';
+import { createTileNode, styleLabel, loadSpriteFrame } from '../comm/ArtBg';
 
 /** 通用 tween 工具，牌桌动效复用 */
 export function stopNodeTweens(n: Node | null | undefined) {
@@ -80,7 +80,7 @@ export function slideNodes(nodes: Node[], targetXs: number[], dur = 0.2) {
   }
 }
 
-export function buildHuEffectLayer(parent: Node, kind: 'hu' | 'zimo'): Node {
+export function buildHuEffectLayer(parent: Node, kind: 'hu' | 'zimo' | 'dianpao' = 'hu'): Node {
   const ov = new Node('__HuFx');
   parent.addChild(ov);
   ov.layer = parent.layer;
@@ -104,30 +104,47 @@ export function buildHuEffectLayer(parent: Node, kind: 'hu' | 'zimo'): Node {
   burst.layer = parent.layer;
   burst.addComponent(UITransform).setContentSize(420, 420);
   const bg = burst.addComponent(Graphics);
-  const c = kind === 'zimo' ? new Color(255, 200, 60, 220) : new Color(255, 80, 60, 220);
+  const c = kind === 'zimo'
+    ? new Color(255, 200, 60, 200)
+    : (kind === 'dianpao' ? new Color(255, 140, 60, 200) : new Color(255, 80, 60, 200));
   bg.fillColor = c;
-  bg.circle(0, 0, 180);
+  bg.circle(0, 0, 160);
   bg.fill();
-  bg.strokeColor = new Color(255, 255, 220, 255);
-  bg.lineWidth = 6;
-  bg.circle(0, 0, 180);
-  bg.stroke();
   burst.setScale(0.2, 0.2, 1);
 
-  const titleN = new Node('title');
-  burst.addChild(titleN);
-  titleN.layer = parent.layer;
-  titleN.addComponent(UITransform).setContentSize(360, 80);
-  const lab = titleN.addComponent(Label);
-  styleLabel(lab, 56);
-  lab.string = kind === 'zimo' ? '自摸' : '胡牌';
-  lab.color = new Color(255, 255, 220, 255);
+  const icon = new Node('icon');
+  burst.addChild(icon);
+  icon.layer = parent.layer;
+  icon.addComponent(UITransform).setContentSize(220, 220);
+  const sp = icon.addComponent(Sprite);
+  sp.sizeMode = Sprite.SizeMode.CUSTOM;
+  const path = kind === 'zimo'
+    ? 'weihai/ui/settle/icon_zimo'
+    : (kind === 'dianpao' ? 'weihai/ui/settle/icon_dianpao' : 'weihai/ui/settle/icon_hu');
+  void loadSpriteFrame(path).then((sf) => {
+    if (!sf || !icon.isValid) {
+      const titleN = new Node('title');
+      burst.addChild(titleN);
+      titleN.layer = parent.layer;
+      titleN.addComponent(UITransform).setContentSize(360, 80);
+      const lab = titleN.addComponent(Label);
+      styleLabel(lab, 56);
+      lab.string = kind === 'zimo' ? '自摸' : (kind === 'dianpao' ? '点炮' : '胡牌');
+      lab.color = new Color(255, 255, 220, 255);
+      return;
+    }
+    sp.spriteFrame = sf;
+    const tw = sf.originalSize?.width || 200;
+    const th = sf.originalSize?.height || 200;
+    const s = Math.min(240 / tw, 240 / th);
+    icon.getComponent(UITransform)!.setContentSize(tw * s, th * s);
+  });
 
   tween(burst)
     .to(0.35, { scale: new Vec3(1.15, 1.15, 1) }, { easing: 'backOut' })
     .to(0.2, { scale: new Vec3(1, 1, 1) })
-    .delay(0.6)
-    .call(() => fadeScaleOut(ov, 0.4))
+    .delay(0.55)
+    .call(() => fadeScaleOut(ov, 0.35))
     .start();
 
   return ov;

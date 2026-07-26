@@ -12,6 +12,18 @@
 | 经济 | 房卡/钻石、流水 | 假房卡字段 | phase6 |
 | 多玩法 | 多麻将/扑克入口 | 长沙可玩、跑胡子占位 | phase7 |
 | 运维 | 监控、备份、灰度 | 手动部署 | phase8 |
+| **观感** | **商业级大厅/牌桌/结算视觉** | **程序员 UI 壳** | **phase9_visual** |
+
+## phase9 观感验收（演示站截图为准）
+
+能力骨架（phase0–8）打满 **不等于** 观感完成。phase9 通过条件：
+
+1. 登录/大厅第一眼是美术壳（顶栏房卡、底栏、创房/加入原图按钮、加入房间弹窗），不是风景图+红块按钮
+2. 结算弹窗是美术面板（Win/Lose/Draw 标题图），可见谁胡、牌型、胡牌牌面、中鸟、四人得分
+3. 牌桌有独立台面层次、完整牌面、头像框座位；胡/自摸有图标特效
+4. https://xiangzhuo.xiandan.me/ 强制刷新后与本地构建一致
+
+美术基线：仓库已有 `client/assets/resources/weihai/`（含无 `@` 副本 `weihai/ui/settle|hall`）。
 
 参考演示站：https://xiangzhuo.xiandan.me/  
 源码：https://github.com/liuchao0739/xiangzhuo

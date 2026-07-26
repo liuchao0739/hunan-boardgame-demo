@@ -152,7 +152,9 @@ export async function createTileNode(
   gesture?: TileGesture | ((tile: number, node: Node) => void),
 ): Promise<Node> {
   const artId = changshaToArtId(tile);
-  const backSf = await loadSpriteFrame('weihai/tiles/back');
+  // 完整牌体 + 牌面（对标商业麻将手感）
+  const bodySf = await loadSpriteFrame('weihai/ui/tile_body')
+    || await loadSpriteFrame('weihai/tiles/back');
   const faceSf = artId > 0 ? await loadSpriteFrame(`weihai/tiles/${artId}`) : null;
 
   const n = new Node(`T_${normalizeTileId(tile)}`);
@@ -161,14 +163,14 @@ export async function createTileNode(
   ui.setContentSize(w, h);
   const back = n.addComponent(Sprite);
   back.sizeMode = Sprite.SizeMode.CUSTOM;
-  if (backSf) back.spriteFrame = backSf;
+  if (bodySf) back.spriteFrame = bodySf;
 
   const face = new Node('face');
   n.addChild(face);
   face.layer = parent.layer;
   const fui = face.addComponent(UITransform);
-  fui.setContentSize(w * 0.88, h * 0.78);
-  face.setPosition(0, 3, 0);
+  fui.setContentSize(w * 0.82, h * 0.72);
+  face.setPosition(0, 2, 0);
   const fsp = face.addComponent(Sprite);
   fsp.sizeMode = Sprite.SizeMode.CUSTOM;
   if (faceSf) fsp.spriteFrame = faceSf;

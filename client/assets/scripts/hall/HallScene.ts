@@ -5,6 +5,8 @@ import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel, loadSpriteFrame } from '../comm/ArtBg';
 import { attachHallMeiNv } from './HallMeiNv';
 import { gameDisplayName, loadTableScene } from '../game/TableRouter';
+import { JoinRoomDialog } from './JoinRoomDialog';
+import { AudioBus } from '../comm/AudioBus';
 
 const { ccclass, property } = _decorator;
 
@@ -101,6 +103,10 @@ export class HallScene extends Component {
   private refreshInfo(u: any = (globalThis as any).__HNQP__ || {}) {
     const rc = u.roomCard != null ? ` · 房卡 ${u.roomCard}` : '';
     this.setInfo(`玩家 ${u.userName || '?'} (${u.userId || '?'})${rc}`);
+    const nameLab = (this as any)._hallNameLab as Label | undefined;
+    const cardLab = (this as any)._hallCardLab as Label | undefined;
+    if (nameLab?.isValid) nameLab.string = String(u.userName || '玩家');
+    if (cardLab?.isValid) cardLab.string = String(u.roomCard ?? '--');
   }
 
   private async pullBalance() {
@@ -160,14 +166,14 @@ export class HallScene extends Component {
     const prepN = this.prepareBtn?.node ?? this.findNode('PrepareBtn');
     const clubN = this.findNode('ClubBtn') ?? canvas.getChildByName('ClubBtn');
 
+    // 右侧主操作：创房 / 加入 / 确定开局
     const rows: Array<{ node: Node | null; x: number; y: number; w: number; h: number }> = [
-      { node: this.infoLabel?.node ?? null, x: -320, y: 300, w: 520, h: 40 },
-      { node: this.roomLabel?.node ?? null, x: 40, y: 240, w: 760, h: 40 },
-      { node: this.joinEdit?.node ?? null, x: 340, y: 120, w: 260, h: 48 },
-      { node: createN, x: 340, y: 0, w: 320, h: 120 },
-      { node: joinN, x: 340, y: -140, w: 320, h: 120 },
-      { node: prepN, x: 340, y: -270, w: 200, h: 80 },
-      { node: clubN, x: -420, y: -310, w: 220, h: 72 },
+      { node: this.roomLabel?.node ?? null, x: 0, y: 250, w: 900, h: 36 },
+      { node: this.joinEdit?.node ?? null, x: 2000, y: 0, w: 1, h: 1 }, // 隐藏，改用弹窗
+      { node: createN, x: 380, y: 40, w: 300, h: 130 },
+      { node: joinN, x: 380, y: -120, w: 300, h: 130 },
+      { node: prepN, x: 380, y: -260, w: 220, h: 80 },
+      { node: clubN, x: -480, y: -300, w: 200, h: 70 },
     ];
     for (const r of rows) {
       if (!r.node?.isValid) continue;
@@ -175,16 +181,17 @@ export class HallScene extends Component {
       const ui = r.node.getComponent(UITransform);
       if (ui) ui.setContentSize(r.w, r.h);
     }
-    styleLabel(this.infoLabel, 26);
-    styleLabel(this.roomLabel, 26);
+    if (this.joinEdit) this.joinEdit.node.active = false;
+    if (this.infoLabel) this.infoLabel.node.active = false; // 改用顶栏
+    styleLabel(this.roomLabel, 24);
 
     const create = this.createBtn ?? createN?.getComponent(Button);
     const join = this.joinBtn ?? joinN?.getComponent(Button);
     const prep = this.prepareBtn ?? prepN?.getComponent(Button);
-    skinButton(create, 'weihai/ui/btn_create', true, 320);
-    skinButton(join, 'weihai/ui/btn_join', true, 320);
+    skinButton(create, 'weihai/ui/hall/btn_create_room', true, 300);
+    skinButton(join, 'weihai/ui/hall/btn_join_room', true, 300);
     skinButton(prep, 'weihai/ui/btn_ok', true, 200);
-    if (clubN) skinButton(clubN.getComponent(Button), 'weihai/ui/btn_club', true, 220);
+    if (clubN) skinButton(clubN.getComponent(Button), 'weihai/ui/hall/btn_club', true, 200);
     this.hideBtnLabels(createN);
     this.hideBtnLabels(joinN);
     this.hideBtnLabels(prepN);
@@ -194,48 +201,122 @@ export class HallScene extends Component {
   private decorateHall(canvas: Node) {
     const oldHero = canvas.getChildByName('__HallHero');
     if (oldHero) oldHero.destroy();
-    void attachHallMeiNv(canvas, -300, -60);
+    void attachHallMeiNv(canvas, -280, -40);
 
-    if (!canvas.getChildByName('__HallBottom')) {
-      const bar = new Node('__HallBottom');
-      canvas.addChild(bar);
-      bar.layer = canvas.layer || Layers.Enum.UI_2D;
-      bar.addComponent(UITransform).setContentSize(1280, 100);
-      bar.setPosition(0, -320, 0);
-      const sp = bar.addComponent(Sprite);
-      sp.sizeMode = Sprite.SizeMode.CUSTOM;
-      void loadSpriteFrame('weihai/hall/bottom_bar').then((sf) => {
-        if (sf && bar.isValid) {
-          sp.spriteFrame = sf;
-          bar.getComponent(UITransform)!.setContentSize(1280, 90);
-        }
-      });
-    }
+    // 顶栏：昵称 + 房卡
+    let top = canvas.getChildByName('__HallTop');
+    if (top) top.destroy();
+    top = new Node('__HallTop');
+    canvas.addChild(top);
+    top.layer = canvas.layer || Layers.Enum.UI_2D;
+    top.addComponent(UITransform).setContentSize(1280, 80);
+    top.setPosition(0, 320, 0);
 
-    // 玩法说明：纯文字，不要卡片按钮
+    const nameBg = new Node('nameBg');
+    top.addChild(nameBg);
+    nameBg.layer = top.layer;
+    nameBg.setPosition(-420, 0, 0);
+    nameBg.addComponent(UITransform).setContentSize(280, 44);
+    const nsp = nameBg.addComponent(Sprite);
+    nsp.sizeMode = Sprite.SizeMode.CUSTOM;
+    void loadSpriteFrame('weihai/ui/hall/user_name_bg').then((sf) => {
+      if (sf && nameBg.isValid) nsp.spriteFrame = sf;
+    });
+    const nameLab = new Node('name');
+    nameBg.addChild(nameLab);
+    nameLab.layer = top.layer;
+    nameLab.addComponent(UITransform).setContentSize(260, 36);
+    const nl = nameLab.addComponent(Label);
+    styleLabel(nl, 20);
+    const u = (globalThis as any).__HNQP__ || {};
+    nl.string = u.userName || '玩家';
+    nl.color = new Color(255, 245, 220, 255);
+    (this as any)._hallNameLab = nl;
+
+    const cardBg = new Node('cardBg');
+    top.addChild(cardBg);
+    cardBg.layer = top.layer;
+    cardBg.setPosition(-140, 0, 0);
+    cardBg.addComponent(UITransform).setContentSize(180, 44);
+    const csp = cardBg.addComponent(Sprite);
+    csp.sizeMode = Sprite.SizeMode.CUSTOM;
+    void loadSpriteFrame('weihai/ui/hall/room_card_bg').then((sf) => {
+      if (sf && cardBg.isValid) csp.spriteFrame = sf;
+    });
+    const icon = new Node('icon');
+    cardBg.addChild(icon);
+    icon.layer = top.layer;
+    icon.setPosition(-60, 0, 0);
+    icon.addComponent(UITransform).setContentSize(36, 36);
+    const isp = icon.addComponent(Sprite);
+    isp.sizeMode = Sprite.SizeMode.CUSTOM;
+    void loadSpriteFrame('weihai/ui/hall/room_card_icon').then((sf) => {
+      if (sf && icon.isValid) isp.spriteFrame = sf;
+    });
+    const cardLab = new Node('card');
+    cardBg.addChild(cardLab);
+    cardLab.layer = top.layer;
+    cardLab.setPosition(20, 0, 0);
+    cardLab.addComponent(UITransform).setContentSize(100, 32);
+    const cl = cardLab.addComponent(Label);
+    styleLabel(cl, 20);
+    cl.string = String(u.roomCard ?? '--');
+    cl.color = new Color(255, 230, 140, 255);
+    (this as any)._hallCardLab = cl;
+
+    const brand = new Node('brand');
+    top.addChild(brand);
+    brand.layer = top.layer;
+    brand.setPosition(420, 0, 0);
+    brand.addComponent(UITransform).setContentSize(280, 40);
+    const bl = brand.addComponent(Label);
+    styleLabel(bl, 26);
+    bl.string = '湘桌';
+    bl.color = new Color(255, 220, 120, 255);
+
+    // 底栏
+    let bar = canvas.getChildByName('__HallBottom');
+    if (bar) bar.destroy();
+    bar = new Node('__HallBottom');
+    canvas.addChild(bar);
+    bar.layer = canvas.layer || Layers.Enum.UI_2D;
+    bar.addComponent(UITransform).setContentSize(1280, 100);
+    bar.setPosition(0, -320, 0);
+    const sp = bar.addComponent(Sprite);
+    sp.sizeMode = Sprite.SizeMode.CUSTOM;
+    void loadSpriteFrame('weihai/ui/hall/bottom_panel').then((sf) => {
+      if (sf && bar.isValid) {
+        sp.spriteFrame = sf;
+        bar!.getComponent(UITransform)!.setContentSize(1280, 96);
+      } else {
+        void loadSpriteFrame('weihai/hall/bottom_bar').then((sf2) => {
+          if (sf2 && bar?.isValid) sp.spriteFrame = sf2;
+        });
+      }
+    });
+
     let pick = canvas.getChildByName('__GamePick');
     if (pick) pick.destroy();
     pick = new Node('__GamePick');
     canvas.addChild(pick);
     pick.layer = canvas.layer || Layers.Enum.UI_2D;
-    pick.setPosition(-280, 180, 0);
+    pick.setPosition(-280, 200, 0);
     pick.addComponent(UITransform).setContentSize(420, 36);
     const lab = pick.addComponent(Label);
-    lab.string = '玩法：长沙麻将（可玩） / 邵阳跑胡子（即将开放）';
+    lab.string = '玩法：长沙麻将 · 可开桌';
     lab.fontSize = 20;
     lab.color = new Color(240, 230, 200, 255);
 
-    // 左下角文字链：战绩 / 匹配 / 复制房号（不用大厅 btn_ok 图）
-    this.ensureTextLink(canvas, 'LinkRecords', '战绩', -420, -200, () => void this.onClickRecords());
-    this.ensureTextLink(canvas, 'LinkMatch', '快速匹配', -420, -240, () => void this.onClickQuickMatch());
-    this.ensureTextLink(canvas, 'LinkShare', '复制房号', -420, -280, () => this.onClickShareRoom());
+    this.ensureTextLink(canvas, 'LinkRecords', '战绩', -480, -250, () => void this.onClickRecords());
+    this.ensureTextLink(canvas, 'LinkMatch', '快速匹配', -300, -250, () => void this.onClickQuickMatch());
+    this.ensureTextLink(canvas, 'LinkShare', '复制房号', -120, -250, () => this.onClickShareRoom());
 
     if (!this.findNode('ClubBtn') && !canvas.getChildByName('ClubBtn')) {
       const n = new Node('ClubBtn');
       canvas.addChild(n);
       n.layer = canvas.layer || Layers.Enum.UI_2D;
-      n.addComponent(UITransform).setContentSize(220, 72);
-      n.setPosition(-420, -310, 0);
+      n.addComponent(UITransform).setContentSize(200, 70);
+      n.setPosition(-480, -300, 0);
       n.addComponent(Sprite);
       const btn = n.addComponent(Button);
       btn.transition = Button.Transition.SCALE;
@@ -352,18 +433,21 @@ export class HallScene extends Component {
   }
 
   async onClickJoin() {
-    const id = parseInt(this.joinEdit?.string || '0', 10);
     if (!(await this.ensureConnected())) return;
-    if (!id) {
-      this.setRoom('请先输入房间号');
-      return;
-    }
-    const msg = await NetBus.ins.joinRoom(id);
-    if (msg.cmd === 'error') this.setRoom(msg.body?.message || '加入失败');
-    else {
-      this.roomId = msg.body.roomId;
-      this.setRoom(`已加入 ${this.roomId}`);
-    }
+    JoinRoomDialog.show(this.canvas(), async (roomStr) => {
+      const id = parseInt(roomStr || '0', 10);
+      if (!id) {
+        this.setRoom('请输入有效房间号');
+        return;
+      }
+      JoinRoomDialog.syncEdit(this.joinEdit, String(id));
+      const msg = await NetBus.ins.joinRoom(id);
+      if (msg.cmd === 'error') this.setRoom(msg.body?.message || '加入失败');
+      else {
+        this.roomId = msg.body.roomId;
+        this.setRoom(`已加入 ${this.roomId}`);
+      }
+    });
   }
 
   async onClickPrepare() {

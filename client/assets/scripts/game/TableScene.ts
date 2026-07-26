@@ -190,27 +190,34 @@ export class TableScene extends Component {
     if (game.phase === 'settle' && game.settle && !this.resultShown) {
       this.resultShown = true;
       const s = game.settle;
-      if (s.reason === 'zimo' || s.reason === 'hu' || s.reason === 'dianpao' || s.reason === 'qiang_gang') {
-        this.layout.showHuEffect(s.reason === 'zimo' ? 'zimo' : 'hu');
-        VoiceBus.playRound(s.reason === 'zimo' ? 'zimo' : (s.reason === 'dianpao' ? 'dianpao' : 'hu'));
-      }
+      const settleInfo = this.buildSettleInfo(s, game);
+      settleInfo.roomId = body.roomId;
+      const between = this.roomState === 'between_round';
       const title = s.reason === 'huangzhuang'
         ? '荒庄'
         : (s.reason === 'zimo' ? '自摸！' : '胡牌！');
-      const between = this.roomState === 'between_round';
-      const settleInfo = this.buildSettleInfo(s, game);
-      this.layout.showResultOverlay(
-        title,
-        s.detail || '本局结束',
-        between ? '准备下一局' : '回大厅',
-        () => {
-          if (between) void this.prepareNextRound();
-          else void this.backToHall();
-        },
-        between ? '回大厅' : undefined,
-        between ? () => void this.backToHall() : undefined,
-        settleInfo,
-      );
+      const openSettle = () => {
+        this.layout?.showResultOverlay(
+          title,
+          s.detail || '本局结束',
+          between ? '准备下一局' : '回大厅',
+          () => {
+            if (between) void this.prepareNextRound();
+            else void this.backToHall();
+          },
+          between ? '回大厅' : undefined,
+          between ? () => void this.backToHall() : undefined,
+          settleInfo,
+        );
+      };
+      if (s.reason === 'zimo' || s.reason === 'hu' || s.reason === 'dianpao' || s.reason === 'qiang_gang') {
+        this.layout.showHuEffect(s.reason === 'zimo' ? 'zimo' : (s.reason === 'dianpao' ? 'dianpao' : 'hu'));
+        VoiceBus.playRound(s.reason === 'zimo' ? 'zimo' : (s.reason === 'dianpao' ? 'dianpao' : 'hu'));
+        // 先播胡特效，再弹出商业结算窗
+        this.scheduleOnce(openSettle, 1.05);
+      } else {
+        openSettle();
+      }
     } else if (game.phase !== 'settle' && this.resultShown) {
       // 新一局已开始：务必关掉结算遮罩，否则点不到牌
       this.resultShown = false;

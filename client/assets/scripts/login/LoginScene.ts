@@ -163,15 +163,44 @@ export class LoginScene extends Component {
   }
 
   private layoutUi() {
+    const canvas = this.canvas();
     const btnNode = this.loginBtnNode();
+
+    // 品牌标题（登录页第一视觉）
+    let brand = canvas.getChildByName('__LoginBrand');
+    if (!brand) {
+      brand = new Node('__LoginBrand');
+      canvas.addChild(brand);
+      brand.layer = canvas.layer;
+      brand.addComponent(UITransform).setContentSize(600, 80);
+      const lab = brand.addComponent(Label);
+      styleLabel(lab, 56);
+      lab.string = '湘桌';
+      lab.color = new Color(255, 220, 120, 255);
+    }
+    brand.setPosition(0, 260, 0);
+
+    let sub = canvas.getChildByName('__LoginSub');
+    if (!sub) {
+      sub = new Node('__LoginSub');
+      canvas.addChild(sub);
+      sub.layer = canvas.layer;
+      sub.addComponent(UITransform).setContentSize(600, 36);
+      const lab = sub.addComponent(Label);
+      styleLabel(lab, 22);
+      lab.string = '湖南棋牌 · 长沙麻将';
+      lab.color = new Color(240, 230, 200, 255);
+    }
+    sub.setPosition(0, 200, 0);
+
     const rows: Array<{ node: Node | null | undefined; y: number; w?: number; h?: number }> = [
-      { node: this.statusLabel?.node, y: 150, w: 760, h: 48 },
-      { node: this.nameEdit?.node, y: 60, w: 420, h: 56 },
-      { node: this.passwordEdit?.node, y: -10, w: 420, h: 56 },
-      { node: this.serverEdit?.node, y: -80, w: 420, h: 56 },
-      { node: btnNode, y: -190 },
-      { node: this.guestBtn?.node, y: -280, w: 280, h: 36 },
-      { node: this.registerBtn?.node, y: -320, w: 200, h: 36 },
+      { node: this.statusLabel?.node, y: 140, w: 760, h: 40 },
+      { node: this.nameEdit?.node, y: 50, w: 420, h: 56 },
+      { node: this.passwordEdit?.node, y: -20, w: 420, h: 56 },
+      { node: this.serverEdit?.node, y: -90, w: 420, h: 56 },
+      { node: btnNode, y: -200 },
+      { node: this.guestBtn?.node, y: -290, w: 280, h: 36 },
+      { node: this.registerBtn?.node, y: -330, w: 200, h: 36 },
     ];
     for (const r of rows) {
       if (!r.node?.isValid) continue;
@@ -181,7 +210,7 @@ export class LoginScene extends Component {
         if (ui) ui.setContentSize(r.w, r.h);
       }
     }
-    styleLabel(this.statusLabel, 26);
+    styleLabel(this.statusLabel, 22);
     if (this.statusLabel) {
       this.statusLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
       this.statusLabel.color = new Color(255, 255, 255, 255);
@@ -194,7 +223,6 @@ export class LoginScene extends Component {
         lab.string = '';
         lab.node.active = false;
       }
-      // 去掉可能叠在按钮上的默认白底 Sprite 干扰
       const hostSp = btnNode.getComponent(Sprite);
       if (hostSp) hostSp.enabled = false;
     }
