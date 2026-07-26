@@ -1,4 +1,6 @@
-import { _decorator, Component, Label, Node, EditBox, Button, UITransform, director, Color } from 'cc';
+import {
+  _decorator, Component, Label, Node, EditBox, Button, UITransform, director, Color, Sprite,
+} from 'cc';
 import { NetBus } from '../comm/NetBus';
 import { attachBg, skinButton, styleLabel } from '../comm/ArtBg';
 
@@ -26,14 +28,21 @@ export class LoginScene extends Component {
   private registerBtn: Button | null = null;
 
   onLoad() {
-    this.ensureExtraUi();
+    this.purgeBrokenPassword();
+    this.ensurePasswordFromNameEdit();
+    this.ensureLinkButtons();
     this.layoutUi();
-    attachBg(this.node.parent ?? this.node, 'weihai/bg/hall');
-    if (this.nameEdit) this.nameEdit.maxLength = 32;
+    attachBg(this.canvas(), 'weihai/bg/hall');
+
+    if (this.nameEdit) {
+      this.nameEdit.maxLength = 32;
+      this.nameEdit.placeholder = '昵称 / 用户名';
+    }
     if (this.passwordEdit) {
       this.passwordEdit.maxLength = 64;
       this.passwordEdit.inputFlag = EditBox.InputFlag.PASSWORD;
-      this.passwordEdit.placeholder = '密码（可空=游客）';
+      this.passwordEdit.placeholder = '密码（可空）';
+      this.passwordEdit.string = '';
     }
     if (this.serverEdit) this.serverEdit.maxLength = 128;
 
@@ -41,8 +50,7 @@ export class LoginScene extends Component {
     if (this.serverEdit) this.serverEdit.string = addr;
     if (this.nameEdit && !this.nameEdit.string) this.nameEdit.string = '测试用户';
     NetBus.ins.putServerAddr(addr);
-    this.setStatus('湘桌 · 输入昵称点登录，或游客一键进入');
-
+    this.setStatus('湘桌 · 点登录进入（密码可空）');
     this.wireButtons();
   }
 
@@ -50,28 +58,56 @@ export class LoginScene extends Component {
     return this.node.parent ?? this.node;
   }
 
-  /** 密码框 + 注册/游客文字按钮（不用大厅 btn_join / btn_ok 图） */
-  private ensureExtraUi() {
+  /** 清掉之前无 TEXT_LABEL 的坏 PasswordEdit（会画出巨大「密码」字） */
+  private purgeBrokenPassword() {
     const parent = this.canvas();
-
-    if (!this.passwordEdit) {
-      let n = parent.getChildByName('PasswordEdit');
-      if (!n) {
-        n = new Node('PasswordEdit');
-        parent.addChild(n);
-        n.layer = parent.layer;
-        n.addComponent(UITransform).setContentSize(420, 56);
-        const eb = n.addComponent(EditBox);
-        eb.maxLength = 64;
-        eb.placeholder = '密码（可空=游客）';
+    for (const name of ['PasswordEdit', '__PasswordEdit']) {
+      const n = parent.getChildByName(name);
+      if (!n) continue;
+      const eb = n.getComponent(EditBox);
+      const hasText = !!n.getChildByName('TEXT_LABEL');
+      const hasPh = !!n.getChildByName('PLACEHOLDER_LABEL');
+      if (!hasText || !hasPh) {
+        n.destroy();
+        if (this.passwordEdit?.node === n) this.passwordEdit = null;
+      } else if (eb) {
         this.passwordEdit = eb;
-      } else {
-        this.passwordEdit = n.getComponent(EditBox);
       }
     }
+  }
 
-    this.registerBtn = this.ensureTextButton(parent, 'RegisterTextBtn', '注册账号');
+  /** 克隆 NameEdit 得到正常密码框 */
+  private ensurePasswordFromNameEdit() {
+    if (this.passwordEdit?.isValid) return;
+    const parent = this.canvas();
+    const existing = parent.getChildByName('PasswordEdit');
+    if (existing?.getComponent(EditBox) && existing.getChildByName('TEXT_LABEL')) {
+      this.passwordEdit = existing.getComponent(EditBox);
+      return;
+    }
+    const src = this.nameEdit?.node;
+    if (!src?.isValid) return;
+    const n = Node.instantiate(src);
+    n.name = 'PasswordEdit';
+    parent.addChild(n);
+    n.layer = parent.layer;
+    const eb = n.getComponent(EditBox);
+    if (!eb) {
+      n.destroy();
+      return;
+    }
+    eb.string = '';
+    eb.placeholder = '密码（可空）';
+    eb.inputFlag = EditBox.InputFlag.PASSWORD;
+    eb.maxLength = 64;
+    // 克隆后背景图跟着 NameEdit，外观一致
+    this.passwordEdit = eb;
+  }
+
+  private ensureLinkButtons() {
+    const parent = this.canvas();
     this.guestBtn = this.ensureTextButton(parent, 'GuestTextBtn', '游客一键登录');
+    this.registerBtn = this.ensureTextButton(parent, 'RegisterTextBtn', '注册账号');
   }
 
   private ensureTextButton(parent: Node, name: string, caption: string): Button {
@@ -80,7 +116,7 @@ export class LoginScene extends Component {
       n = new Node(name);
       parent.addChild(n);
       n.layer = parent.layer;
-      n.addComponent(UITransform).setContentSize(200, 40);
+      n.addComponent(UITransform).setContentSize(240, 36);
       const lab = n.addComponent(Label);
       lab.string = caption;
       lab.fontSize = 22;
@@ -91,9 +127,20 @@ export class LoginScene extends Component {
       n.addComponent(Button);
     } else {
       const lab = n.getComponent(Label);
-      if (lab) lab.string = caption;
+      if (lab) {
+        lab.string = caption;
+        styleLabel(lab, 22);
+        lab.color = new Color(255, 230, 160, 255);
+      }
     }
     return n.getComponent(Button)!;
+  }
+
+  private loginBtnNode(): Node | null {
+    return this.loginBtn?.node
+      ?? this.node.getChildByName('LoginBtn')
+      ?? this.canvas().getChildByName('LoginBtn')
+      ?? null;
   }
 
   private wireButtons() {
@@ -109,34 +156,31 @@ export class LoginScene extends Component {
     this.guestBtn?.node.on(Button.EventType.CLICK, () => void this.onClickGuest(), this);
   }
 
-  private loginBtnNode(): Node | null {
-    return this.loginBtn?.node
-      ?? this.node.getChildByName('LoginBtn')
-      ?? this.canvas().getChildByName('LoginBtn')
-      ?? null;
-  }
-
   private layoutUi() {
     const btnNode = this.loginBtnNode();
-    const rows: Array<{ node: Node | null | undefined; y: number; w: number; h: number }> = [
-      { node: this.statusLabel?.node, y: 160, w: 720, h: 48 },
-      { node: this.nameEdit?.node, y: 70, w: 420, h: 56 },
-      { node: this.passwordEdit?.node, y: 0, w: 420, h: 56 },
-      { node: this.serverEdit?.node, y: -70, w: 420, h: 56 },
-      { node: btnNode, y: -180, w: 280, h: 90 },
-      { node: this.guestBtn?.node, y: -280, w: 280, h: 40 },
+    const rows: Array<{ node: Node | null | undefined; y: number; w?: number; h?: number }> = [
+      { node: this.statusLabel?.node, y: 150, w: 760, h: 48 },
+      { node: this.nameEdit?.node, y: 60, w: 420, h: 56 },
+      { node: this.passwordEdit?.node, y: -10, w: 420, h: 56 },
+      { node: this.serverEdit?.node, y: -80, w: 420, h: 56 },
+      { node: btnNode, y: -190 },
+      { node: this.guestBtn?.node, y: -280, w: 280, h: 36 },
       { node: this.registerBtn?.node, y: -320, w: 200, h: 36 },
     ];
     for (const r of rows) {
-      if (!r.node) continue;
+      if (!r.node?.isValid) continue;
       r.node.setPosition(0, r.y, 0);
-      const ui = r.node.getComponent(UITransform);
-      if (ui) ui.setContentSize(r.w, r.h);
+      if (r.w && r.h) {
+        const ui = r.node.getComponent(UITransform);
+        if (ui) ui.setContentSize(r.w, r.h);
+      }
     }
-    styleLabel(this.statusLabel, 28);
-    if (this.statusLabel) this.statusLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
+    styleLabel(this.statusLabel, 26);
+    if (this.statusLabel) {
+      this.statusLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
+      this.statusLabel.color = new Color(255, 255, 255, 255);
+    }
 
-    // 主按钮只用登录图，隐藏场景自带 Label（避免叠字）
     const btn = this.loginBtn ?? btnNode?.getComponent(Button);
     skinButton(btn, 'weihai/ui/btn_login', true, 320);
     if (btnNode) {
@@ -144,6 +188,9 @@ export class LoginScene extends Component {
         lab.string = '';
         lab.node.active = false;
       }
+      // 去掉可能叠在按钮上的默认白底 Sprite 干扰
+      const hostSp = btnNode.getComponent(Sprite);
+      if (hostSp) hostSp.enabled = false;
     }
   }
 
@@ -184,7 +231,9 @@ export class LoginScene extends Component {
     } catch (e) {
       clearInterval(tick);
       console.warn('[Login] connect fail', e);
-      this.setStatus('连接失败：请关 Clash/代理 后强制刷新(Cmd+Shift+R)，或打开 /ws-test.html 自检');
+      this.setStatus(
+        `连接失败：本机需先启动服务端\ncd server && XIANGZHUO_USE_MYSQL=0 XIANGZHUO_USE_REDIS=0 ./run.sh`,
+      );
       return null;
     }
   }
@@ -217,7 +266,6 @@ export class LoginScene extends Component {
     return true;
   }
 
-  /** 主按钮：有密码走账号登录，否则走兼容昵称登录 */
   async onClickEnter() {
     if (this.loggingIn) return;
     this.loggingIn = true;
@@ -236,7 +284,7 @@ export class LoginScene extends Component {
       if (!this.finishLogin(msg, addr)) this.loggingIn = false;
     } catch (e) {
       console.warn('[Login] enter fail', e);
-      this.setStatus('登录超时：WebSocket 已连上但服务器无响应');
+      this.setStatus('登录超时：服务器无响应');
       this.loggingIn = false;
     }
   }
