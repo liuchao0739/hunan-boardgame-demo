@@ -484,10 +484,9 @@ export class TableLayout {
 
   /** 荒庄 / 结算遮罩（始终盖在最上层） */
   showResultOverlay(title: string, sub: string, primaryLabel: string, onPrimary?: () => void, secondaryLabel?: string, onSecondary?: () => void) {
+    this.hideResultOverlay();
     const parent = this.root.getChildByName('__TableUI') || this.root;
-    let ov = parent.getChildByName('__ResultOverlay');
-    if (ov) ov.destroy();
-    ov = new Node('__ResultOverlay');
+    const ov = new Node('__ResultOverlay');
     parent.addChild(ov);
     ov.setSiblingIndex(parent.children.length - 1);
     ov.layer = parent.layer;
@@ -545,6 +544,13 @@ export class TableLayout {
         onSecondary();
       });
     }
+  }
+
+  hideResultOverlay() {
+    const parent = this.root?.getChildByName('__TableUI') || this.root;
+    if (!parent?.isValid) return;
+    const ov = parent.getChildByName('__ResultOverlay');
+    if (ov?.isValid) ov.destroy();
   }
 
   /** 仅显示你真正能用的操作（统一 popIn 动效） */

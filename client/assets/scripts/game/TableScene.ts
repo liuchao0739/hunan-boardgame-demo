@@ -204,6 +204,10 @@ export class TableScene extends Component {
         between ? '回大厅' : undefined,
         between ? () => void this.backToHall() : undefined,
       );
+    } else if (game.phase !== 'settle' && this.resultShown) {
+      // 新一局已开始：务必关掉结算遮罩，否则点不到牌
+      this.resultShown = false;
+      this.layout.hideResultOverlay();
     }
     this.prevGame = this.snapshotGame(game);
     this.prevHandLen = this.hand.length;
@@ -322,11 +326,13 @@ export class TableScene extends Component {
 
   private async prepareNextRound() {
     this.resultShown = false;
+    this.layout?.hideResultOverlay();
     this.prevGame = null;
     this.prevHandLen = 0;
     try {
       const msg = await NetBus.ins.prepare(true);
       if (msg.cmd === 'error') this.setTip(msg.body?.message || '准备失败');
+      else if (msg.body) this.applyState(msg.body);
     } catch {
       this.setTip('准备超时');
     }

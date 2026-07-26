@@ -520,6 +520,9 @@ function handle.error(fd)
 end
 
 skynet.start(function()
+  -- 各服务 Lua VM 独立，网关也必须注册玩法，否则 gameAction 全被「未知 gameId」拒掉
+  Registry.bootstrap()
+
   passport = skynet.uniqueservice("passport")
   room_mgr = skynet.uniqueservice("room_mgr")
   matchmaking = skynet.uniqueservice("matchmaking")
