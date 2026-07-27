@@ -38,7 +38,12 @@ cd server
 | `client/assets/scripts/comm/NetBus.ts` | 客户端总线 |
 | `docs/PROTOCOL_PLATFORM.md` | 协议 |
 | `docs/RULES_CHANGSHA.md` | 规则 |
+| `docs/REFERENCES.md` | 上游参考（威海 / 口袋麻将）与目录映射 |
 | `upgrade/` | 对标欢乐麻将任务循环（见 [upgrade/LOOP.md](upgrade/LOOP.md)） |
+
+## 上游参考
+
+客户端与观感主要参考 [威海麻将](https://github.com/hjj2017/whmj.cocos2d_client) + [口袋麻将](https://github.com/winktzhong/PocketMahjongClient)；协议与房间模型自 [威海 Java 服](https://github.com/hjj2017/whmj.java_server) 演进为 Skynet JSON。本地对照：`./scripts/update_refs.sh` → `_refs/`。详见 [docs/REFERENCES.md](docs/REFERENCES.md)。
 
 ## 升级循环
 

@@ -23,7 +23,9 @@
 3. 牌桌有独立台面层次、完整牌面、头像框座位；胡/自摸有图标特效
 4. https://xiangzhuo.xiandan.me/ 强制刷新后与本地构建一致
 
-美术基线：仓库已有 `client/assets/resources/weihai/`（含无 `@` 副本 `weihai/ui/settle|hall`）。
+美术基线：仓库已有 `client/assets/resources/weihai/`（含无 `@` 副本 `weihai/ui/settle|hall`）。截图对照 `docs/weihai_ref/`（威海原版演示）。
+
+上游开源参考（目录映射、维护脚本）：[docs/REFERENCES.md](../docs/REFERENCES.md)
 
 参考演示站：https://xiangzhuo.xiandan.me/  
 源码：https://github.com/liuchao0739/xiangzhuo

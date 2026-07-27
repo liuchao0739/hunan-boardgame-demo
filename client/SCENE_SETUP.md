@@ -13,7 +13,8 @@
 
 ```
 assets/scripts/
-  comm/MsgBus.ts, PbWire.ts
+  comm/NetBus.ts          ← 主线 JSON 总线
+  comm/MsgBus.ts, PbWire.ts  ← 威海 Protobuf 遗留对照
   login/LoginScene.ts
   hall/HallScene.ts
   game/TableScene.ts

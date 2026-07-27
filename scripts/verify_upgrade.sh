@@ -30,6 +30,8 @@ check "backup_mysql.sh" "test -x '$ROOT/scripts/backup_mysql.sh' || test -f '$RO
 check "bench_ws.py" "test -f '$ROOT/scripts/bench_ws.py'"
 check "CI workflow" "test -f '$ROOT/.github/workflows/lua-tests.yml'"
 check "upgrade LOOP.md" "test -f '$ROOT/upgrade/LOOP.md'"
+check "REFERENCES.md" "test -f '$ROOT/docs/REFERENCES.md'"
+check "update_refs.sh" "test -x '$ROOT/scripts/update_refs.sh' || test -f '$ROOT/scripts/update_refs.sh'"
 
 echo "-- registry bootstrap games --"
 LUA="$ROOT/server/skynet/3rd/lua/lua"

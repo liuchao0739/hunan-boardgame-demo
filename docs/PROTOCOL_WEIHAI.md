@@ -1,6 +1,8 @@
 # 威海麻将协议对照（MsgBus / Protobuf）
 
-蓝本：[_refs/whmj.java_server/etc/protocol](../server/protocol) · 客户端帧编解码见原版 `MsgBus.ts`。
+蓝本：[whmj.java_server](https://github.com/hjj2017/whmj.java_server) `etc/protocol`（本仓 vendored 于 [`server/protocol/`](../server/protocol)）· 客户端帧编解码见 `client/assets/scripts/comm/MsgBus.ts`（对照 `_refs/whmj.cocos2d_client` 原版）。
+
+> **已废弃于生产**：湘桌主线为 JSON [PROTOCOL_PLATFORM.md](./PROTOCOL_PLATFORM.md)。本文仅保留与威海 Java 服/protobuf 帧的对照。
 
 ## 帧格式
 

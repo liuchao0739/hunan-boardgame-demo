@@ -15,4 +15,4 @@ Creator 预览：
 
 浏览器：https://xiangzhuo.xiandan.me/
 
-旧威海 MsgBus Protobuf 已废弃。
+旧威海 MsgBus Protobuf 已废弃；对照见 [PROTOCOL_WEIHAI.md](./PROTOCOL_WEIHAI.md)、[REFERENCES.md](./REFERENCES.md)。
